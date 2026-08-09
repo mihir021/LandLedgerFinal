@@ -8,7 +8,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { HiMenu, HiX } from 'react-icons/hi';
 import { FiLogOut, FiUser, FiGrid } from 'react-icons/fi';
 import { SiBlockchaindotcom } from 'react-icons/si';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, ROLE_ROUTES } from '../context/AuthContext';
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -23,9 +23,11 @@ export default function Navbar() {
   /** Determine the correct dashboard route for the user's role */
   const getDashboardRoute = () => {
     if (!user) return '/login';
-    const map = { seller: '/seller', buyer: '/buyer', officer: '/officer', admin: '/admin' };
-    return map[user.role] || '/login';
+    return ROLE_ROUTES[user.role] || '/login';
   };
+
+  /** Display name — use fullName from backend or fall back */
+  const displayName = user?.fullName || user?.name || 'User';
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-navy-900/80 backdrop-blur-xl">
@@ -79,7 +81,7 @@ export default function Navbar() {
                 className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm text-navy-200 transition-colors hover:bg-white/10"
               >
                 <FiUser className="text-blue-400" />
-                <span className="max-w-[120px] truncate">{user.name}</span>
+                <span className="max-w-[120px] truncate">{displayName}</span>
               </Link>
               <button
                 onClick={handleLogout}

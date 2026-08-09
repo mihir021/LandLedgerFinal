@@ -1,39 +1,45 @@
 /**
  * Login Page
- * Email/password form with role indicator and navigation to register.
+ * Email/password form with real backend authentication.
+ * Role is determined by the backend — no role selector.
  */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiMail, FiLock, FiArrowRight, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiMail, FiLock, FiArrowRight, FiEye, FiEyeOff, FiLoader } from 'react-icons/fi';
 import { SiBlockchaindotcom } from 'react-icons/si';
-import { useAuth, ROLES } from '../context/AuthContext';
+import { useAuth, ROLE_ROUTES } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const toast = useToast();
 
-  const [form, setForm] = useState({ email: '', password: '', role: ROLES.BUYER });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const roles = [
-    { value: ROLES.BUYER, label: 'Buyer' },
-    { value: ROLES.SELLER, label: 'Seller' },
-    { value: ROLES.OFFICER, label: 'Gov. Officer' },
-    { value: ROLES.ADMIN, label: 'Admin' },
-  ];
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (!form.email || !form.password) {
       setError('Please fill in all fields.');
       return;
     }
-    login(form.email, form.password, form.role);
-    // Navigate to the appropriate dashboard
-    const routeMap = { buyer: '/buyer', seller: '/seller', officer: '/officer', admin: '/admin' };
-    navigate(routeMap[form.role] || '/buyer');
+
+    setLoading(true);
+    try {
+      const user = await login(form.email, form.password);
+      toast.success('Login successful!');
+      // Navigate to the appropriate dashboard based on role from backend
+      const route = ROLE_ROUTES[user.role] || '/buyer';
+      navigate(route);
+    } catch (err) {
+      setError(err.message || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,27 +57,6 @@ export default function Login() {
         {/* Form Card */}
         <div className="glass-card p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Role Selector */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-navy-300">Login as</label>
-              <div className="grid grid-cols-4 gap-2">
-                {roles.map((r) => (
-                  <button
-                    key={r.value}
-                    type="button"
-                    onClick={() => setForm({ ...form, role: r.value })}
-                    className={`rounded-lg px-2 py-2 text-xs font-medium transition-all ${
-                      form.role === r.value
-                        ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/40'
-                        : 'bg-white/5 text-navy-400 hover:bg-white/10 hover:text-navy-200'
-                    }`}
-                  >
-                    {r.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Email */}
             <div>
               <label htmlFor="login-email" className="mb-2 block text-sm font-medium text-navy-300">Email</label>
@@ -119,10 +104,20 @@ export default function Login() {
             {/* Submit */}
             <button
               type="submit"
-              className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110"
+              disabled={loading}
+              className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Sign In
-              <FiArrowRight className="transition-transform group-hover:translate-x-1" />
+              {loading ? (
+                <>
+                  <FiLoader className="h-4 w-4 animate-spin" />
+                  Signing In...
+                </>
+              ) : (
+                <>
+                  Sign In
+                  <FiArrowRight className="transition-transform group-hover:translate-x-1" />
+                </>
+              )}
             </button>
           </form>
 

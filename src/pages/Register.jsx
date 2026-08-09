@@ -1,34 +1,36 @@
 /**
  * Register Page
  * Registration form with full name, email, password, and role selection.
+ * Only Buyer and Seller roles are allowed for self-registration.
  */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiUser, FiMail, FiLock, FiArrowRight, FiEye, FiEyeOff } from 'react-icons/fi';
-import { HiOutlineBriefcase, HiOutlineShieldCheck, HiOutlineHome, HiOutlineUserCircle } from 'react-icons/hi';
+import { FiUser, FiMail, FiLock, FiArrowRight, FiEye, FiEyeOff, FiLoader, FiPhone } from 'react-icons/fi';
+import { HiOutlineBriefcase, HiOutlineHome } from 'react-icons/hi';
 import { SiBlockchaindotcom } from 'react-icons/si';
-import { useAuth, ROLES } from '../context/AuthContext';
+import { useAuth, ROLES, ROLE_ROUTES } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 const roleOptions = [
-  { value: ROLES.BUYER,   label: 'Buyer',           desc: 'Search & purchase properties',      icon: HiOutlineHome },
-  { value: ROLES.SELLER,  label: 'Seller',           desc: 'List & manage your properties',     icon: HiOutlineBriefcase },
-  { value: ROLES.OFFICER, label: 'Government Officer', desc: 'Verify users & properties',       icon: HiOutlineShieldCheck },
-  { value: ROLES.ADMIN,   label: 'Administrator',     desc: 'Manage the entire platform',       icon: HiOutlineUserCircle },
+  { value: ROLES.BUYER,  label: 'Buyer',  desc: 'Search & purchase properties', icon: HiOutlineHome },
+  { value: ROLES.SELLER, label: 'Seller', desc: 'List & manage your properties', icon: HiOutlineBriefcase },
 ];
 
 export default function Register() {
   const navigate = useNavigate();
   const { register } = useAuth();
+  const toast = useToast();
 
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', role: '' });
+  const [form, setForm] = useState({ fullName: '', email: '', password: '', confirmPassword: '', phone: '', role: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!form.name || !form.email || !form.password || !form.role) {
+    if (!form.fullName || !form.email || !form.password || !form.role) {
       setError('Please fill in all required fields.');
       return;
     }
@@ -36,14 +38,28 @@ export default function Register() {
       setError('Passwords do not match.');
       return;
     }
-    if (form.password.length < 6) {
-      setError('Password must be at least 6 characters.');
+    if (form.password.length < 8) {
+      setError('Password must be at least 8 characters.');
       return;
     }
 
-    register(form.name, form.email, form.password, form.role);
-    const routeMap = { buyer: '/buyer', seller: '/seller', officer: '/officer', admin: '/admin' };
-    navigate(routeMap[form.role] || '/buyer');
+    setLoading(true);
+    try {
+      const user = await register({
+        fullName: form.fullName,
+        email: form.email,
+        password: form.password,
+        phone: form.phone || undefined,
+        role: form.role,
+      });
+      toast.success('Account created successfully!');
+      const route = ROLE_ROUTES[user.role] || '/buyer';
+      navigate(route);
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -61,7 +77,7 @@ export default function Register() {
         {/* Form Card */}
         <div className="glass-card p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Role Selection */}
+            {/* Role Selection — Buyer and Seller only */}
             <div>
               <label className="mb-3 block text-sm font-medium text-navy-300">Select Your Role</label>
               <div className="grid grid-cols-2 gap-3">
@@ -94,8 +110,8 @@ export default function Register() {
                 <input
                   id="reg-name"
                   type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  value={form.fullName}
+                  onChange={(e) => setForm({ ...form, fullName: e.target.value })}
                   placeholder="John Doe"
                   className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white placeholder-navy-600 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
                 />
@@ -118,6 +134,22 @@ export default function Register() {
               </div>
             </div>
 
+            {/* Phone (optional) */}
+            <div>
+              <label htmlFor="reg-phone" className="mb-2 block text-sm font-medium text-navy-300">Phone <span className="text-navy-600">(optional)</span></label>
+              <div className="relative">
+                <FiPhone className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-500" />
+                <input
+                  id="reg-phone"
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="9876543210"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white placeholder-navy-600 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+            </div>
+
             {/* Password */}
             <div>
               <label htmlFor="reg-password" className="mb-2 block text-sm font-medium text-navy-300">Password</label>
@@ -128,7 +160,7 @@ export default function Register() {
                   type={showPassword ? 'text' : 'password'}
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  placeholder="Minimum 6 characters"
+                  placeholder="Minimum 8 characters"
                   className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-12 text-sm text-white placeholder-navy-600 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
                 />
                 <button
@@ -165,10 +197,20 @@ export default function Register() {
             {/* Submit */}
             <button
               type="submit"
-              className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110"
+              disabled={loading}
+              className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Create Account
-              <FiArrowRight className="transition-transform group-hover:translate-x-1" />
+              {loading ? (
+                <>
+                  <FiLoader className="h-4 w-4 animate-spin" />
+                  Creating Account...
+                </>
+              ) : (
+                <>
+                  Create Account
+                  <FiArrowRight className="transition-transform group-hover:translate-x-1" />
+                </>
+              )}
             </button>
           </form>
 

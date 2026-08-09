@@ -11,7 +11,6 @@ import {
   FiActivity, FiPlusCircle, FiBell, FiSettings, FiLogOut,
   FiDollarSign, FiAlertTriangle, FiDatabase, FiCheckCircle,
 } from 'react-icons/fi';
-import { SiBlockchaindotcom } from 'react-icons/si';
 import { useAuth } from '../context/AuthContext';
 
 /** Navigation items mapped by role */
@@ -56,6 +55,7 @@ export default function Sidebar() {
 
   const role = user?.role || 'buyer';
   const items = navItemsByRole[role] || navItemsByRole.buyer;
+  const displayName = user?.fullName || user?.name || 'User';
 
   const handleLogout = () => {
     logout();
@@ -81,11 +81,11 @@ export default function Sidebar() {
       <div className={`border-b border-white/5 px-4 py-5 ${collapsed ? 'text-center' : ''}`}>
         <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-bold text-white">
-            {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            {displayName.charAt(0).toUpperCase()}
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">{user?.name || 'User'}</p>
+              <p className="truncate text-sm font-semibold text-white">{displayName}</p>
               <p className="truncate text-xs capitalize text-navy-400">{role}</p>
             </div>
           )}

@@ -1,15 +1,16 @@
 /**
  * Landing Page
  * Hero, Features, How It Works timeline, Why Blockchain, CTA, and Footer sections.
+ * Static content — no backend data needed.
  */
 import { Link } from 'react-router-dom';
 import {
   FiShield, FiCheckCircle, FiRepeat, FiLock,
   FiFileText, FiCode, FiArrowRight, FiGlobe,
-  FiDatabase, FiUsers, FiZap,
+  FiDatabase, FiUsers, FiZap, FiGrid,
 } from 'react-icons/fi';
 import { SiBlockchaindotcom } from 'react-icons/si';
-import { features, howItWorks } from '../services/mockData';
+import { useAuth, ROLE_ROUTES } from '../context/AuthContext';
 
 /** Map feature icon string to React Icon component */
 const iconMap = {
@@ -21,7 +22,53 @@ const iconMap = {
   code: FiCode,
 };
 
+/** Static features data (previously from mockData) */
+const features = [
+  {
+    title: 'Immutable Records',
+    description: 'Every land record is stored on the blockchain, making it tamper-proof and permanently verifiable.',
+    icon: 'shield',
+  },
+  {
+    title: 'Instant Verification',
+    description: 'Government officers can verify property ownership and documents in minutes, not weeks.',
+    icon: 'check',
+  },
+  {
+    title: 'Transparent Transfers',
+    description: 'Property transfers are recorded in real time with complete audit trails visible to all parties.',
+    icon: 'transfer',
+  },
+  {
+    title: 'Fraud Prevention',
+    description: 'Blockchain consensus mechanisms eliminate duplicate registrations and fraudulent claims.',
+    icon: 'lock',
+  },
+  {
+    title: 'Digital Documents',
+    description: 'Upload and manage all property documents digitally with encrypted storage and easy retrieval.',
+    icon: 'document',
+  },
+  {
+    title: 'Smart Contracts',
+    description: 'Automated contract execution ensures seamless, condition-based property transfers.',
+    icon: 'code',
+  },
+];
+
+/** Static how-it-works data (previously from mockData) */
+const howItWorks = [
+  { step: 1, title: 'Register & Verify', description: 'Create your account, select your role, and complete identity verification through the government portal.' },
+  { step: 2, title: 'List Your Property', description: 'Submit property details, upload documents, and the data is recorded on the blockchain.' },
+  { step: 3, title: 'Government Verification', description: 'Designated officers verify documents and approve the property listing on-chain.' },
+  { step: 4, title: 'Search & Purchase', description: 'Buyers search verified properties, submit purchase requests, and initiate smart-contract transfers.' },
+  { step: 5, title: 'Secure Transfer', description: 'Once approved, ownership transfers automatically via blockchain with an immutable record.' },
+];
+
 export default function Landing() {
+  const { isAuthenticated, user } = useAuth();
+  const dashboardRoute = user ? (ROLE_ROUTES[user.role] || '/buyer') : '/login';
+
   return (
     <div className="overflow-hidden">
       {/* ═══════════════════════════════════════════
@@ -60,21 +107,42 @@ export default function Landing() {
             Eliminate fraud, reduce paperwork, and empower citizens with blockchain-verified property records.
           </p>
 
-          {/* CTA buttons */}
+          {/* CTA buttons — conditional based on auth */}
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center animate-fade-in-up delay-300">
-            <Link
-              to="/register"
-              className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-4 text-base font-semibold text-white shadow-2xl shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110"
-            >
-              Get Started Free
-              <FiArrowRight className="transition-transform group-hover:translate-x-1" />
-            </Link>
-            <Link
-              to="/search"
-              className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-white/10"
-            >
-              Explore Properties
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link
+                  to={dashboardRoute}
+                  className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-4 text-base font-semibold text-white shadow-2xl shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110"
+                >
+                  <FiGrid className="h-5 w-5" />
+                  Go to Dashboard
+                  <FiArrowRight className="transition-transform group-hover:translate-x-1" />
+                </Link>
+                <Link
+                  to="/search"
+                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-white/10"
+                >
+                  Explore Properties
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/register"
+                  className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-4 text-base font-semibold text-white shadow-2xl shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110"
+                >
+                  Get Started Free
+                  <FiArrowRight className="transition-transform group-hover:translate-x-1" />
+                </Link>
+                <Link
+                  to="/search"
+                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-white/10"
+                >
+                  Explore Properties
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Stats bar */}
@@ -266,19 +334,32 @@ export default function Landing() {
                 Join thousands of users who trust LandLedger for transparent, blockchain-secured land management.
               </p>
               <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-                <Link
-                  to="/register"
-                  className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-4 text-base font-semibold text-white shadow-2xl shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110"
-                >
-                  Create Free Account
-                  <FiArrowRight className="transition-transform group-hover:translate-x-1" />
-                </Link>
-                <Link
-                  to="/login"
-                  className="rounded-xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-white/10"
-                >
-                  Sign In
-                </Link>
+                {isAuthenticated ? (
+                  <Link
+                    to={dashboardRoute}
+                    className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-4 text-base font-semibold text-white shadow-2xl shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110"
+                  >
+                    <FiGrid className="h-5 w-5" />
+                    Go to Dashboard
+                    <FiArrowRight className="transition-transform group-hover:translate-x-1" />
+                  </Link>
+                ) : (
+                  <>
+                    <Link
+                      to="/register"
+                      className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-4 text-base font-semibold text-white shadow-2xl shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110"
+                    >
+                      Create Free Account
+                      <FiArrowRight className="transition-transform group-hover:translate-x-1" />
+                    </Link>
+                    <Link
+                      to="/login"
+                      className="rounded-xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-white/10"
+                    >
+                      Sign In
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </div>

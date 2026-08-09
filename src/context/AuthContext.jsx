@@ -1,9 +1,10 @@
 /**
  * AuthContext
- * Provides mock authentication state and actions across the application.
- * In production, this would connect to a real auth service / blockchain wallet.
+ * Provides real authentication state with JWT persistence.
+ * Connects to the Express backend auth endpoints.
  */
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import * as authService from '../services/authService';
 
 const AuthContext = createContext(null);
 
@@ -15,51 +16,86 @@ export const ROLES = {
   ADMIN: 'admin',
 };
 
+/** Route map for role-based redirects */
+export const ROLE_ROUTES = {
+  buyer: '/buyer',
+  seller: '/seller',
+  officer: '/officer',
+  admin: '/admin',
+};
+
 /**
  * AuthProvider wraps the app and provides auth state + actions.
  */
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [initializing, setInitializing] = useState(true);
 
-  /** Mock login – accepts any email/password and assigns the given role. */
-  const login = useCallback((email, password, role = ROLES.BUYER) => {
-    const mockUser = {
-      id: 'USR-' + Date.now(),
-      name: email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-      email,
-      role,
-      avatar: null,
-      joinDate: new Date().toISOString(),
+  /**
+   * On mount — rehydrate auth state from localStorage.
+   * If a token exists, validate it by calling GET /api/auth/me.
+   */
+  useEffect(() => {
+    const rehydrate = async () => {
+      const token = localStorage.getItem('ll_token');
+      if (!token) {
+        setInitializing(false);
+        return;
+      }
+
+      try {
+        const userData = await authService.getMe();
+        setUser(userData);
+        setIsAuthenticated(true);
+      } catch {
+        // Token invalid or expired — clean up
+        localStorage.removeItem('ll_token');
+        localStorage.removeItem('ll_user');
+      } finally {
+        setInitializing(false);
+      }
     };
-    setUser(mockUser);
-    setIsAuthenticated(true);
-    return mockUser;
+
+    rehydrate();
   }, []);
 
-  /** Mock register – creates user with the selected role. */
-  const register = useCallback((name, email, password, role) => {
-    const mockUser = {
-      id: 'USR-' + Date.now(),
-      name,
-      email,
-      role,
-      avatar: null,
-      joinDate: new Date().toISOString(),
-    };
-    setUser(mockUser);
+  /**
+   * Login — calls backend, stores JWT + user.
+   * @returns {Object} user data from response
+   */
+  const login = useCallback(async (email, password) => {
+    const data = await authService.loginUser(email, password);
+    localStorage.setItem('ll_token', data.token);
+    localStorage.setItem('ll_user', JSON.stringify(data));
+    setUser(data);
     setIsAuthenticated(true);
-    return mockUser;
+    return data;
   }, []);
 
-  /** Clear auth state. */
+  /**
+   * Register — calls backend, stores JWT + user.
+   * @returns {Object} user data from response
+   */
+  const register = useCallback(async (payload) => {
+    const data = await authService.registerUser(payload);
+    localStorage.setItem('ll_token', data.token);
+    localStorage.setItem('ll_user', JSON.stringify(data));
+    setUser(data);
+    setIsAuthenticated(true);
+    return data;
+  }, []);
+
+  /** Clear auth state and localStorage. */
   const logout = useCallback(() => {
+    localStorage.removeItem('ll_token');
+    localStorage.removeItem('ll_user');
     setUser(null);
     setIsAuthenticated(false);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, register, logout, ROLES }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, initializing, login, register, logout, ROLES }}>
       {children}
     </AuthContext.Provider>
   );
@@ -67,7 +103,7 @@ export function AuthProvider({ children }) {
 
 /**
  * Custom hook to consume auth context.
- * @returns {{ user, isAuthenticated, login, register, logout, ROLES }}
+ * @returns {{ user, isAuthenticated, initializing, login, register, logout, ROLES }}
  */
 export function useAuth() {
   const context = useContext(AuthContext);

@@ -1,18 +1,29 @@
 /**
  * Register Property Page
  * Professional multi-field form for property registration.
+ * Submits to backend with multipart file uploads.
  */
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   FiMapPin, FiHash, FiFileText, FiDollarSign,
   FiImage, FiUpload, FiCheckCircle, FiChevronDown,
+  FiLoader, FiX,
 } from 'react-icons/fi';
-import { states, landTypes } from '../services/mockData';
+import { createProperty } from '../services/propertyService';
+import { useToast } from '../context/ToastContext';
+
+/** Static options (matching backend model enums) */
+const states = ['Maharashtra', 'Karnataka', 'Uttar Pradesh', 'Tamil Nadu', 'Rajasthan', 'Gujarat', 'Delhi', 'Telangana'];
+const landTypes = ['agricultural', 'residential', 'commercial', 'industrial', 'mixed'];
+const landTypeLabels = { agricultural: 'Agricultural', residential: 'Residential', commercial: 'Commercial', industrial: 'Industrial', mixed: 'Mixed' };
 
 export default function RegisterProperty() {
+  const navigate = useNavigate();
+  const toast = useToast();
+
   const [form, setForm] = useState({
     surveyNumber: '',
-    propertyId: '',
     state: '',
     district: '',
     city: '',
@@ -20,21 +31,69 @@ export default function RegisterProperty() {
     area: '',
     landType: '',
     price: '',
-    images: [],
-    documents: [],
+    description: '',
   });
-  const [submitted, setSubmitted] = useState(false);
+  const [imageFiles, setImageFiles] = useState([]);
+  const [documentFiles, setDocumentFiles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   /** Update a single form field */
   const updateField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e) => {
+  /** Handle file selection */
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    setImageFiles((prev) => [...prev, ...files].slice(0, 5));
+  };
+
+  const handleDocumentChange = (e) => {
+    const files = Array.from(e.target.files);
+    setDocumentFiles((prev) => [...prev, ...files].slice(0, 5));
+  };
+
+  /** Remove a selected file */
+  const removeImage = (idx) => setImageFiles((prev) => prev.filter((_, i) => i !== idx));
+  const removeDocument = (idx) => setDocumentFiles((prev) => prev.filter((_, i) => i !== idx));
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // In production, this would call the blockchain API
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 4000);
+    setError('');
+
+    // Client-side validation
+    if (!form.surveyNumber || !form.state || !form.district || !form.city || !form.address || !form.area || !form.landType || !form.price) {
+      setError('Please fill in all required fields.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Build FormData for multipart upload
+      const formData = new FormData();
+      formData.append('surveyNumber', form.surveyNumber);
+      formData.append('state', form.state);
+      formData.append('district', form.district);
+      formData.append('city', form.city);
+      formData.append('address', form.address);
+      formData.append('area', form.area);
+      formData.append('landType', form.landType);
+      formData.append('price', form.price);
+      if (form.description) formData.append('description', form.description);
+
+      imageFiles.forEach((file) => formData.append('images', file));
+      documentFiles.forEach((file) => formData.append('documents', file));
+
+      await createProperty(formData);
+      toast.success('Property registered successfully!');
+      navigate('/seller');
+    } catch (err) {
+      setError(err.message || 'Failed to register property.');
+      toast.error(err.message || 'Failed to register property.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -47,17 +106,6 @@ export default function RegisterProperty() {
         </p>
       </div>
 
-      {/* Success Message */}
-      {submitted && (
-        <div className="mb-6 flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-6 py-4 animate-fade-in-up">
-          <FiCheckCircle className="h-5 w-5 shrink-0 text-emerald-400" />
-          <div>
-            <p className="text-sm font-medium text-emerald-400">Property Submitted Successfully!</p>
-            <p className="text-xs text-emerald-400/70">Your property has been queued for blockchain registration and officer verification.</p>
-          </div>
-        </div>
-      )}
-
       {/* Form Card */}
       <form onSubmit={handleSubmit} className="glass-card p-8 animate-fade-in-up delay-100">
         {/* ── Section: Identification ── */}
@@ -69,13 +117,6 @@ export default function RegisterProperty() {
             placeholder="SRV/MH/PUN/2024/XXXX"
             value={form.surveyNumber}
             onChange={(v) => updateField('surveyNumber', v)}
-          />
-          <InputField
-            id="propertyId"
-            label="Property ID"
-            placeholder="PROP-2024-XXX"
-            value={form.propertyId}
-            onChange={(v) => updateField('propertyId', v)}
           />
         </div>
 
@@ -132,6 +173,7 @@ export default function RegisterProperty() {
             label="Land Type"
             value={form.landType}
             options={landTypes}
+            labels={landTypeLabels}
             onChange={(v) => updateField('landType', v)}
           />
           <InputField
@@ -145,41 +187,96 @@ export default function RegisterProperty() {
           />
         </div>
 
+        {/* Description */}
+        <div className="mt-5">
+          <label htmlFor="description" className="mb-2 block text-sm font-medium text-navy-300">Description (optional)</label>
+          <textarea
+            id="description"
+            rows={3}
+            value={form.description}
+            onChange={(e) => updateField('description', e.target.value)}
+            placeholder="Describe the property..."
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-navy-600 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 resize-none"
+          />
+        </div>
+
         <hr className="my-8 border-white/5" />
 
         {/* ── Section: Uploads ── */}
         <SectionHeading icon={FiUpload} title="Documents & Images" />
         <div className="mt-4 grid gap-5 sm:grid-cols-2">
-          <UploadField
-            id="images"
-            label="Property Images"
-            accept="image/*"
-            icon={FiImage}
-            description="Upload property photos (JPG, PNG)"
-          />
-          <UploadField
-            id="documents"
-            label="Property Documents"
-            accept=".pdf,.doc,.docx"
-            icon={FiFileText}
-            description="Upload title deeds, NOCs, etc. (PDF, DOC)"
-          />
+          {/* Images */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-navy-300">Property Images</label>
+            <label
+              htmlFor="images"
+              className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-white/10 bg-white/[0.02] px-6 py-6 text-center transition-all hover:border-blue-500/30 hover:bg-blue-500/5"
+            >
+              <FiImage className="h-8 w-8 text-navy-500" />
+              <p className="text-sm text-navy-400">Click to upload</p>
+              <p className="text-xs text-navy-600">JPG, PNG (max 5 files)</p>
+              <input id="images" type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" />
+            </label>
+            {imageFiles.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {imageFiles.map((f, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 rounded-lg bg-white/5 px-2 py-1 text-xs text-navy-300">
+                    {f.name.slice(0, 20)}
+                    <button type="button" onClick={() => removeImage(i)} className="text-navy-500 hover:text-red-400"><FiX className="h-3 w-3" /></button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Documents */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-navy-300">Property Documents</label>
+            <label
+              htmlFor="documents"
+              className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-white/10 bg-white/[0.02] px-6 py-6 text-center transition-all hover:border-blue-500/30 hover:bg-blue-500/5"
+            >
+              <FiFileText className="h-8 w-8 text-navy-500" />
+              <p className="text-sm text-navy-400">Click to upload</p>
+              <p className="text-xs text-navy-600">PDF, JPG, PNG (max 5 files)</p>
+              <input id="documents" type="file" accept=".pdf,.jpg,.jpeg,.png" multiple onChange={handleDocumentChange} className="hidden" />
+            </label>
+            {documentFiles.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {documentFiles.map((f, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 rounded-lg bg-white/5 px-2 py-1 text-xs text-navy-300">
+                    {f.name.slice(0, 20)}
+                    <button type="button" onClick={() => removeDocument(i)} className="text-navy-500 hover:text-red-400"><FiX className="h-3 w-3" /></button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Error */}
+        {error && (
+          <p className="mt-6 rounded-lg bg-red-500/10 px-4 py-2 text-sm text-red-400">{error}</p>
+        )}
 
         {/* ── Submit ── */}
         <div className="mt-10 flex justify-end gap-4">
           <button
-            type="button"
-            className="rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-medium text-navy-300 transition-all hover:bg-white/10"
-          >
-            Save as Draft
-          </button>
-          <button
             type="submit"
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110"
+            disabled={loading}
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <FiCheckCircle className="h-4 w-4" />
-            Submit for Registration
+            {loading ? (
+              <>
+                <FiLoader className="h-4 w-4 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                <FiCheckCircle className="h-4 w-4" />
+                Submit for Registration
+              </>
+            )}
           </button>
         </div>
       </form>
@@ -217,7 +314,7 @@ function InputField({ id, label, placeholder, type = 'text', value, onChange }) 
 }
 
 /** Select dropdown */
-function SelectField({ id, label, value, options, onChange }) {
+function SelectField({ id, label, value, options, labels, onChange }) {
   return (
     <div>
       <label htmlFor={id} className="mb-2 block text-sm font-medium text-navy-300">{label}</label>
@@ -230,29 +327,13 @@ function SelectField({ id, label, value, options, onChange }) {
         >
           <option value="" className="bg-navy-800">Select...</option>
           {options.map((opt) => (
-            <option key={opt} value={opt} className="bg-navy-800">{opt}</option>
+            <option key={opt} value={opt} className="bg-navy-800">
+              {labels ? (labels[opt] || opt) : opt}
+            </option>
           ))}
         </select>
         <FiChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-500" />
       </div>
-    </div>
-  );
-}
-
-/** File upload area */
-function UploadField({ id, label, accept, icon: Icon, description }) {
-  return (
-    <div>
-      <label htmlFor={id} className="mb-2 block text-sm font-medium text-navy-300">{label}</label>
-      <label
-        htmlFor={id}
-        className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-white/10 bg-white/[0.02] px-6 py-8 text-center transition-all hover:border-blue-500/30 hover:bg-blue-500/5"
-      >
-        <Icon className="h-8 w-8 text-navy-500" />
-        <p className="text-sm text-navy-400">Click to upload</p>
-        <p className="text-xs text-navy-600">{description}</p>
-        <input id={id} type="file" accept={accept} multiple className="hidden" />
-      </label>
     </div>
   );
 }
