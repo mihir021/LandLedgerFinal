@@ -1,133 +1,153 @@
 /**
- * Login Page
- * Email/password form with real backend authentication.
- * Role is determined by the backend — no role selector.
+ * Login Page — light theme form with navy accents
  */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiMail, FiLock, FiArrowRight, FiEye, FiEyeOff, FiLoader } from 'react-icons/fi';
-import { SiBlockchaindotcom } from 'react-icons/si';
+import { LogIn, Eye, EyeOff, AlertCircle, ShieldCheck } from 'lucide-react';
 import { useAuth, ROLE_ROUTES } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
+const DEMO_CREDENTIALS = [
+  { role: 'Admin',    email: 'admin@landledger.com',   password: 'Admin@123' },
+  { role: 'Officer',  email: 'officer@landledger.com', password: 'Officer@123' },
+  { role: 'Seller',   email: 'seller@landledger.com',  password: 'Seller@123' },
+  { role: 'Buyer',    email: 'buyer@landledger.com',   password: 'Buyer@123' },
+];
+
 export default function Login() {
-  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
   const { login } = useAuth();
   const toast = useToast();
-
-  const [form, setForm] = useState({ email: '', password: '' });
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!form.email || !form.password) {
-      setError('Please fill in all fields.');
-      return;
-    }
-
     setLoading(true);
     try {
-      const user = await login(form.email, form.password);
-      toast.success('Login successful!');
-      // Navigate to the appropriate dashboard based on role from backend
-      const route = ROLE_ROUTES[user.role] || '/buyer';
-      navigate(route);
+      const data = await login(email, password);
+      toast.success(`Welcome back, ${data.fullName || data.name || 'User'}!`);
+      navigate(ROLE_ROUTES[data.role] || '/');
     } catch (err) {
-      setError(err.message || 'Login failed. Please try again.');
+      setError(err.message || 'Invalid email or password.');
     } finally {
       setLoading(false);
     }
   };
 
+  const fillDemo = (cred) => {
+    setEmail(cred.email);
+    setPassword(cred.password);
+    setError('');
+  };
+
   return (
-    <div className="hero-gradient flex min-h-screen items-center justify-center px-4 py-20">
-      <div className="w-full max-w-md animate-fade-in-up">
-        {/* Logo */}
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/25">
-            <SiBlockchaindotcom className="text-2xl text-white" />
+    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+
+        {/* Header card */}
+        <div className="text-center mb-8 animate-fade-in">
+          <div className="flex justify-center mb-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-900">
+              <svg className="h-7 w-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+            </div>
           </div>
-          <h1 className="text-2xl font-bold text-white">Welcome Back</h1>
-          <p className="mt-2 text-sm text-navy-400">Sign in to your LandLedger account</p>
+          <h1 className="font-serif text-3xl font-bold text-gray-900">Sign In</h1>
+          <p className="text-gray-500 mt-2 text-sm">Access your LandLedger account</p>
         </div>
 
-        {/* Form Card */}
-        <div className="glass-card p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email */}
+        {/* Form */}
+        <div className="ll-card p-6 animate-fade-in-up">
+          {error && (
+            <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 mb-5 text-sm text-red-700">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="login-email" className="mb-2 block text-sm font-medium text-navy-300">Email</label>
-              <div className="relative">
-                <FiMail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-500" />
-                <input
-                  id="login-email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="you@example.com"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white placeholder-navy-600 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
+              <label className="ll-label">Email Address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                placeholder="you@example.com"
+                className="ll-input"
+                autoComplete="email"
+              />
             </div>
 
-            {/* Password */}
             <div>
-              <label htmlFor="login-password" className="mb-2 block text-sm font-medium text-navy-300">Password</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="ll-label mb-0">Password</label>
+                <a href="#" className="text-xs text-blue-700 hover:underline">Forgot password?</a>
+              </div>
               <div className="relative">
-                <FiLock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-500" />
                 <input
-                  id="login-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  type={showPass ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
                   placeholder="••••••••"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-12 text-sm text-white placeholder-navy-600 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
+                  className="ll-input pr-10"
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-navy-500 hover:text-navy-300"
+                  onClick={() => setShowPass(s => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  {showPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
+                  {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
 
-            {/* Error */}
-            {error && (
-              <p className="rounded-lg bg-red-500/10 px-4 py-2 text-sm text-red-400">{error}</p>
-            )}
-
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="btn-primary w-full justify-center py-3"
             >
-              {loading ? (
-                <>
-                  <FiLoader className="h-4 w-4 animate-spin" />
-                  Signing In...
-                </>
-              ) : (
-                <>
-                  Sign In
-                  <FiArrowRight className="transition-transform group-hover:translate-x-1" />
-                </>
-              )}
+              <LogIn className="h-4 w-4" />
+              {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
-          {/* Footer */}
-          <p className="mt-6 text-center text-sm text-navy-500">
+          <p className="text-center text-sm text-gray-500 mt-5">
             Don't have an account?{' '}
-            <Link to="/register" className="font-medium text-blue-400 hover:text-blue-300">
-              Create one
-            </Link>
+            <Link to="/register" className="text-blue-800 font-semibold hover:underline">Register here</Link>
           </p>
+        </div>
+
+        {/* Demo credentials */}
+        <div className="mt-6 ll-card p-4 animate-fade-in-up delay-200">
+          <div className="flex items-center gap-2 mb-3">
+            <ShieldCheck className="h-4 w-4 text-amber-600" />
+            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Demo Credentials</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {DEMO_CREDENTIALS.map(cred => (
+              <button
+                key={cred.role}
+                type="button"
+                onClick={() => fillDemo(cred)}
+                className="text-left rounded-lg border border-gray-200 px-3 py-2 text-xs hover:bg-blue-50 hover:border-blue-200 transition-colors"
+              >
+                <p className="font-semibold text-gray-800">{cred.role}</p>
+                <p className="text-gray-400 truncate">{cred.email}</p>
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-gray-400 mt-2 text-center">Click any role to fill credentials automatically</p>
         </div>
       </div>
     </div>

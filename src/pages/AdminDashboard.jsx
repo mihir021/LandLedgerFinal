@@ -1,143 +1,177 @@
 /**
- * Admin Dashboard
- * Widgets: Total Users, Verified Users, Government Officers,
- *          Pending Transfers, Statistics
- * Fetches real data from the backend.
+ * AdminDashboard — system-wide stats + activity feed + quick access panels
  */
 import { useEffect, useState } from 'react';
-import { FiUsers, FiCheckCircle, FiShield, FiRepeat, FiDatabase, FiActivity, FiLoader } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
+import { Users, ShieldCheck, ArrowLeftRight, Home, ArrowRight, Activity, Loader2, CheckCircle2 } from 'lucide-react';
 import DashboardCard from '../components/DashboardCard';
+import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
-import { getUsers } from '../services/userService';
-import { getTransfers } from '../services/transferService';
+import { useToast } from '../context/ToastContext';
 import { getProperties } from '../services/propertyService';
+import { getTransfers } from '../services/transferService';
+import { getUsers } from '../services/userService';
+import { MOCK_SYSTEM_STATS } from '../data/mock';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    verifiedUsers: 0,
-    officers: 0,
-    pendingTransfers: 0,
-    totalProperties: 0,
-  });
-  const [recentUsers, setRecentUsers] = useState([]);
+  const [stats, setStats] = useState(MOCK_SYSTEM_STATS);
+  const [pendingProperties, setPendingProperties] = useState([]);
+  const [recentTransfers, setRecentTransfers] = useState([]);
 
-  const displayName = user?.fullName || user?.name || 'Administrator';
+  const displayName = user?.fullName || user?.name || 'Admin';
+  const firstName = displayName.split(' ')[0];
 
   useEffect(() => {
-    const fetchData = async () => {
+    const load = async () => {
       setLoading(true);
       try {
-        const [allUsers, officers, transfers, properties] = await Promise.all([
-          getUsers({ limit: 100 }),
-          getUsers({ role: 'officer', limit: 100 }),
-          getTransfers(),
-          getProperties({ limit: 1 }),
+        const [propRes, transfers, userRes] = await Promise.all([
+          getProperties({ verificationStatus: 'pending', limit: 5 }).catch(() => ({ properties: [], pagination: { total: 0 } })),
+          getTransfers().catch(() => []),
+          getUsers({ status: 'pending', limit: 1 }).catch(() => ({ pagination: { total: 0 } })),
         ]);
-
-        const users = allUsers.users || [];
-        const verifiedCount = users.filter((u) => u.status === 'verified').length;
-        const pendingTransferCount = (transfers || []).filter((t) => t.status !== 'completed').length;
-
-        setStats({
-          totalUsers: allUsers.pagination?.total || users.length,
-          verifiedUsers: verifiedCount,
-          officers: officers.pagination?.total || (officers.users || []).length,
-          pendingTransfers: pendingTransferCount,
-          totalProperties: properties.pagination?.total || 0,
-        });
-
-        setRecentUsers(users.slice(0, 6));
+        setPendingProperties(propRes.properties || []);
+        setRecentTransfers(Array.isArray(transfers) ? transfers.slice(0, 5) : []);
+        setStats(s => ({
+          ...s,
+          pendingKyc: userRes.pagination?.total || s.pendingKyc,
+          pendingProperties: propRes.pagination?.total || (propRes.properties?.length ?? s.pendingProperties),
+          activeTransfers: (Array.isArray(transfers) ? transfers.filter(t => t.status !== 'completed').length : s.activeTransfers),
+          completedTransfers: (Array.isArray(transfers) ? transfers.filter(t => t.status === 'completed').length : s.completedTransfers),
+        }));
       } catch {
-        // Dashboard still usable with defaults
+        // fallback to mock stats
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
+    load();
   }, []);
 
   const cards = [
-    { icon: FiUsers,       label: 'Total Users',         value: stats.totalUsers.toLocaleString(),    color: 'blue' },
-    { icon: FiCheckCircle, label: 'Verified Users',      value: stats.verifiedUsers.toLocaleString(), color: 'emerald' },
-    { icon: FiShield,      label: 'Government Officers', value: stats.officers,                        color: 'purple' },
-    { icon: FiRepeat,      label: 'Pending Transfers',   value: stats.pendingTransfers,                color: 'amber' },
-    { icon: FiDatabase,    label: 'Total Properties',    value: stats.totalProperties,                 color: 'cyan' },
-    { icon: FiActivity,    label: 'Blockchain Status',   value: 'Pending',                             color: 'indigo' },
+    { icon: Users,          label: 'Pending KYC',          value: stats.pendingKyc,            color: 'amber',  link: '/admin/users' },
+    { icon: ShieldCheck,    label: 'Pending Verification', value: stats.pendingProperties,     color: 'navy',   link: '/admin/properties' },
+    { icon: ArrowLeftRight, label: 'Active Transfers',     value: stats.activeTransfers,       color: 'purple', link: '/admin/transfers' },
+    { icon: CheckCircle2,   label: 'Completed Transfers',  value: stats.completedTransfers,    color: 'green',  link: '/admin/transfers' },
+    { icon: Home,           label: 'Total Properties',     value: stats.totalProperties,       color: 'navy',   link: '/admin/properties' },
+    { icon: Users,          label: 'Total Users',          value: stats.totalUsers,            color: 'emerald',link: '/admin/users' },
   ];
 
-  /** Status color mapping */
-  const statusColors = {
-    verified: 'bg-emerald-500/15 text-emerald-400',
-    pending:  'bg-amber-500/15 text-amber-400',
-    rejected: 'bg-red-500/15 text-red-400',
-  };
-
   return (
-    <div>
+    <div className="space-y-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
-        <p className="mt-1 text-sm text-navy-400">Platform overview • {displayName}</p>
+      <div className="animate-fade-in">
+        <h1 className="font-serif text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+        <p className="text-gray-500 mt-1">Welcome back, {firstName} — system-wide overview.</p>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <FiLoader className="h-8 w-8 text-blue-400 animate-spin" />
-        </div>
-      ) : (
-        <>
-          {/* Stat Cards */}
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {cards.map((card, idx) => (
-              <DashboardCard key={card.label} {...card} delay={idx * 100} />
-            ))}
-          </div>
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        {cards.map((c, i) => (
+          <Link key={c.label} to={c.link} className="block hover:no-underline">
+            <DashboardCard {...c} delay={i * 60} />
+          </Link>
+        ))}
+      </div>
 
-          {/* Recent Users Table */}
-          <div className="mt-8">
-            <div className="glass-card overflow-hidden animate-fade-in-up delay-600">
-              <div className="flex items-center gap-2 border-b border-white/5 px-6 py-4">
-                <FiUsers className="h-5 w-5 text-blue-400" />
-                <h2 className="text-lg font-semibold text-white">Recent Users</h2>
-              </div>
-
-              {/* Table header */}
-              <div className="hidden grid-cols-[1fr_120px_100px_80px] gap-4 border-b border-white/5 px-6 py-3 text-xs font-medium uppercase tracking-wider text-navy-500 sm:grid">
-                <span>User</span>
-                <span>Role</span>
-                <span>Joined</span>
-                <span>Status</span>
-              </div>
-
-              {/* Table rows */}
-              <div className="divide-y divide-white/5">
-                {recentUsers.length > 0 ? recentUsers.map((u) => (
-                  <div key={u._id} className="grid grid-cols-1 gap-2 px-6 py-4 transition-colors hover:bg-white/[0.02] sm:grid-cols-[1fr_120px_100px_80px] sm:items-center sm:gap-4">
-                    <div>
-                      <p className="text-sm text-navy-200">{u.fullName}</p>
-                      <p className="text-xs text-navy-500">{u.email}</p>
-                    </div>
-                    <p className="text-xs text-navy-400 capitalize">{u.role}</p>
-                    <p className="text-xs text-navy-500">
-                      {new Date(u.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: '2-digit' })}
-                    </p>
-                    <span className={`inline-flex w-fit rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${statusColors[u.status] || statusColors.pending}`}>
-                      {u.status}
-                    </span>
-                  </div>
-                )) : (
-                  <div className="px-6 py-8 text-center text-sm text-navy-500">
-                    No users found.
-                  </div>
-                )}
-              </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Pending Properties */}
+        <div className="ll-card overflow-hidden animate-fade-in-up delay-400">
+          <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-blue-800" />
+              <h2 className="font-serif text-base font-semibold text-gray-900">Pending Property Verification</h2>
             </div>
+            <Link to="/admin/properties" className="text-xs text-blue-700 font-medium hover:underline flex items-center gap-1">
+              View all <ArrowRight className="h-3 w-3" />
+            </Link>
           </div>
-        </>
-      )}
+          {loading ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 text-blue-800 animate-spin" /></div>
+          ) : pendingProperties.length === 0 ? (
+            <p className="text-center text-sm text-gray-400 py-10">No pending properties. ✓</p>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {pendingProperties.map(p => (
+                <div key={p._id} className="flex items-center gap-3 px-5 py-3.5">
+                  <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center text-base shrink-0 overflow-hidden">
+                    {p.images?.[0] ? <img src={p.images[0]} alt="" className="h-full w-full object-cover" /> : '🏠'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{p.address}, {p.city}</p>
+                    <p className="text-xs text-gray-400">{p.owner?.fullName || 'Unknown owner'} · {p.landType}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <StatusBadge status="pending" />
+                    <Link to="/admin/properties" className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-700">
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Recent Transfers */}
+        <div className="ll-card overflow-hidden animate-fade-in-up delay-500">
+          <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-purple-600" />
+              <h2 className="font-serif text-base font-semibold text-gray-900">Recent Transfers</h2>
+            </div>
+            <Link to="/admin/transfers" className="text-xs text-blue-700 font-medium hover:underline flex items-center gap-1">
+              View all <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          {loading ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 text-blue-800 animate-spin" /></div>
+          ) : recentTransfers.length === 0 ? (
+            <p className="text-center text-sm text-gray-400 py-10">No transfers yet.</p>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {recentTransfers.map(t => (
+                <div key={t._id} className="flex items-center gap-3 px-5 py-3.5">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-50 text-base shrink-0">🔄</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">
+                      {t.property?.propertyId || t.property?.address || 'Property'}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">
+                      {t.buyer?.fullName || 'Buyer'} ← {t.seller?.fullName || 'Seller'}
+                    </p>
+                  </div>
+                  <StatusBadge status={t.status || 'pending'} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quick management links */}
+      <div className="grid gap-4 sm:grid-cols-3 animate-fade-in-up delay-600">
+        {[
+          { to: '/admin/users',      icon: Users,          color: 'text-amber-700 bg-amber-50 border-amber-200',  label: 'Manage Users',    desc: 'KYC verification, role management' },
+          { to: '/admin/properties', icon: ShieldCheck,    color: 'text-blue-800 bg-blue-50 border-blue-200',     label: 'Properties',      desc: 'Verify property submissions' },
+          { to: '/admin/transfers',  icon: ArrowLeftRight, color: 'text-purple-700 bg-purple-50 border-purple-200',label: 'Transfers',       desc: 'Officer compliance review' },
+        ].map(a => {
+          const Icon = a.icon;
+          return (
+            <Link key={a.to} to={a.to} className={`ll-card border-2 ${a.color} p-4 hover:shadow-md transition-all group`}>
+              <div className="flex items-start justify-between mb-3">
+                <Icon className="h-5 w-5" />
+                <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 translate-x-0 group-hover:translate-x-0.5 transition-all" />
+              </div>
+              <p className="text-sm font-semibold text-gray-900">{a.label}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{a.desc}</p>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -7,7 +7,11 @@ import { logger } from '../utils/logger.js';
  */
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
+    const dbUri = process.env.MONGO_URI || process.env.DB;
+    if (!dbUri) {
+      throw new Error('Database URI (MONGO_URI or DB) is not defined in environment variables.');
+    }
+    const conn = await mongoose.connect(dbUri);
     logger.info(`MongoDB connected: ${conn.connection.host}`);
   } catch (error) {
     logger.error(`MongoDB connection error: ${error.message}`);

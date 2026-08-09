@@ -1,27 +1,39 @@
 /**
- * Government Officer Dashboard
- * Widgets: Pending User Verification, Pending Property Verification,
- *          Pending Transfers, Recent Activity with Approve/Reject actions.
- * Fetches real data from the backend.
+ * OfficerDashboard — streamlined light theme for Government Officers
+ * Shows: pending KYC, pending property verifications, active transfers, inquiries
  */
 import { useEffect, useState } from 'react';
-import { FiUsers, FiCheckCircle, FiRepeat, FiActivity, FiLoader, FiCheck, FiX } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
+import { Users, ShieldCheck, ArrowLeftRight, MessageSquare, Check, X, Loader2, Send, ArrowRight } from 'lucide-react';
 import DashboardCard from '../components/DashboardCard';
 import StatusBadge from '../components/StatusBadge';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getProperties, verifyProperty } from '../services/propertyService';
 import { getTransfers, officerApprove } from '../services/transferService';
 import { getUsers } from '../services/userService';
+import { getInquiries, updateInquiryStatus } from '../services/inquiryService';
 
 export default function OfficerDashboard() {
   const { user } = useAuth();
   const toast = useToast();
+
   const [loading, setLoading] = useState(true);
   const [pendingProperties, setPendingProperties] = useState([]);
   const [pendingTransfers, setPendingTransfers] = useState([]);
   const [pendingUsers, setPendingUsers] = useState(0);
+  const [inquiries, setInquiries] = useState([]);
   const [actionLoading, setActionLoading] = useState(null);
+
+  // Inquiry reply state
+  const [replyingId, setReplyingId] = useState(null);
+  const [replyText, setReplyText] = useState('');
+  const [replyStatus, setReplyStatus] = useState('resolved');
+
+  // Confirmation modals
+  const [propModal, setPropModal] = useState({ open: false, id: null, status: null, name: '' });
+  const [transferModal, setTransferModal] = useState({ open: false, id: null });
 
   const displayName = user?.fullName || user?.name || 'Officer';
 
@@ -32,14 +44,16 @@ export default function OfficerDashboard() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [propResult, transfers, userResult] = await Promise.all([
-        getProperties({ verificationStatus: 'pending', limit: 50 }),
-        getTransfers(),
+      const [propRes, transfers, userRes, inqData] = await Promise.all([
+        getProperties({ verificationStatus: 'pending', limit: 20 }).catch(() => ({ properties: [] })),
+        getTransfers().catch(() => []),
         getUsers({ status: 'pending', limit: 1 }).catch(() => ({ pagination: { total: 0 } })),
+        getInquiries().catch(() => []),
       ]);
-      setPendingProperties(propResult.properties || []);
-      setPendingTransfers((transfers || []).filter((t) => t.status !== 'completed'));
-      setPendingUsers(userResult.pagination?.total || 0);
+      setPendingProperties(propRes.properties || []);
+      setPendingTransfers((Array.isArray(transfers) ? transfers : []).filter(t => t.sellerApproved && !t.officerApproved));
+      setPendingUsers(userRes.pagination?.total || 0);
+      setInquiries(Array.isArray(inqData) ? inqData : []);
     } catch {
       // Dashboard still usable
     } finally {
@@ -47,140 +61,270 @@ export default function OfficerDashboard() {
     }
   };
 
-  /** Verify or reject a property */
-  const handleVerifyProperty = async (propertyId, status) => {
-    setActionLoading(propertyId);
+  const handleVerifyProperty = async () => {
+    setActionLoading(propModal.id);
     try {
-      await verifyProperty(propertyId, status);
-      toast.success(`Property ${status} successfully`);
-      setPendingProperties((prev) => prev.filter((p) => p._id !== propertyId));
+      await verifyProperty(propModal.id, propModal.status);
+      toast.success(`Property ${propModal.status} successfully`);
+      setPendingProperties(prev => prev.filter(p => p._id !== propModal.id));
     } catch (err) {
-      toast.error(err.message || `Failed to ${status} property`);
+      toast.error(err.message || 'Failed');
     } finally {
       setActionLoading(null);
+      setPropModal({ open: false, id: null, status: null, name: '' });
     }
   };
 
-  /** Approve a transfer */
-  const handleApproveTransfer = async (transferId) => {
-    setActionLoading(transferId);
+  const handleApproveTransfer = async () => {
+    setActionLoading(transferModal.id);
     try {
-      await officerApprove(transferId);
+      await officerApprove(transferModal.id);
       toast.success('Transfer approved successfully');
-      setPendingTransfers((prev) => prev.filter((t) => t._id !== transferId));
+      setPendingTransfers(prev => prev.filter(t => t._id !== transferModal.id));
     } catch (err) {
-      toast.error(err.message || 'Failed to approve transfer');
+      toast.error(err.message || 'Failed');
+    } finally {
+      setActionLoading(null);
+      setTransferModal({ open: false, id: null });
+    }
+  };
+
+  const handleInquiryReply = async (id) => {
+    setActionLoading(id);
+    try {
+      const updated = await updateInquiryStatus(id, { status: replyStatus, response: replyText });
+      toast.success('Inquiry updated in database');
+      setInquiries(prev => prev.map(i => i._id === id ? updated : i));
+      setReplyingId(null);
+      setReplyText('');
+    } catch (err) {
+      toast.error(err.message || 'Failed');
     } finally {
       setActionLoading(null);
     }
   };
 
-  const cards = [
-    { icon: FiUsers,       label: 'Pending User Verification',     value: pendingUsers,               color: 'amber' },
-    { icon: FiCheckCircle, label: 'Pending Property Verification', value: pendingProperties.length,   color: 'blue' },
-    { icon: FiRepeat,      label: 'Pending Transfers',             value: pendingTransfers.length,    color: 'purple' },
+  const stats = [
+    { icon: Users,          label: 'Pending KYC',           value: pendingUsers,             color: 'amber'  },
+    { icon: ShieldCheck,    label: 'Pending Verification',  value: pendingProperties.length, color: 'navy'   },
+    { icon: ArrowLeftRight, label: 'Awaiting Approval',     value: pendingTransfers.length,  color: 'purple' },
+    { icon: MessageSquare,  label: 'Open Inquiries',        value: inquiries.filter(i=>i.status==='pending').length, color: 'green' },
   ];
 
   return (
-    <div>
+    <div className="space-y-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Officer Dashboard</h1>
-        <p className="mt-1 text-sm text-navy-400">Welcome back, {displayName}</p>
+      <div className="animate-fade-in">
+        <h1 className="font-serif text-3xl font-bold text-gray-900">Officer Dashboard</h1>
+        <p className="text-gray-500 mt-1">Welcome back, {displayName} — review pending items.</p>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        {stats.map((s, i) => <DashboardCard key={s.label} {...s} delay={i * 80} />)}
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <FiLoader className="h-8 w-8 text-blue-400 animate-spin" />
-        </div>
+        <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 text-blue-800 animate-spin" /></div>
       ) : (
         <>
-          {/* Stat Cards */}
-          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {cards.map((card, idx) => (
-              <DashboardCard key={card.label} {...card} delay={idx * 100} />
-            ))}
-          </div>
-
           {/* Pending Properties */}
-          <div className="mt-8">
-            <div className="glass-card overflow-hidden animate-fade-in-up delay-400">
-              <div className="flex items-center gap-2 border-b border-white/5 px-6 py-4">
-                <FiCheckCircle className="h-5 w-5 text-blue-400" />
-                <h2 className="text-lg font-semibold text-white">Pending Property Verification</h2>
+          <div className="ll-card overflow-hidden animate-fade-in-up delay-300">
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-blue-800" />
+                <h2 className="font-serif text-base font-semibold text-gray-900">Pending Property Verification</h2>
               </div>
-              <div className="divide-y divide-white/5">
-                {pendingProperties.length > 0 ? pendingProperties.map((prop) => (
-                  <div key={prop._id} className="flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-white/[0.02]">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-navy-200">{prop.propertyId} — {prop.address}, {prop.city}</p>
-                      <p className="text-xs text-navy-500">Owner: {prop.owner?.fullName || 'Unknown'} • {prop.landType}</p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => handleVerifyProperty(prop._id, 'verified')}
-                        disabled={actionLoading === prop._id}
-                        className="flex items-center gap-1 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-xs font-medium text-emerald-400 transition-colors hover:bg-emerald-500/25 disabled:opacity-50"
-                      >
-                        <FiCheck className="h-3 w-3" /> Approve
-                      </button>
-                      <button
-                        onClick={() => handleVerifyProperty(prop._id, 'rejected')}
-                        disabled={actionLoading === prop._id}
-                        className="flex items-center gap-1 rounded-lg bg-red-500/15 px-3 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/25 disabled:opacity-50"
-                      >
-                        <FiX className="h-3 w-3" /> Reject
-                      </button>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="px-6 py-8 text-center text-sm text-navy-500">
-                    No pending properties to verify.
-                  </div>
-                )}
-              </div>
+              {pendingProperties.length > 0 && (
+                <span className="rounded-full bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5">{pendingProperties.length}</span>
+              )}
             </div>
+            {pendingProperties.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 py-10 flex items-center justify-center gap-2">
+                <Check className="h-4 w-4 text-green-500" /> All properties reviewed!
+              </p>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {pendingProperties.map(p => (
+                  <div key={p._id} className="flex items-center gap-4 px-5 py-4">
+                    <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-lg overflow-hidden shrink-0">
+                      {p.images?.[0] ? <img src={p.images[0]} alt="" className="h-full w-full object-cover" /> : '🏠'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800">{p.propertyId} — {p.address}, {p.city}</p>
+                      <p className="text-xs text-gray-500">Owner: {p.owner?.fullName || '—'} · {p.landType}</p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => setPropModal({ open: true, id: p._id, status: 'verified', name: `${p.address}, ${p.city}` })}
+                        disabled={actionLoading === p._id}
+                        className="flex items-center gap-1 rounded-lg bg-green-50 border border-green-200 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100 disabled:opacity-50"
+                      >
+                        <Check className="h-3 w-3" /> Approve
+                      </button>
+                      <button
+                        onClick={() => setPropModal({ open: true, id: p._id, status: 'rejected', name: `${p.address}, ${p.city}` })}
+                        disabled={actionLoading === p._id}
+                        className="flex items-center gap-1 rounded-lg bg-red-50 border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+                      >
+                        <X className="h-3 w-3" /> Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Pending Transfers */}
-          <div className="mt-8">
-            <div className="glass-card overflow-hidden animate-fade-in-up delay-500">
-              <div className="flex items-center gap-2 border-b border-white/5 px-6 py-4">
-                <FiRepeat className="h-5 w-5 text-purple-400" />
-                <h2 className="text-lg font-semibold text-white">Pending Transfers</h2>
+          <div className="ll-card overflow-hidden animate-fade-in-up delay-400">
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <ArrowLeftRight className="h-4 w-4 text-purple-600" />
+                <h2 className="font-serif text-base font-semibold text-gray-900">Transfers Awaiting Approval</h2>
               </div>
-              <div className="divide-y divide-white/5">
-                {pendingTransfers.length > 0 ? pendingTransfers.map((t) => (
-                  <div key={t._id} className="flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-white/[0.02]">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-navy-200">
-                        {t.property?.propertyId || t.property?.address || 'Property'} — {t.buyer?.fullName || 'Buyer'} → {t.seller?.fullName || 'Seller'}
+              <Link to="/admin/transfers" className="text-xs text-blue-700 font-medium hover:underline flex items-center gap-1">
+                All transfers <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+            {pendingTransfers.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 py-10">No transfers awaiting officer approval.</p>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {pendingTransfers.map(t => (
+                  <div key={t._id} className="flex items-center justify-between gap-4 px-5 py-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 truncate">
+                        {t.property?.propertyId || t.property?.address || 'Property'}
                       </p>
-                      <p className="text-xs text-navy-500">Status: {t.status}</p>
+                      <p className="text-xs text-gray-500">{t.buyer?.fullName || 'Buyer'} ← {t.seller?.fullName || 'Seller'}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <StatusBadge status={t.sellerApproved ? (t.officerApproved ? 'verified' : 'pending') : 'pending'} />
-                      {t.sellerApproved && !t.officerApproved && (
-                        <button
-                          onClick={() => handleApproveTransfer(t._id)}
-                          disabled={actionLoading === t._id}
-                          className="flex items-center gap-1 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-xs font-medium text-emerald-400 transition-colors hover:bg-emerald-500/25 disabled:opacity-50"
-                        >
-                          <FiCheck className="h-3 w-3" /> Approve
-                        </button>
-                      )}
+                      <StatusBadge status="seller_approved" />
+                      <button
+                        onClick={() => setTransferModal({ open: true, id: t._id })}
+                        disabled={actionLoading === t._id}
+                        className="flex items-center gap-1 rounded-lg bg-green-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-800 disabled:opacity-50"
+                      >
+                        <Check className="h-3 w-3" /> Approve
+                      </button>
                     </div>
                   </div>
-                )) : (
-                  <div className="px-6 py-8 text-center text-sm text-navy-500">
-                    No pending transfers.
-                  </div>
-                )}
+                ))}
               </div>
+            )}
+          </div>
+
+          {/* Inquiries — MongoDB Atlas Collection */}
+          <div className="ll-card overflow-hidden animate-fade-in-up delay-500">
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-green-700" />
+                <h2 className="font-serif text-base font-semibold text-gray-900">Property Inquiries</h2>
+              </div>
+              <span className="rounded-full bg-green-50 border border-green-200 px-3 py-0.5 text-xs font-mono text-green-700">
+                MongoDB · inquiries ({inquiries.length})
+              </span>
             </div>
+            {inquiries.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 py-10">No inquiries submitted yet.</p>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {inquiries.map(inq => (
+                  <div key={inq._id} className="p-5 space-y-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-800">{inq.subject}</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          From: <span className="font-medium text-gray-700">{inq.name}</span> ({inq.email})
+                          {inq.phone ? ` · ${inq.phone}` : ''}
+                          {inq.property ? ` · ${inq.property.propertyId || 'Property'}` : ''}
+                        </p>
+                      </div>
+                      <StatusBadge status={inq.status || 'pending'} />
+                    </div>
+
+                    <blockquote className="rounded-lg bg-gray-50 border border-gray-100 p-3 text-xs text-gray-700 italic leading-relaxed">
+                      "{inq.message}"
+                    </blockquote>
+
+                    {inq.response && (
+                      <div className="rounded-lg bg-blue-50 border border-blue-100 p-3 text-xs text-blue-800">
+                        <span className="font-semibold">Officer Response:</span> {inq.response}
+                      </div>
+                    )}
+
+                    {replyingId === inq._id ? (
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+                        <div className="flex gap-3 flex-wrap">
+                          <select value={replyStatus} onChange={e => setReplyStatus(e.target.value)} className="ll-select w-auto text-xs">
+                            <option value="in-progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="closed">Closed</option>
+                          </select>
+                        </div>
+                        <textarea
+                          rows={2}
+                          value={replyText}
+                          onChange={e => setReplyText(e.target.value)}
+                          placeholder="Type official response to record in MongoDB Atlas..."
+                          className="ll-input text-xs resize-none"
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => setReplyingId(null)} className="btn-secondary text-xs py-1.5 px-3">Cancel</button>
+                          <button
+                            onClick={() => handleInquiryReply(inq._id)}
+                            disabled={actionLoading === inq._id}
+                            className="btn-primary text-xs py-1.5 px-3"
+                          >
+                            <Send className="h-3 w-3" />
+                            {actionLoading === inq._id ? 'Saving...' : 'Save Response'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => { setReplyingId(inq._id); setReplyText(inq.response || ''); setReplyStatus(inq.status || 'resolved'); }}
+                          className="flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          {inq.response ? 'Edit Response' : 'Reply & Update Status'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}
+
+      {/* Confirmation Modals */}
+      <ConfirmationModal
+        isOpen={propModal.open}
+        onClose={() => setPropModal({ open: false, id: null, status: null, name: '' })}
+        onConfirm={handleVerifyProperty}
+        loading={actionLoading !== null}
+        variant={propModal.status === 'verified' ? 'approve' : 'reject'}
+        title={propModal.status === 'verified' ? 'Approve Property Verification' : 'Reject Property Verification'}
+        message={propModal.status === 'verified'
+          ? 'This property will be marked as government-verified and listed on the marketplace.'
+          : 'This property will be rejected. The seller must resubmit with corrected documents.'}
+        details={propModal.name ? { 'Property': propModal.name } : undefined}
+        confirmLabel={propModal.status === 'verified' ? 'Approve Verification' : 'Reject Verification'}
+      />
+      <ConfirmationModal
+        isOpen={transferModal.open}
+        onClose={() => setTransferModal({ open: false, id: null })}
+        onConfirm={handleApproveTransfer}
+        loading={actionLoading !== null}
+        variant="approve"
+        title="Approve Transfer — Final Officer Compliance"
+        message="This is the final officer compliance check. The smart contract will execute the ownership transfer and record it immutably on the blockchain."
+        confirmLabel="Approve Transfer"
+      />
     </div>
   );
 }

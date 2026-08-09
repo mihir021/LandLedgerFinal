@@ -1,60 +1,56 @@
 /**
- * Register Page
- * Registration form with full name, email, password, and role selection.
- * Only Buyer and Seller roles are allowed for self-registration.
+ * Register Page — role selection (Buyer / Seller) + form fields
  */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiUser, FiMail, FiLock, FiArrowRight, FiEye, FiEyeOff, FiLoader, FiPhone } from 'react-icons/fi';
-import { HiOutlineBriefcase, HiOutlineHome } from 'react-icons/hi';
-import { SiBlockchaindotcom } from 'react-icons/si';
-import { useAuth, ROLES, ROLE_ROUTES } from '../context/AuthContext';
+import { UserPlus, Eye, EyeOff, AlertCircle, Home, ShoppingBag, ArrowRight } from 'lucide-react';
+import { useAuth, ROLE_ROUTES } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
-const roleOptions = [
-  { value: ROLES.BUYER,  label: 'Buyer',  desc: 'Search & purchase properties', icon: HiOutlineHome },
-  { value: ROLES.SELLER, label: 'Seller', desc: 'List & manage your properties', icon: HiOutlineBriefcase },
+const ROLE_OPTIONS = [
+  {
+    role: 'buyer',
+    icon: ShoppingBag,
+    label: 'Buyer',
+    desc: 'Search and purchase verified properties',
+    color: 'border-green-200 bg-green-50 text-green-800',
+    activeColor: 'border-green-600 bg-green-50 ring-2 ring-green-500 ring-offset-1',
+  },
+  {
+    role: 'seller',
+    icon: Home,
+    label: 'Seller',
+    desc: 'Register and list properties for sale',
+    color: 'border-blue-200 bg-blue-50 text-blue-800',
+    activeColor: 'border-blue-700 bg-blue-50 ring-2 ring-blue-600 ring-offset-1',
+  },
 ];
 
 export default function Register() {
-  const navigate = useNavigate();
+  const [role, setRole] = useState('buyer');
+  const [form, setForm] = useState({ fullName: '', email: '', phone: '', password: '', aadhaarNumber: '' });
+  const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
   const { register } = useAuth();
   const toast = useToast();
+  const navigate = useNavigate();
 
-  const [form, setForm] = useState({ fullName: '', email: '', password: '', confirmPassword: '', phone: '', role: '' });
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const set = (field) => (e) => setForm(f => ({ ...f, [field]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    if (!form.fullName || !form.email || !form.password || !form.role) {
-      setError('Please fill in all required fields.');
-      return;
-    }
-    if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
     if (form.password.length < 8) {
       setError('Password must be at least 8 characters.');
       return;
     }
-
     setLoading(true);
     try {
-      const user = await register({
-        fullName: form.fullName,
-        email: form.email,
-        password: form.password,
-        phone: form.phone || undefined,
-        role: form.role,
-      });
+      const data = await register({ ...form, role });
       toast.success('Account created successfully!');
-      const route = ROLE_ROUTES[user.role] || '/buyer';
-      navigate(route);
+      navigate(ROLE_ROUTES[data.role] || '/');
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.');
     } finally {
@@ -63,163 +59,100 @@ export default function Register() {
   };
 
   return (
-    <div className="hero-gradient flex min-h-screen items-center justify-center px-4 py-20">
-      <div className="w-full max-w-lg animate-fade-in-up">
-        {/* Logo */}
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/25">
-            <SiBlockchaindotcom className="text-2xl text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-white">Create Your Account</h1>
-          <p className="mt-2 text-sm text-navy-400">Join the blockchain land registry platform</p>
+    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-lg">
+
+        {/* Header */}
+        <div className="text-center mb-8 animate-fade-in">
+          <h1 className="font-serif text-3xl font-bold text-gray-900">Create Account</h1>
+          <p className="text-gray-500 mt-2 text-sm">Join LandLedger — Government-grade Land Registry</p>
         </div>
 
-        {/* Form Card */}
-        <div className="glass-card p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Role Selection — Buyer and Seller only */}
-            <div>
-              <label className="mb-3 block text-sm font-medium text-navy-300">Select Your Role</label>
-              <div className="grid grid-cols-2 gap-3">
-                {roleOptions.map((role) => (
+        <div className="ll-card p-6 animate-fade-in-up">
+          {/* Role Selection */}
+          <div className="mb-6">
+            <p className="ll-label mb-3">I want to register as</p>
+            <div className="grid grid-cols-2 gap-3">
+              {ROLE_OPTIONS.map(opt => {
+                const Icon = opt.icon;
+                const isActive = role === opt.role;
+                return (
                   <button
-                    key={role.value}
+                    key={opt.role}
                     type="button"
-                    onClick={() => setForm({ ...form, role: role.value })}
-                    className={`flex flex-col items-center gap-2 rounded-xl p-4 text-center transition-all ${
-                      form.role === role.value
-                        ? 'bg-blue-500/15 ring-1 ring-blue-500/40'
-                        : 'bg-white/5 hover:bg-white/10'
+                    onClick={() => setRole(opt.role)}
+                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-center transition-all ${
+                      isActive ? opt.activeColor : 'border-gray-200 hover:border-gray-300 bg-white'
                     }`}
                   >
-                    <role.icon className={`h-7 w-7 ${form.role === role.value ? 'text-blue-400' : 'text-navy-500'}`} />
-                    <span className={`text-sm font-medium ${form.role === role.value ? 'text-blue-400' : 'text-navy-300'}`}>
-                      {role.label}
-                    </span>
-                    <span className="text-xs text-navy-500">{role.desc}</span>
+                    <Icon className={`h-6 w-6 ${isActive ? (opt.role === 'buyer' ? 'text-green-700' : 'text-blue-700') : 'text-gray-400'}`} />
+                    <span className={`text-sm font-semibold ${isActive ? 'text-gray-900' : 'text-gray-600'}`}>{opt.label}</span>
+                    <span className="text-xs text-gray-500">{opt.desc}</span>
                   </button>
-                ))}
+                );
+              })}
+            </div>
+          </div>
+
+          <hr className="ll-divider mb-5" />
+
+          {error && (
+            <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 mb-4 text-sm text-red-700">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="ll-label">Full Name *</label>
+                <input type="text" required value={form.fullName} onChange={set('fullName')} placeholder="As on official documents" className="ll-input" />
+              </div>
+              <div>
+                <label className="ll-label">Email Address *</label>
+                <input type="email" required value={form.email} onChange={set('email')} placeholder="you@example.com" className="ll-input" />
+              </div>
+              <div>
+                <label className="ll-label">Phone Number</label>
+                <input type="tel" value={form.phone} onChange={set('phone')} placeholder="+91 XXXXX XXXXX" className="ll-input" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="ll-label">Aadhaar Number</label>
+                <input type="text" value={form.aadhaarNumber} onChange={set('aadhaarNumber')} placeholder="XXXX XXXX XXXX" className="ll-input" maxLength={14} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="ll-label">Password *</label>
+                <div className="relative">
+                  <input
+                    type={showPass ? 'text' : 'password'}
+                    required
+                    value={form.password}
+                    onChange={set('password')}
+                    placeholder="Min. 8 characters"
+                    className="ll-input pr-10"
+                  />
+                  <button type="button" onClick={() => setShowPass(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Full Name */}
-            <div>
-              <label htmlFor="reg-name" className="mb-2 block text-sm font-medium text-navy-300">Full Name</label>
-              <div className="relative">
-                <FiUser className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-500" />
-                <input
-                  id="reg-name"
-                  type="text"
-                  value={form.fullName}
-                  onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                  placeholder="John Doe"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white placeholder-navy-600 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
-            </div>
+            <p className="text-xs text-gray-500">
+              By registering, you agree to LandLedger's Terms of Service. Your account will be subject to KYC verification by a government officer.
+            </p>
 
-            {/* Email */}
-            <div>
-              <label htmlFor="reg-email" className="mb-2 block text-sm font-medium text-navy-300">Email</label>
-              <div className="relative">
-                <FiMail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-500" />
-                <input
-                  id="reg-email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="you@example.com"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white placeholder-navy-600 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
-            </div>
-
-            {/* Phone (optional) */}
-            <div>
-              <label htmlFor="reg-phone" className="mb-2 block text-sm font-medium text-navy-300">Phone <span className="text-navy-600">(optional)</span></label>
-              <div className="relative">
-                <FiPhone className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-500" />
-                <input
-                  id="reg-phone"
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="9876543210"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white placeholder-navy-600 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div>
-              <label htmlFor="reg-password" className="mb-2 block text-sm font-medium text-navy-300">Password</label>
-              <div className="relative">
-                <FiLock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-500" />
-                <input
-                  id="reg-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  placeholder="Minimum 8 characters"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-12 text-sm text-white placeholder-navy-600 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-navy-500 hover:text-navy-300"
-                >
-                  {showPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label htmlFor="reg-confirm" className="mb-2 block text-sm font-medium text-navy-300">Confirm Password</label>
-              <div className="relative">
-                <FiLock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-500" />
-                <input
-                  id="reg-confirm"
-                  type={showPassword ? 'text' : 'password'}
-                  value={form.confirmPassword}
-                  onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                  placeholder="Re-enter your password"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white placeholder-navy-600 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
-            </div>
-
-            {/* Error */}
-            {error && (
-              <p className="rounded-lg bg-red-500/10 px-4 py-2 text-sm text-red-400">{error}</p>
-            )}
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <>
-                  <FiLoader className="h-4 w-4 animate-spin" />
-                  Creating Account...
-                </>
-              ) : (
-                <>
-                  Create Account
-                  <FiArrowRight className="transition-transform group-hover:translate-x-1" />
-                </>
-              )}
+            <button type="submit" disabled={loading} className="btn-primary w-full justify-center py-3">
+              <UserPlus className="h-4 w-4" />
+              {loading ? 'Creating Account...' : 'Create Account'}
+              <ArrowRight className="h-4 w-4" />
             </button>
           </form>
 
-          {/* Footer */}
-          <p className="mt-6 text-center text-sm text-navy-500">
+          <p className="text-center text-sm text-gray-500 mt-5">
             Already have an account?{' '}
-            <Link to="/login" className="font-medium text-blue-400 hover:text-blue-300">
-              Sign in
-            </Link>
+            <Link to="/login" className="text-blue-800 font-semibold hover:underline">Sign in</Link>
           </p>
         </div>
       </div>

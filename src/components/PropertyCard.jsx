@@ -1,94 +1,99 @@
 /**
- * PropertyCard Component
- * Card component for displaying a property listing in search results and dashboards.
- * Works with both backend data (MongoDB _id, verificationStatus) and legacy mock fields.
+ * PropertyCard — light-theme card for property listings
+ * Shows thumbnail, address, type badge, price, lifecycle pill, and verification.
  */
 import { Link } from 'react-router-dom';
-import { FiMapPin, FiMaximize, FiTag } from 'react-icons/fi';
+import { MapPin, Maximize, Tag, ArrowRight } from 'lucide-react';
 import StatusBadge from './StatusBadge';
-import { formatCurrency, truncateText } from '../utils/helpers';
+import VerificationBadge from './VerificationBadge';
 
-/** Default gradient colors when no real images exist */
-const DEFAULT_COLORS = ['#3b82f6', '#6366f1'];
+const TYPE_COLORS = {
+  residential: 'bg-blue-50 text-blue-700',
+  commercial:  'bg-purple-50 text-purple-700',
+  agricultural:'bg-green-50 text-green-700',
+  industrial:  'bg-orange-50 text-orange-700',
+  mixed:       'bg-teal-50 text-teal-700',
+};
+
+function formatINR(amount) {
+  if (amount >= 10000000) return `₹${(amount / 10000000).toFixed(1)}Cr`;
+  if (amount >= 100000)   return `₹${(amount / 100000).toFixed(1)}L`;
+  return `₹${amount.toLocaleString('en-IN')}`;
+}
 
 export default function PropertyCard({ property, delay = 0 }) {
-  // Normalize field names from backend to what the UI uses
-  const id = property._id || property.id;
-  const title = property.title || `${property.landType ? property.landType.charAt(0).toUpperCase() + property.landType.slice(1) : 'Property'} Land — ${property.city || 'Unknown'}`;
-  const address = property.address || '';
-  const city = property.city || '';
-  const state = property.state || '';
-  const area = typeof property.area === 'number' ? `${property.area.toLocaleString()} sq ft` : property.area || '';
-  const landType = property.landType ? property.landType.charAt(0).toUpperCase() + property.landType.slice(1) : '';
-  const price = property.price || 0;
-  const status = property.verificationStatus || property.status || 'pending';
-  const images = property.images || [];
+  const {
+    _id, id, propertyId, title, address, city, state,
+    landType, type, price, area,
+    verificationStatus, status,
+    images = [],
+  } = property;
 
-  // Determine if images are real URLs or color strings
-  const hasRealImages = images.length > 0 && images[0] && !images[0].startsWith('#');
-  const imageUrl = hasRealImages ? `/uploads/${images[0].replace(/\\/g, '/')}` : null;
+  const propId = _id || id;
+  const propType = landType || type || 'residential';
+  const propStatus = verificationStatus || status || 'draft';
+  const propTitle = title || `${propType.charAt(0).toUpperCase() + propType.slice(1)} Property — ${city}`;
+  const imgSrc = images[0]?.startsWith('http') ? images[0] : null;
 
   return (
     <Link
-      to={`/property/${id}`}
-      className="glass-card group block overflow-hidden transition-all duration-300 hover:border-white/20 hover:bg-glass-hover animate-fade-in-up"
-      style={{ animationDelay: `${delay}ms` }}
+      to={`/property/${propId}`}
+      className="ll-card ll-card-hover block animate-fade-in-up overflow-hidden"
+      style={{ animationDelay: `${delay}ms`, opacity: 0 }}
     >
-      {/* ── Image / Placeholder ── */}
-      <div className="relative h-48 overflow-hidden">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={title}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-          />
+      {/* Thumbnail */}
+      <div className="relative h-44 overflow-hidden bg-gradient-to-br from-blue-100 to-indigo-100">
+        {imgSrc ? (
+          <img src={imgSrc} alt={propTitle} className="h-full w-full object-cover" />
         ) : (
-          <div
-            className="h-full w-full transition-transform duration-500 group-hover:scale-110"
-            style={{
-              background: `linear-gradient(135deg, ${images[0] || DEFAULT_COLORS[0]}DD, ${images[1] || DEFAULT_COLORS[1]}99)`,
-            }}
-          />
-        )}
-        {/* Overlay gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-navy-900/80 to-transparent" />
-        {/* Status badge */}
-        <div className="absolute right-3 top-3">
-          <StatusBadge status={status} />
-        </div>
-        {/* Land type chip */}
-        {landType && (
-          <div className="absolute bottom-3 left-3">
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur-md">
-              <FiTag className="h-3 w-3" />
-              {landType}
-            </span>
+          <div className="flex h-full items-center justify-center">
+            <div className="text-5xl">🏡</div>
           </div>
         )}
-      </div>
-
-      {/* ── Content ── */}
-      <div className="p-5">
-        <h3 className="text-base font-semibold text-white transition-colors group-hover:text-blue-400">
-          {truncateText(title, 40)}
-        </h3>
-
-        <div className="mt-2 flex items-center gap-1.5 text-sm text-navy-400">
-          <FiMapPin className="h-3.5 w-3.5 shrink-0 text-navy-500" />
-          <span className="truncate">{city}{city && state ? ', ' : ''}{state}</span>
-        </div>
-
-        <div className="mt-3 flex items-center gap-4 text-xs text-navy-400">
-          <span className="flex items-center gap-1">
-            <FiMaximize className="h-3 w-3" /> {area}
+        {/* Type badge overlay */}
+        <div className="absolute top-2 left-2">
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${TYPE_COLORS[propType] || TYPE_COLORS.residential}`}>
+            {propType}
           </span>
         </div>
+        {/* Status pill overlay */}
+        <div className="absolute top-2 right-2">
+          <StatusBadge status={propStatus} />
+        </div>
+      </div>
 
-        {/* Price */}
-        <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-4">
-          <p className="text-lg font-bold text-white">{formatCurrency(price)}</p>
-          <span className="rounded-lg bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-400 transition-colors group-hover:bg-blue-500/20">
-            View Details →
+      {/* Content */}
+      <div className="p-4">
+        <h3 className="font-serif font-semibold text-gray-900 text-base leading-snug mb-1 line-clamp-2">{propTitle}</h3>
+
+        <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
+          <MapPin className="h-3 w-3 shrink-0" />
+          <span className="truncate">{address}, {city}, {state}</span>
+        </div>
+
+        <hr className="ll-divider mb-3" />
+
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm mb-4">
+          <div>
+            <p className="text-gray-400 text-xs">Price</p>
+            <p className="font-bold text-gray-900 font-serif">{formatINR(price)}</p>
+          </div>
+          <div>
+            <p className="text-gray-400 text-xs">Area</p>
+            <p className="font-semibold text-gray-700">{area?.toLocaleString()} sq ft</p>
+          </div>
+          {propertyId && (
+            <div className="col-span-2">
+              <p className="text-gray-400 text-xs">Property ID</p>
+              <p className="mono-data text-gray-600">{propertyId}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between">
+          <VerificationBadge status={propStatus === 'verified' || propStatus === 'listed' || propStatus === 'completed' ? 'verified' : propStatus === 'rejected' ? 'rejected' : 'pending'} size="sm" showLabel={false} />
+          <span className="flex items-center gap-1 text-xs font-semibold text-blue-800 hover:text-blue-900">
+            View Details <ArrowRight className="h-3 w-3" />
           </span>
         </div>
       </div>

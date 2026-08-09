@@ -1,138 +1,185 @@
 /**
- * Navbar Component
- * Top navigation bar used across all pages.
- * Adapts between public (landing) and authenticated (dashboard) modes.
+ * Navbar — light theme top navigation bar.
+ * White background, hairline border, navy logo, role-aware nav links.
  */
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { HiMenu, HiX } from 'react-icons/hi';
-import { FiLogOut, FiUser, FiGrid } from 'react-icons/fi';
-import { SiBlockchaindotcom } from 'react-icons/si';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Menu, X, LogOut, User, LayoutDashboard, ChevronDown } from 'lucide-react';
 import { useAuth, ROLE_ROUTES } from '../context/AuthContext';
+
+const ROLE_LABELS = {
+  buyer: 'Buyer',
+  seller: 'Seller',
+  officer: 'Govt. Officer',
+  admin: 'Administrator',
+};
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
     navigate('/');
+    setUserMenuOpen(false);
+    setMobileOpen(false);
   };
 
-  /** Determine the correct dashboard route for the user's role */
-  const getDashboardRoute = () => {
-    if (!user) return '/login';
-    return ROLE_ROUTES[user.role] || '/login';
-  };
-
-  /** Display name — use fullName from backend or fall back */
+  const dashboardRoute = user ? (ROLE_ROUTES[user.role] || '/') : '/';
   const displayName = user?.fullName || user?.name || 'User';
+  const initials = displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-navy-900/80 backdrop-blur-xl">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200" style={{ boxShadow: '0 1px 3px rgba(30,58,95,0.06)' }}>
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* ── Logo ── */}
-        <Link to="/" className="flex items-center gap-2 text-xl font-bold tracking-tight">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600">
-            <SiBlockchaindotcom className="text-lg text-white" />
+
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2.5 shrink-0" onClick={() => setMobileOpen(false)}>
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-900">
+            <svg className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
           </div>
-          <span className="text-white">Land<span className="text-blue-400">Ledger</span></span>
+          <div>
+            <span className="text-lg font-bold text-blue-900 font-serif tracking-tight">Land</span>
+            <span className="text-lg font-bold text-amber-600 font-serif tracking-tight">Ledger</span>
+          </div>
         </Link>
 
-        {/* ── Desktop Nav Links ── */}
-        <div className="hidden items-center gap-1 md:flex">
+        {/* Desktop Nav */}
+        <div className="hidden md:flex items-center gap-1">
           {!isAuthenticated ? (
             <>
               <NavLink to="/" label="Home" />
-              <NavLink to="/#features" label="Features" />
-              <NavLink to="/search" label="Search" />
+              <NavLink to="/search" label="Search Properties" />
             </>
           ) : (
             <>
-              <NavLink to={getDashboardRoute()} label="Dashboard" />
+              <NavLink to={dashboardRoute} label="Dashboard" />
               <NavLink to="/search" label="Search" />
-              <NavLink to="/register-property" label="Register Property" />
+              {(user?.role === 'seller' || user?.role === 'admin') && (
+                <NavLink to="/register-property" label="Register Property" />
+              )}
             </>
           )}
         </div>
 
-        {/* ── Desktop Auth Buttons ── */}
-        <div className="hidden items-center gap-3 md:flex">
+        {/* Desktop Auth */}
+        <div className="hidden md:flex items-center gap-3">
           {!isAuthenticated ? (
             <>
-              <Link
-                to="/login"
-                className="rounded-lg px-4 py-2 text-sm font-medium text-navy-200 transition-colors hover:text-white"
-              >
+              <Link to="/login" className="text-sm font-medium text-gray-600 hover:text-blue-900 transition-colors px-3 py-2">
                 Sign In
               </Link>
               <Link
                 to="/register"
-                className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110"
+                className="btn-primary text-sm"
               >
                 Get Started
               </Link>
             </>
           ) : (
-            <div className="flex items-center gap-3">
-              <Link
-                to={getDashboardRoute()}
-                className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm text-navy-200 transition-colors hover:bg-white/10"
-              >
-                <FiUser className="text-blue-400" />
-                <span className="max-w-[120px] truncate">{displayName}</span>
-              </Link>
+            <div className="relative">
               <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-navy-400 transition-colors hover:text-red-400"
+                onClick={() => setUserMenuOpen(o => !o)}
+                className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
               >
-                <FiLogOut />
-                Logout
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-900 text-xs font-bold text-white">
+                  {initials}
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-gray-800 max-w-[120px] truncate">{displayName}</p>
+                  <p className="text-xs text-gray-500">{ROLE_LABELS[user?.role] || user?.role}</p>
+                </div>
+                <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
               </button>
+
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-1.5 z-50 w-52 ll-card shadow-lg py-1 animate-fade-in">
+                  <Link
+                    to={dashboardRoute}
+                    onClick={() => setUserMenuOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <LayoutDashboard className="h-4 w-4 text-gray-400" />
+                    Dashboard
+                  </Link>
+                  <Link
+                    to="/profile"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <User className="h-4 w-4 text-gray-400" />
+                    My Profile
+                  </Link>
+                  <hr className="ll-divider my-1" />
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* ── Mobile Hamburger ── */}
+        {/* Mobile Toggle */}
         <button
-          className="text-2xl text-navy-200 md:hidden"
-          onClick={() => setMobileOpen(!mobileOpen)}
+          onClick={() => setMobileOpen(o => !o)}
+          className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
           aria-label="Toggle menu"
         >
-          {mobileOpen ? <HiX /> : <HiMenu />}
+          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
-      {/* ── Mobile Menu ── */}
+      {/* Mobile Menu */}
       {mobileOpen && (
-        <div className="animate-fade-in border-t border-white/5 bg-navy-900/95 backdrop-blur-xl md:hidden">
-          <div className="flex flex-col gap-1 px-4 py-4">
+        <div className="md:hidden border-t border-gray-100 bg-white animate-fade-in">
+          <div className="px-4 py-3 space-y-1">
             {!isAuthenticated ? (
               <>
                 <MobileLink to="/" label="Home" onClick={() => setMobileOpen(false)} />
                 <MobileLink to="/search" label="Search Properties" onClick={() => setMobileOpen(false)} />
-                <hr className="my-2 border-white/10" />
+                <hr className="ll-divider my-2" />
                 <MobileLink to="/login" label="Sign In" onClick={() => setMobileOpen(false)} />
                 <Link
                   to="/register"
                   onClick={() => setMobileOpen(false)}
-                  className="mt-1 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 px-4 py-2.5 text-center text-sm font-semibold text-white"
+                  className="btn-primary w-full justify-center mt-2"
                 >
                   Get Started
                 </Link>
               </>
             ) : (
               <>
-                <MobileLink to={getDashboardRoute()} label="Dashboard" onClick={() => setMobileOpen(false)} icon={<FiGrid />} />
-                <MobileLink to="/search" label="Search" onClick={() => setMobileOpen(false)} />
-                <MobileLink to="/register-property" label="Register Property" onClick={() => setMobileOpen(false)} />
-                <hr className="my-2 border-white/10" />
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 mb-2">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-900 text-sm font-bold text-white">
+                    {initials}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">{displayName}</p>
+                    <p className="text-xs text-gray-500">{ROLE_LABELS[user?.role]}</p>
+                  </div>
+                </div>
+                <MobileLink to={dashboardRoute} label="Dashboard" onClick={() => setMobileOpen(false)} />
+                <MobileLink to="/search" label="Search Properties" onClick={() => setMobileOpen(false)} />
+                {(user?.role === 'seller' || user?.role === 'admin') && (
+                  <MobileLink to="/register-property" label="Register Property" onClick={() => setMobileOpen(false)} />
+                )}
+                <hr className="ll-divider my-2" />
                 <button
-                  onClick={() => { setMobileOpen(false); handleLogout(); }}
-                  className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-red-400 transition-colors hover:bg-red-500/10"
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-600 hover:bg-red-50"
                 >
-                  <FiLogOut /> Logout
+                  <LogOut className="h-4 w-4" />
+                  Sign Out
                 </button>
               </>
             )}
@@ -143,27 +190,29 @@ export default function Navbar() {
   );
 }
 
-/** Desktop nav link */
 function NavLink({ to, label }) {
+  const location = useLocation();
+  const isActive = location.pathname === to;
   return (
     <Link
       to={to}
-      className="rounded-lg px-3 py-2 text-sm font-medium text-navy-300 transition-colors hover:bg-white/5 hover:text-white"
+      className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+        isActive ? 'bg-blue-50 text-blue-900' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+      }`}
     >
       {label}
     </Link>
   );
 }
 
-/** Mobile nav link */
-function MobileLink({ to, label, onClick, icon }) {
+function MobileLink({ to, label, onClick }) {
   return (
     <Link
       to={to}
       onClick={onClick}
-      className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-navy-200 transition-colors hover:bg-white/5"
+      className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
     >
-      {icon} {label}
+      {label}
     </Link>
   );
 }

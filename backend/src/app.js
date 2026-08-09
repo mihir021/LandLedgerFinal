@@ -13,6 +13,7 @@ import propertyRoutes from './routes/propertyRoutes.js';
 import transferRoutes from './routes/transferRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import inquiryRoutes from './routes/inquiryRoutes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 
 // __dirname equivalent for ES Modules
@@ -80,6 +81,7 @@ app.use('/api/properties', propertyRoutes);
 app.use('/api/transfers', transferRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/inquiries', inquiryRoutes);
 
 // =====================================================
 // Error Handling

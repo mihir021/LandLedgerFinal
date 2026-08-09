@@ -8,12 +8,13 @@ import { useParams, Link } from 'react-router-dom';
 import {
   FiMapPin, FiMaximize, FiTag, FiUser, FiCalendar,
   FiFileText, FiShield, FiArrowLeft, FiShoppingCart, FiCopy,
-  FiLoader, FiAlertCircle, FiClock,
+  FiLoader, FiAlertCircle, FiClock, FiMessageSquare, FiX,
 } from 'react-icons/fi';
 import { SiBlockchaindotcom } from 'react-icons/si';
 import StatusBadge from '../components/StatusBadge';
 import { getPropertyById } from '../services/propertyService';
 import { requestTransfer } from '../services/transferService';
+import { createInquiry } from '../services/inquiryService';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency, formatDate } from '../utils/helpers';
@@ -27,6 +28,23 @@ export default function PropertyDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [purchasing, setPurchasing] = useState(false);
+
+  // Inquiry state
+  const [showInquiryModal, setShowInquiryModal] = useState(false);
+  const [inquirySubject, setInquirySubject] = useState('');
+  const [inquiryMessage, setInquiryMessage] = useState('');
+  const [inquiryName, setInquiryName] = useState(user?.fullName || '');
+  const [inquiryEmail, setInquiryEmail] = useState(user?.email || '');
+  const [inquiryPhone, setInquiryPhone] = useState(user?.phone || '');
+  const [submittingInquiry, setSubmittingInquiry] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setInquiryName(user.fullName || '');
+      setInquiryEmail(user.email || '');
+      setInquiryPhone(user.phone || '');
+    }
+  }, [user]);
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -56,6 +74,34 @@ export default function PropertyDetails() {
       toast.error(err.message || 'Failed to submit purchase request');
     } finally {
       setPurchasing(false);
+    }
+  };
+
+  /** Handle inquiry submission */
+  const handleInquirySubmit = async (e) => {
+    e.preventDefault();
+    if (!inquirySubject.trim() || !inquiryMessage.trim() || !inquiryName.trim() || !inquiryEmail.trim()) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    setSubmittingInquiry(true);
+    try {
+      await createInquiry({
+        propertyId: property._id,
+        name: inquiryName,
+        email: inquiryEmail,
+        phone: inquiryPhone,
+        subject: inquirySubject,
+        message: inquiryMessage,
+      });
+      toast.success('Inquiry submitted and saved to database!');
+      setShowInquiryModal(false);
+      setInquirySubject('');
+      setInquiryMessage('');
+    } catch (err) {
+      toast.error(err.message || 'Failed to submit inquiry');
+    } finally {
+      setSubmittingInquiry(false);
     }
   };
 
@@ -299,6 +345,15 @@ export default function PropertyDetails() {
               </button>
             )}
 
+            {/* Inquiry Button */}
+            <button
+              onClick={() => setShowInquiryModal(true)}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white/5 border border-white/10 py-3 text-sm font-medium text-navy-200 hover:bg-white/10 hover:text-white transition-colors"
+            >
+              <FiMessageSquare className="h-4 w-4 text-blue-400" />
+              Inquire About Property
+            </button>
+
             {!isAuthenticated && (
               <Link
                 to="/login"
@@ -354,6 +409,106 @@ export default function PropertyDetails() {
           </div>
         </div>
       </div>
+
+      {/* Inquiry Modal */}
+      {showInquiryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-navy-900/95 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <FiMessageSquare className="h-5 w-5 text-blue-400" />
+                <h3 className="text-lg font-semibold text-white">Property Inquiry</h3>
+              </div>
+              <button
+                onClick={() => setShowInquiryModal(false)}
+                className="rounded-lg p-1 text-navy-400 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleInquirySubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-navy-300 mb-1">Your Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={inquiryName}
+                  onChange={(e) => setInquiryName(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-navy-500 focus:border-blue-500 focus:outline-none"
+                  placeholder="Enter full name"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-medium text-navy-300 mb-1">Email Address *</label>
+                  <input
+                    type="email"
+                    required
+                    value={inquiryEmail}
+                    onChange={(e) => setInquiryEmail(e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-navy-500 focus:border-blue-500 focus:outline-none"
+                    placeholder="name@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-navy-300 mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={inquiryPhone}
+                    onChange={(e) => setInquiryPhone(e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-navy-500 focus:border-blue-500 focus:outline-none"
+                    placeholder="+91..."
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-navy-300 mb-1">Subject *</label>
+                <input
+                  type="text"
+                  required
+                  value={inquirySubject}
+                  onChange={(e) => setInquirySubject(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-navy-500 focus:border-blue-500 focus:outline-none"
+                  placeholder="e.g. Zoning question, Document verification..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-navy-300 mb-1">Message *</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={inquiryMessage}
+                  onChange={(e) => setInquiryMessage(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-navy-500 focus:border-blue-500 focus:outline-none resize-none"
+                  placeholder="Write your questions or details about this property..."
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowInquiryModal(false)}
+                  className="rounded-xl border border-white/10 px-4 py-2 text-xs text-navy-300 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingInquiry}
+                  className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-xs font-semibold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-500 transition-colors disabled:opacity-60"
+                >
+                  {submittingInquiry ? <FiLoader className="h-4 w-4 animate-spin" /> : <FiMessageSquare className="h-4 w-4" />}
+                  {submittingInquiry ? 'Submitting...' : 'Send Inquiry to Database'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

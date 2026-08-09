@@ -1,428 +1,279 @@
 /**
- * Landing Page
- * Hero, Features, How It Works timeline, Why Blockchain, CTA, and Footer sections.
- * Static content — no backend data needed.
+ * Landing Page — official, trustworthy government-fintech aesthetic
+ * Hero with serif heading, "How It Works" 5-step flow, role cards, trust indicators.
  */
 import { Link } from 'react-router-dom';
-import {
-  FiShield, FiCheckCircle, FiRepeat, FiLock,
-  FiFileText, FiCode, FiArrowRight, FiGlobe,
-  FiDatabase, FiUsers, FiZap, FiGrid,
-} from 'react-icons/fi';
-import { SiBlockchaindotcom } from 'react-icons/si';
-import { useAuth, ROLE_ROUTES } from '../context/AuthContext';
+import { ShieldCheck, Search, FileText, ArrowRight, Lock, Zap, Globe } from 'lucide-react';
+import VerificationBadge from '../components/VerificationBadge';
 
-/** Map feature icon string to React Icon component */
-const iconMap = {
-  shield: FiShield,
-  check: FiCheckCircle,
-  transfer: FiRepeat,
-  lock: FiLock,
-  document: FiFileText,
-  code: FiCode,
-};
-
-/** Static features data (previously from mockData) */
-const features = [
+const HOW_IT_WORKS = [
   {
-    title: 'Immutable Records',
-    description: 'Every land record is stored on the blockchain, making it tamper-proof and permanently verifiable.',
-    icon: 'shield',
+    step: '01',
+    title: 'Register & Verify Identity',
+    desc: 'Create your account and complete KYC verification through government-issued credentials. Officers review and approve identity documents.',
+    actor: 'Seller / Buyer',
+    actorStyle: 'actor-seller',
+    icon: '🪪',
   },
   {
-    title: 'Instant Verification',
-    description: 'Government officers can verify property ownership and documents in minutes, not weeks.',
-    icon: 'check',
+    step: '02',
+    title: 'Register Your Property',
+    desc: 'Upload property documents, survey records, and title deed. Government officers verify authenticity against official land records.',
+    actor: 'Seller + Officer',
+    actorStyle: 'actor-officer',
+    icon: '🏠',
   },
   {
-    title: 'Transparent Transfers',
-    description: 'Property transfers are recorded in real time with complete audit trails visible to all parties.',
-    icon: 'transfer',
+    step: '03',
+    title: 'List & Discover',
+    desc: 'Verified properties appear on the public marketplace. Buyers search by location, type, and price range with full blockchain audit trail.',
+    actor: 'Buyer',
+    actorStyle: 'actor-buyer',
+    icon: '🔍',
   },
   {
-    title: 'Fraud Prevention',
-    description: 'Blockchain consensus mechanisms eliminate duplicate registrations and fraudulent claims.',
-    icon: 'lock',
+    step: '04',
+    title: 'Request & Negotiate Transfer',
+    desc: 'Buyer submits a formal purchase request. Seller reviews and accepts. Both parties sign digital agreements stored on-chain.',
+    actor: 'Buyer + Seller',
+    actorStyle: 'actor-buyer',
+    icon: '🤝',
   },
   {
-    title: 'Digital Documents',
-    description: 'Upload and manage all property documents digitally with encrypted storage and easy retrieval.',
-    icon: 'document',
-  },
-  {
-    title: 'Smart Contracts',
-    description: 'Automated contract execution ensures seamless, condition-based property transfers.',
-    icon: 'code',
+    step: '05',
+    title: 'Blockchain Ownership Transfer',
+    desc: 'Government officer performs final compliance check. Smart contract executes the transfer — ownership record updated immutably on the blockchain.',
+    actor: 'Officer + Blockchain',
+    actorStyle: 'actor-chain',
+    icon: '⛓️',
   },
 ];
 
-/** Static how-it-works data (previously from mockData) */
-const howItWorks = [
-  { step: 1, title: 'Register & Verify', description: 'Create your account, select your role, and complete identity verification through the government portal.' },
-  { step: 2, title: 'List Your Property', description: 'Submit property details, upload documents, and the data is recorded on the blockchain.' },
-  { step: 3, title: 'Government Verification', description: 'Designated officers verify documents and approve the property listing on-chain.' },
-  { step: 4, title: 'Search & Purchase', description: 'Buyers search verified properties, submit purchase requests, and initiate smart-contract transfers.' },
-  { step: 5, title: 'Secure Transfer', description: 'Once approved, ownership transfers automatically via blockchain with an immutable record.' },
+const TRUST_INDICATORS = [
+  { icon: ShieldCheck, label: 'Government Verified', desc: 'Every property and identity verified by official officers' },
+  { icon: Lock,        label: 'Immutable Records',   desc: 'All transactions recorded permanently on blockchain' },
+  { icon: Globe,       label: 'Transparent History', desc: 'Complete ownership audit trail publicly accessible' },
+  { icon: Zap,         label: 'Fast Processing',     desc: 'Smart contracts eliminate manual paperwork delays' },
+];
+
+const ROLE_CARDS = [
+  {
+    role: 'Buyer',
+    emoji: '🏡',
+    desc: 'Search verified properties, view full blockchain ownership history, and complete secure purchases with wallet signature.',
+    cta: 'Explore as Buyer',
+    link: '/register',
+    color: 'border-green-200 bg-green-50',
+    btnColor: 'bg-green-700 hover:bg-green-800',
+  },
+  {
+    role: 'Seller',
+    emoji: '📋',
+    desc: 'Register your property, upload documents for government verification, list on the marketplace, and manage transfer requests.',
+    cta: 'Register as Seller',
+    link: '/register',
+    color: 'border-blue-200 bg-blue-50',
+    btnColor: 'bg-blue-800 hover:bg-blue-900',
+  },
+  {
+    role: 'Government Officer',
+    emoji: '⚖️',
+    desc: 'Verify user identities, review property documents, approve transfers — digitally. All actions recorded on immutable ledger.',
+    cta: 'Officer Login',
+    link: '/login',
+    color: 'border-amber-200 bg-amber-50',
+    btnColor: 'bg-amber-700 hover:bg-amber-800',
+  },
 ];
 
 export default function Landing() {
-  const { isAuthenticated, user } = useAuth();
-  const dashboardRoute = user ? (ROLE_ROUTES[user.role] || '/buyer') : '/login';
-
   return (
-    <div className="overflow-hidden">
-      {/* ═══════════════════════════════════════════
-          HERO SECTION
-      ═══════════════════════════════════════════ */}
-      <section className="hero-gradient relative flex min-h-screen items-center justify-center px-4">
-        {/* Decorative grid overlay */}
-        <div className="pointer-events-none absolute inset-0 opacity-[0.03]"
+    <div className="min-h-screen" style={{ background: 'var(--color-surface-1)' }}>
+
+      {/* ── Hero ── */}
+      <section className="relative overflow-hidden">
+        {/* Document texture overlay */}
+        <div className="absolute inset-0 doc-texture pointer-events-none" />
+        <div className="absolute inset-0"
           style={{
-            backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
-            backgroundSize: '64px 64px',
+            background: 'linear-gradient(135deg, #0A1628 0%, #1E3A5F 60%, #0F1F3D 100%)',
           }}
         />
 
-        {/* Floating decorative blobs */}
-        <div className="absolute left-10 top-1/4 h-72 w-72 rounded-full bg-blue-500/10 blur-[100px] animate-float" />
-        <div className="absolute bottom-1/4 right-10 h-96 w-96 rounded-full bg-indigo-500/10 blur-[120px] animate-float delay-500" />
+        {/* Gold accent stripe */}
+        <div className="absolute top-0 left-0 right-0 h-1" style={{ background: 'linear-gradient(90deg, #C9A227, #D4AF37 50%, #C9A227)' }} />
 
-        <div className="relative mx-auto max-w-5xl text-center">
-          {/* Badge */}
-          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-4 py-2 text-sm text-blue-300 animate-fade-in-up">
-            <SiBlockchaindotcom className="text-blue-400" />
-            Powered by Blockchain Technology
+        <div className="relative mx-auto max-w-6xl px-6 py-24 lg:py-36">
+          <div className="max-w-3xl">
+            {/* Official seal badge */}
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-1.5 mb-8 animate-fade-in">
+              <ShieldCheck className="h-4 w-4 text-amber-400" />
+              <span className="text-sm font-medium text-white/90">Government-Grade Blockchain Land Registry</span>
+            </div>
+
+            <h1 className="font-serif text-5xl lg:text-6xl font-bold text-white leading-tight mb-6 animate-fade-in-up">
+              The Future of
+              <span className="block" style={{ color: '#D4AF37' }}>Land Ownership</span>
+              is Here
+            </h1>
+
+            <p className="text-lg text-white/70 leading-relaxed mb-10 max-w-2xl animate-fade-in-up delay-100">
+              LandLedger digitizes India's land registry — making property transactions transparent, tamper-proof, and instant. Every deed, every transfer, immutably recorded on the blockchain.
+            </p>
+
+            <div className="flex flex-wrap gap-4 animate-fade-in-up delay-200">
+              <Link to="/register" className="flex items-center gap-2 rounded-lg px-6 py-3 text-base font-semibold text-blue-900 transition-all hover:shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #D4AF37, #C9A227)' }}>
+                Get Started <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link to="/search" className="flex items-center gap-2 rounded-lg border-2 border-white/30 px-6 py-3 text-base font-semibold text-white hover:bg-white/10 transition-all">
+                <Search className="h-4 w-4" /> Search Properties
+              </Link>
+            </div>
           </div>
 
-          {/* Headline */}
-          <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl animate-fade-in-up delay-100">
-            The Future of
-            <br />
-            <span className="text-gradient">Land Registry</span>
-          </h1>
-
-          {/* Subheadline */}
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-navy-300 sm:text-xl animate-fade-in-up delay-200">
-            A secure, transparent, and tamper-proof land registration platform.
-            Eliminate fraud, reduce paperwork, and empower citizens with blockchain-verified property records.
-          </p>
-
-          {/* CTA buttons — conditional based on auth */}
-          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center animate-fade-in-up delay-300">
-            {isAuthenticated ? (
-              <>
-                <Link
-                  to={dashboardRoute}
-                  className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-4 text-base font-semibold text-white shadow-2xl shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110"
-                >
-                  <FiGrid className="h-5 w-5" />
-                  Go to Dashboard
-                  <FiArrowRight className="transition-transform group-hover:translate-x-1" />
-                </Link>
-                <Link
-                  to="/search"
-                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-white/10"
-                >
-                  Explore Properties
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/register"
-                  className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-4 text-base font-semibold text-white shadow-2xl shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110"
-                >
-                  Get Started Free
-                  <FiArrowRight className="transition-transform group-hover:translate-x-1" />
-                </Link>
-                <Link
-                  to="/search"
-                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-white/10"
-                >
-                  Explore Properties
-                </Link>
-              </>
-            )}
-          </div>
-
-          {/* Stats bar */}
-          <div className="mt-16 grid grid-cols-2 gap-6 sm:grid-cols-4 animate-fade-in-up delay-400">
+          {/* Hero stats */}
+          <div className="mt-16 grid grid-cols-2 gap-6 sm:grid-cols-4 animate-fade-in-up delay-300">
             {[
-              { value: '15,000+', label: 'Properties Registered' },
-              { value: '10,000+', label: 'Verified Users' },
-              { value: '99.9%', label: 'Uptime' },
-              { value: '₹500 Cr+', label: 'Transactions Secured' },
-            ].map((stat) => (
-              <div key={stat.label} className="text-center">
-                <p className="text-2xl font-bold text-white sm:text-3xl">{stat.value}</p>
-                <p className="mt-1 text-sm text-navy-400">{stat.label}</p>
+              { label: 'Properties Registered', value: '12,400+' },
+              { label: 'Transfers Completed',   value: '3,890+' },
+              { label: 'States Covered',         value: '18' },
+              { label: 'Avg. Transfer Time',     value: '48 hrs' },
+            ].map(s => (
+              <div key={s.label} className="rounded-xl bg-white/8 border border-white/15 p-4">
+                <p className="font-serif text-3xl font-bold text-white">{s.value}</p>
+                <p className="text-sm text-white/60 mt-1">{s.label}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════
-          FEATURES SECTION
-      ═══════════════════════════════════════════ */}
-      <section id="features" className="relative py-24 px-4">
-        <div className="mx-auto max-w-7xl">
-          <div className="text-center">
-            <span className="text-sm font-semibold uppercase tracking-wider text-blue-400">Features</span>
-            <h2 className="mt-3 text-3xl font-bold text-white sm:text-4xl">
-              Why Choose <span className="text-gradient">LandLedger</span>?
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-navy-400">
-              Our platform combines the power of blockchain with intuitive design to transform how land records are managed.
-            </p>
+      {/* ── Trust Indicators ── */}
+      <section className="border-y border-gray-200 bg-white py-12">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+            {TRUST_INDICATORS.map((item, i) => (
+              <div key={i} className="flex flex-col items-center text-center gap-3 p-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 border border-blue-100">
+                  <item.icon className="h-6 w-6 text-blue-800" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 text-sm">{item.label}</p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── How It Works ── */}
+      <section className="py-20 px-6" style={{ background: 'var(--color-surface-1)' }}>
+        <div className="mx-auto max-w-6xl">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-4 py-1.5 mb-4">
+              <FileText className="h-4 w-4 text-amber-700" />
+              <span className="text-sm font-semibold text-amber-800">The Complete Process</span>
+            </div>
+            <h2 className="font-serif text-4xl font-bold text-gray-900 mb-3">How LandLedger Works</h2>
+            <p className="text-gray-500 max-w-xl mx-auto">From identity verification to blockchain-recorded ownership — a government-grade process, digitized.</p>
           </div>
 
-          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature, idx) => {
-              const Icon = iconMap[feature.icon] || FiShield;
-              return (
-                <div
-                  key={feature.title}
-                  className="glass-card group p-7 transition-all duration-300 hover:border-white/20 hover:bg-glass-hover animate-fade-in-up"
-                  style={{ animationDelay: `${idx * 100}ms` }}
+          <div className="space-y-6">
+            {HOW_IT_WORKS.map((step, i) => (
+              <div
+                key={step.step}
+                className="ll-card ll-card-hover p-6 flex gap-6 items-start animate-fade-in-up"
+                style={{ animationDelay: `${i * 100}ms`, opacity: 0 }}
+              >
+                <div className="flex flex-col items-center gap-2 shrink-0">
+                  <div className="text-3xl">{step.icon}</div>
+                  <div className="w-0.5 flex-1 bg-gray-100 min-h-8" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-3 mb-2">
+                    <span className="font-mono text-xs font-bold text-gray-400">STEP {step.step}</span>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${step.actorStyle}`}>
+                      {step.actor}
+                    </span>
+                  </div>
+                  <h3 className="font-serif text-xl font-semibold text-gray-900 mb-1">{step.title}</h3>
+                  <p className="text-sm text-gray-600 leading-relaxed">{step.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Role Cards ── */}
+      <section className="py-20 px-6 bg-white border-t border-gray-200">
+        <div className="mx-auto max-w-6xl">
+          <div className="text-center mb-12">
+            <h2 className="font-serif text-4xl font-bold text-gray-900 mb-3">Choose Your Role</h2>
+            <p className="text-gray-500">LandLedger serves every participant in the property lifecycle.</p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-3">
+            {ROLE_CARDS.map((card, i) => (
+              <div
+                key={card.role}
+                className={`ll-card ll-card-hover p-6 border-2 ${card.color} flex flex-col animate-fade-in-up`}
+                style={{ animationDelay: `${i * 120}ms`, opacity: 0 }}
+              >
+                <div className="text-4xl mb-4">{card.emoji}</div>
+                <h3 className="font-serif text-xl font-semibold text-gray-900 mb-2">{card.role}</h3>
+                <p className="text-sm text-gray-600 leading-relaxed flex-1 mb-6">{card.desc}</p>
+                <Link
+                  to={card.link}
+                  className={`flex items-center justify-center gap-2 w-full rounded-lg py-2.5 text-sm font-semibold text-white transition-colors ${card.btnColor}`}
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/15">
-                    <Icon className="h-6 w-6 text-blue-400" />
-                  </div>
-                  <h3 className="mt-5 text-lg font-semibold text-white">{feature.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-navy-400">{feature.description}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════
-          HOW IT WORKS TIMELINE
-      ═══════════════════════════════════════════ */}
-      <section className="relative py-24 px-4">
-        {/* Background accent */}
-        <div className="absolute inset-0 bg-gradient-to-b from-navy-900 via-navy-800/50 to-navy-900" />
-
-        <div className="relative mx-auto max-w-4xl">
-          <div className="text-center">
-            <span className="text-sm font-semibold uppercase tracking-wider text-indigo-400">Process</span>
-            <h2 className="mt-3 text-3xl font-bold text-white sm:text-4xl">
-              How It <span className="text-gradient">Works</span>
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-navy-400">
-              Five simple steps from registration to secure property transfer.
-            </p>
-          </div>
-
-          {/* Timeline */}
-          <div className="relative mt-16">
-            {/* Vertical line */}
-            <div className="absolute left-8 top-0 hidden h-full w-px bg-gradient-to-b from-blue-500/50 via-indigo-500/50 to-purple-500/50 sm:block" />
-
-            <div className="flex flex-col gap-10">
-              {howItWorks.map((step, idx) => (
-                <div
-                  key={step.step}
-                  className="relative flex gap-6 animate-fade-in-up"
-                  style={{ animationDelay: `${idx * 150}ms` }}
-                >
-                  {/* Step circle */}
-                  <div className="relative z-10 flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-xl font-bold text-white shadow-lg shadow-blue-500/25">
-                    {step.step}
-                  </div>
-
-                  {/* Content card */}
-                  <div className="glass-card flex-1 p-6">
-                    <h3 className="text-lg font-semibold text-white">{step.title}</h3>
-                    <p className="mt-2 text-sm text-navy-400">{step.description}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════
-          WHY BLOCKCHAIN SECTION
-      ═══════════════════════════════════════════ */}
-      <section className="relative py-24 px-4">
-        <div className="mx-auto max-w-7xl">
-          <div className="grid items-center gap-12 lg:grid-cols-2">
-            {/* Left – Content */}
-            <div className="animate-fade-in-up">
-              <span className="text-sm font-semibold uppercase tracking-wider text-emerald-400">Technology</span>
-              <h2 className="mt-3 text-3xl font-bold text-white sm:text-4xl">
-                Why <span className="text-gradient">Blockchain</span>?
-              </h2>
-              <p className="mt-4 text-navy-400">
-                Traditional land registries are plagued by fraud, disputes, and bureaucratic delays.
-                Blockchain technology solves these problems at the protocol level.
-              </p>
-
-              <div className="mt-8 flex flex-col gap-5">
-                {[
-                  { icon: FiDatabase, title: 'Decentralized Storage', desc: 'No single point of failure. Records distributed across multiple nodes.' },
-                  { icon: FiLock, title: 'Cryptographic Security', desc: 'SHA-256 hashing ensures records cannot be altered without detection.' },
-                  { icon: FiGlobe, title: 'Public Auditability', desc: 'Anyone can verify ownership and transfer history in real time.' },
-                  { icon: FiZap, title: 'Instant Settlement', desc: 'Smart contracts execute transfers automatically when conditions are met.' },
-                ].map((item) => (
-                  <div key={item.title} className="flex gap-4">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15">
-                      <item.icon className="h-5 w-5 text-emerald-400" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-semibold text-white">{item.title}</h4>
-                      <p className="mt-1 text-sm text-navy-400">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
+                  {card.cta} <ArrowRight className="h-4 w-4" />
+                </Link>
               </div>
-            </div>
-
-            {/* Right – Visual Block */}
-            <div className="relative animate-fade-in-up delay-200">
-              <div className="glass-card animate-pulse-glow p-8">
-                {/* Simulated blockchain block visualization */}
-                <div className="space-y-4">
-                  {[
-                    { label: 'Block #15,482', hash: '0x7a3f...e82c', status: 'Confirmed' },
-                    { label: 'Block #15,481', hash: '0x4b2d...a91f', status: 'Confirmed' },
-                    { label: 'Block #15,480', hash: '0x9c1e...d73b', status: 'Confirmed' },
-                  ].map((block, i) => (
-                    <div key={i} className="flex items-center justify-between rounded-xl bg-white/5 p-4 border border-white/5">
-                      <div>
-                        <p className="text-sm font-semibold text-white">{block.label}</p>
-                        <p className="mt-0.5 font-mono text-xs text-navy-500">{block.hash}</p>
-                      </div>
-                      <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-400">
-                        {block.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                {/* Chain link indicators */}
-                <div className="mt-4 flex items-center justify-center gap-2 text-navy-500">
-                  <span className="h-px flex-1 bg-gradient-to-r from-transparent to-blue-500/30" />
-                  <SiBlockchaindotcom className="text-blue-500" />
-                  <span className="h-px flex-1 bg-gradient-to-l from-transparent to-blue-500/30" />
-                </div>
-                <p className="mt-3 text-center text-xs text-navy-500">Live blockchain sync • 15,482 blocks verified</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════
-          CALL TO ACTION
-      ═══════════════════════════════════════════ */}
-      <section className="relative py-24 px-4">
-        <div className="mx-auto max-w-4xl">
-          <div className="glass-card relative overflow-hidden p-12 text-center sm:p-16">
-            {/* Gradient blobs */}
-            <div className="absolute -left-20 -top-20 h-60 w-60 rounded-full bg-blue-500/20 blur-[80px]" />
-            <div className="absolute -bottom-20 -right-20 h-60 w-60 rounded-full bg-indigo-500/20 blur-[80px]" />
-
-            <div className="relative">
-              <h2 className="text-3xl font-bold text-white sm:text-4xl">
-                Ready to Secure Your Land Records?
-              </h2>
-              <p className="mx-auto mt-4 max-w-xl text-navy-300">
-                Join thousands of users who trust LandLedger for transparent, blockchain-secured land management.
-              </p>
-              <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-                {isAuthenticated ? (
-                  <Link
-                    to={dashboardRoute}
-                    className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-4 text-base font-semibold text-white shadow-2xl shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110"
-                  >
-                    <FiGrid className="h-5 w-5" />
-                    Go to Dashboard
-                    <FiArrowRight className="transition-transform group-hover:translate-x-1" />
-                  </Link>
-                ) : (
-                  <>
-                    <Link
-                      to="/register"
-                      className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-4 text-base font-semibold text-white shadow-2xl shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110"
-                    >
-                      Create Free Account
-                      <FiArrowRight className="transition-transform group-hover:translate-x-1" />
-                    </Link>
-                    <Link
-                      to="/login"
-                      className="rounded-xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-white/10"
-                    >
-                      Sign In
-                    </Link>
-                  </>
-                )}
-              </div>
-            </div>
+      {/* ── CTA Banner ── */}
+      <section className="py-16 px-6" style={{ background: 'linear-gradient(135deg, #0A1628 0%, #1E3A5F 100%)' }}>
+        <div className="mx-auto max-w-3xl text-center">
+          <VerificationBadge status="verified" size="lg" />
+          <h2 className="font-serif text-4xl font-bold text-white mt-6 mb-3">
+            Register Your Property Today
+          </h2>
+          <p className="text-white/70 mb-8 text-lg">
+            Join thousands of property owners who have secured their ownership on the blockchain.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <Link to="/register" className="flex items-center gap-2 rounded-lg px-8 py-3.5 text-base font-semibold text-blue-900 hover:shadow-xl transition-all"
+              style={{ background: 'linear-gradient(135deg, #D4AF37, #C9A227)' }}>
+              Start Registration <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link to="/login" className="flex items-center gap-2 rounded-lg border-2 border-white/30 px-8 py-3.5 text-base font-semibold text-white hover:bg-white/10 transition-all">
+              Sign In
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════
-          FOOTER
-      ═══════════════════════════════════════════ */}
-      <footer className="border-t border-white/5 bg-navy-950 py-16 px-4">
-        <div className="mx-auto max-w-7xl">
-          <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Brand */}
-            <div>
-              <Link to="/" className="flex items-center gap-2 text-lg font-bold">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600">
-                  <SiBlockchaindotcom className="text-sm text-white" />
-                </div>
-                <span className="text-white">Land<span className="text-blue-400">Ledger</span></span>
-              </Link>
-              <p className="mt-4 text-sm text-navy-500">
-                Blockchain-powered land registry for secure, transparent, and tamper-proof property management.
-              </p>
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200 py-8 px-6">
+        <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded bg-blue-900">
+              <svg className="h-3.5 w-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+              </svg>
             </div>
-
-            {/* Platform */}
-            <div>
-              <h4 className="text-sm font-semibold uppercase tracking-wider text-navy-300">Platform</h4>
-              <ul className="mt-4 space-y-3 text-sm text-navy-500">
-                <li><Link to="/search" className="transition-colors hover:text-white">Search Properties</Link></li>
-                <li><Link to="/register-property" className="transition-colors hover:text-white">Register Property</Link></li>
-                <li><Link to="/register" className="transition-colors hover:text-white">Create Account</Link></li>
-              </ul>
-            </div>
-
-            {/* Resources */}
-            <div>
-              <h4 className="text-sm font-semibold uppercase tracking-wider text-navy-300">Resources</h4>
-              <ul className="mt-4 space-y-3 text-sm text-navy-500">
-                <li><a href="#" className="transition-colors hover:text-white">Documentation</a></li>
-                <li><a href="#" className="transition-colors hover:text-white">API Reference</a></li>
-                <li><a href="#" className="transition-colors hover:text-white">Blockchain Explorer</a></li>
-              </ul>
-            </div>
-
-            {/* Legal */}
-            <div>
-              <h4 className="text-sm font-semibold uppercase tracking-wider text-navy-300">Legal</h4>
-              <ul className="mt-4 space-y-3 text-sm text-navy-500">
-                <li><a href="#" className="transition-colors hover:text-white">Privacy Policy</a></li>
-                <li><a href="#" className="transition-colors hover:text-white">Terms of Service</a></li>
-                <li><a href="#" className="transition-colors hover:text-white">Government Guidelines</a></li>
-              </ul>
-            </div>
+            <span className="font-semibold text-gray-800">LandLedger</span>
           </div>
-
-          <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/5 pt-8 sm:flex-row">
-            <p className="text-sm text-navy-600">
-              © {new Date().getFullYear()} LandLedger. All rights reserved.
-            </p>
-            <p className="text-xs text-navy-600">
-              Built with ❤️ for transparent governance
-            </p>
+          <p>© 2024 LandLedger. Government-grade Blockchain Land Registry.</p>
+          <div className="flex gap-6">
+            <a href="#" className="hover:text-gray-800 transition-colors">Privacy</a>
+            <a href="#" className="hover:text-gray-800 transition-colors">Terms</a>
+            <a href="#" className="hover:text-gray-800 transition-colors">Contact</a>
           </div>
         </div>
       </footer>

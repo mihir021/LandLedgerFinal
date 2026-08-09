@@ -43,4 +43,28 @@ const protect = async (req, _res, next) => {
   }
 };
 
-export { protect };
+/**
+ * Optional Auth middleware — attaches req.user if a valid token exists,
+ * but does not reject requests if no token is provided.
+ */
+const optionalProtect = async (req, _res, next) => {
+  try {
+    let token;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
+    } else if (req.cookies?.token) {
+      token = req.cookies.token;
+    }
+
+    if (token) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.id);
+      if (user) req.user = user;
+    }
+  } catch (_err) {
+    // Ignore invalid token in optional mode
+  }
+  next();
+};
+
+export { protect, optionalProtect };
