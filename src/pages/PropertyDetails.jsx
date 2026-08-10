@@ -319,9 +319,9 @@ export default function PropertyDetails() {
         </div>
 
         {/* ── Right Column (Sidebar) ── */}
-        <div className="space-y-6">
+        <div className="space-y-6 sticky top-20 self-start">
           {/* Price Card */}
-          <div className="ll-card p-6 animate-fade-in-up delay-100 sticky top-24">
+          <div className="ll-card p-6 animate-fade-in-up delay-100">
             <p className="text-sm text-gray-500">Listed Price</p>
             <p className="mt-1 text-3xl font-bold font-serif text-gray-900">{formatCurrency(property.price)}</p>
 
