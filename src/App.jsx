@@ -1,34 +1,20 @@
-import React from 'react';
-import { useLenis } from './hooks/useLenis';
-import { ComicCursor } from './components/ComicCursor';
-import { Navbar } from './components/Navbar';
-import { Hero } from './components/Hero';
-import { About } from './components/About';
-import { Skills } from './components/Skills';
-import { ProjectsGrid } from './components/ProjectsGrid';
-import { Timeline } from './components/Timeline';
-import { Certificates } from './components/Certificates';
-import { Contact } from './components/Contact';
-import { Footer } from './components/Footer';
+/**
+ * App Root Component
+ * Wraps the application in Auth, Toast, and Notification providers.
+ */
+import { AuthProvider } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
+import { NotificationProvider } from './context/NotificationContext';
+import AppRouter from './routes/AppRouter';
 
 export default function App() {
-  // Initialize Lenis Smooth Scroll
-  useLenis();
-
   return (
-    <div className="relative min-h-screen bg-[#FFF8E7] text-[#111111] font-sans selection:bg-[#FFD400] selection:text-[#111111]">
-      <ComicCursor />
-      <Navbar />
-      <main>
-        <Hero />
-        <About />
-        <Skills />
-        <ProjectsGrid />
-        <Timeline />
-        <Certificates />
-        <Contact />
-      </main>
-      <Footer />
-    </div>
+    <AuthProvider>
+      <ToastProvider>
+        <NotificationProvider>
+          <AppRouter />
+        </NotificationProvider>
+      </ToastProvider>
+    </AuthProvider>
   );
 }

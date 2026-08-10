@@ -1,0 +1,66 @@
+/**
+ * Utility Helpers
+ * Formatters and helper functions used across the application.
+ */
+
+/**
+ * Format a number as Indian Rupee currency.
+ * @param {number} amount - The amount to format.
+ * @returns {string} Formatted currency string.
+ */
+export const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
+/**
+ * Format a date string into a readable format.
+ * @param {string} dateStr - ISO date string.
+ * @returns {string} Formatted date.
+ */
+export const formatDate = (dateStr) => {
+  if (!dateStr) return 'N/A';
+  return new Date(dateStr).toLocaleDateString('en-IN', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
+/**
+ * Return Tailwind classes for a property status badge.
+ * @param {string} status - One of: verified, pending, rejected, transfer.
+ * @returns {{ bg: string, text: string, label: string }}
+ */
+export const getStatusConfig = (status) => {
+  const map = {
+    verified: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', label: 'Verified', dot: 'bg-emerald-400' },
+    pending:  { bg: 'bg-amber-500/20',   text: 'text-amber-400',   label: 'Pending',  dot: 'bg-amber-400' },
+    rejected: { bg: 'bg-red-500/20',     text: 'text-red-400',     label: 'Rejected', dot: 'bg-red-400' },
+    transfer: { bg: 'bg-blue-500/20',    text: 'text-blue-400',    label: 'Transfer in Progress', dot: 'bg-blue-400' },
+  };
+  return map[status] || map.pending;
+};
+
+/**
+ * Truncate text to a given length.
+ * @param {string} text - The text to truncate.
+ * @param {number} maxLen - Maximum character length.
+ * @returns {string}
+ */
+export const truncateText = (text, maxLen = 100) => {
+  if (!text || text.length <= maxLen) return text;
+  return text.slice(0, maxLen).trimEnd() + '…';
+};
+
+/**
+ * Generate a CSS gradient string from a color hex for property card placeholders.
+ * @param {string} color - Base hex color.
+ * @returns {string} CSS linear-gradient value.
+ */
+export const generateGradient = (color) => {
+  return `linear-gradient(135deg, ${color}CC, ${color}66)`;
+};
