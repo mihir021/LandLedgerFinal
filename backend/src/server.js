@@ -11,9 +11,21 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   await connectDB();
 
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
     logger.info(`Health check → http://localhost:${PORT}/api/health`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      logger.warn(`Port ${PORT} is busy. Retrying connection in 1s...`);
+      setTimeout(() => {
+        server.close();
+        server.listen(PORT);
+      }, 1000);
+    } else {
+      logger.error(`Server Error: ${err.message}`);
+    }
   });
 };
 

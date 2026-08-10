@@ -68,6 +68,8 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 // API Routes
 // =====================================================
 
+app.get('/favicon.ico', (_req, res) => res.status(204).end());
+
 app.get('/api/health', (_req, res) => {
   res.status(200).json({
     success: true,
