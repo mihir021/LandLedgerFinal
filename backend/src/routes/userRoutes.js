@@ -16,8 +16,8 @@ const router = Router();
 // All user management routes are protected
 router.use(protect);
 
-// Admin-only: list all users
-router.get('/', authorize('admin'), getUsers);
+// Admin and Officer: list all users
+router.get('/', authorize('admin', 'officer'), getUsers);
 
 // Admin: get specific user
 router.get('/:id', authorize('admin'), validateMongoId, getUserById);
