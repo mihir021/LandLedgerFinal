@@ -98,7 +98,7 @@ export default function SellerRequests() {
                       <button onClick={() => openModal(req._id || req.id, 'reject')} className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors">
                         <XCircle className="h-4 w-4" /> Reject
                       </button>
-                      <button onClick={() => openModal(req._id || req.id, 'approve')} className="flex items-center gap-1.5 rounded-lg bg-green-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-800 transition-colors">
+                      <button onClick={() => openModal(req._id || req.id, 'approve')} className="btn-success text-sm">
                         <CheckCircle className="h-4 w-4" /> Accept
                       </button>
                     </div>

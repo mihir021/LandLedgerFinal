@@ -33,7 +33,16 @@ export default function PropertyCard({ property, delay = 0 }) {
   const propType = landType || type || 'residential';
   const propStatus = verificationStatus || status || 'draft';
   const propTitle = title || `${propType.charAt(0).toUpperCase() + propType.slice(1)} Property — ${city}`;
-  const imgSrc = images[0]?.startsWith('http') ? images[0] : null;
+  let imgSrc = null;
+  if (images[0]) {
+    if (images[0].startsWith('http')) {
+      imgSrc = images[0];
+    } else if (images[0].startsWith('uploads/') || images[0].startsWith('uploads\\')) {
+      imgSrc = `/${images[0].replace(/\\/g, '/')}`;
+    } else if (!images[0].startsWith('#')) {
+      imgSrc = `/uploads/images/${images[0].replace(/\\/g, '/')}`;
+    }
+  }
 
   return (
     <Link

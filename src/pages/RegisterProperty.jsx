@@ -97,17 +97,17 @@ export default function RegisterProperty() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-4xl py-6">
       {/* Header */}
       <div className="mb-8 animate-fade-in-up">
-        <h1 className="text-2xl font-bold text-white">Register New Property</h1>
-        <p className="mt-1 text-sm text-navy-400">
+        <h1 className="text-2xl font-bold font-serif text-gray-900">Register New Property</h1>
+        <p className="mt-1 text-sm text-gray-600">
           Submit property details to register on the blockchain. All fields are required.
         </p>
       </div>
 
       {/* Form Card */}
-      <form onSubmit={handleSubmit} className="glass-card p-8 animate-fade-in-up delay-100">
+      <form onSubmit={handleSubmit} className="ll-card p-8 animate-fade-in-up delay-100">
         {/* ── Section: Identification ── */}
         <SectionHeading icon={FiHash} title="Property Identification" />
         <div className="mt-4 grid gap-5 sm:grid-cols-2">
@@ -120,7 +120,7 @@ export default function RegisterProperty() {
           />
         </div>
 
-        <hr className="my-8 border-white/5" />
+        <hr className="my-8 ll-divider" />
 
         {/* ── Section: Location ── */}
         <SectionHeading icon={FiMapPin} title="Location Details" />
@@ -155,7 +155,7 @@ export default function RegisterProperty() {
           />
         </div>
 
-        <hr className="my-8 border-white/5" />
+        <hr className="my-8 ll-divider" />
 
         {/* ── Section: Property Info ── */}
         <SectionHeading icon={FiFileText} title="Property Information" />
@@ -189,40 +189,40 @@ export default function RegisterProperty() {
 
         {/* Description */}
         <div className="mt-5">
-          <label htmlFor="description" className="mb-2 block text-sm font-medium text-navy-300">Description (optional)</label>
+          <label htmlFor="description" className="ll-label">Description (optional)</label>
           <textarea
             id="description"
             rows={3}
             value={form.description}
             onChange={(e) => updateField('description', e.target.value)}
             placeholder="Describe the property..."
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-navy-600 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 resize-none"
+            className="ll-input resize-none"
           />
         </div>
 
-        <hr className="my-8 border-white/5" />
+        <hr className="my-8 ll-divider" />
 
         {/* ── Section: Uploads ── */}
         <SectionHeading icon={FiUpload} title="Documents & Images" />
         <div className="mt-4 grid gap-5 sm:grid-cols-2">
           {/* Images */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-navy-300">Property Images</label>
+            <label className="ll-label">Property Images</label>
             <label
               htmlFor="images"
-              className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-white/10 bg-white/[0.02] px-6 py-6 text-center transition-all hover:border-blue-500/30 hover:bg-blue-500/5"
+              className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-6 py-6 text-center transition-all hover:border-blue-800 hover:bg-blue-50"
             >
-              <FiImage className="h-8 w-8 text-navy-500" />
-              <p className="text-sm text-navy-400">Click to upload</p>
-              <p className="text-xs text-navy-600">JPG, PNG (max 5 files)</p>
+              <FiImage className="h-8 w-8 text-gray-400" />
+              <p className="text-sm font-semibold text-gray-700">Click to upload</p>
+              <p className="text-xs text-gray-500">JPG, PNG, WEBP (max 5 files)</p>
               <input id="images" type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" />
             </label>
             {imageFiles.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
                 {imageFiles.map((f, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 rounded-lg bg-white/5 px-2 py-1 text-xs text-navy-300">
+                  <span key={i} className="inline-flex items-center gap-1 rounded-lg bg-gray-100 border border-gray-200 px-2.5 py-1 text-xs text-gray-800">
                     {f.name.slice(0, 20)}
-                    <button type="button" onClick={() => removeImage(i)} className="text-navy-500 hover:text-red-400"><FiX className="h-3 w-3" /></button>
+                    <button type="button" onClick={() => removeImage(i)} className="text-gray-400 hover:text-red-600"><FiX className="h-3 w-3" /></button>
                   </span>
                 ))}
               </div>
@@ -231,22 +231,22 @@ export default function RegisterProperty() {
 
           {/* Documents */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-navy-300">Property Documents</label>
+            <label className="ll-label">Property Documents</label>
             <label
               htmlFor="documents"
-              className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-white/10 bg-white/[0.02] px-6 py-6 text-center transition-all hover:border-blue-500/30 hover:bg-blue-500/5"
+              className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-6 py-6 text-center transition-all hover:border-blue-800 hover:bg-blue-50"
             >
-              <FiFileText className="h-8 w-8 text-navy-500" />
-              <p className="text-sm text-navy-400">Click to upload</p>
-              <p className="text-xs text-navy-600">PDF, JPG, PNG (max 5 files)</p>
-              <input id="documents" type="file" accept=".pdf,.jpg,.jpeg,.png" multiple onChange={handleDocumentChange} className="hidden" />
+              <FiFileText className="h-8 w-8 text-gray-400" />
+              <p className="text-sm font-semibold text-gray-700">Click to upload</p>
+              <p className="text-xs text-gray-500">PDF, JPG, PNG (max 5 files)</p>
+              <input id="documents" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple onChange={handleDocumentChange} className="hidden" />
             </label>
             {documentFiles.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
                 {documentFiles.map((f, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 rounded-lg bg-white/5 px-2 py-1 text-xs text-navy-300">
+                  <span key={i} className="inline-flex items-center gap-1 rounded-lg bg-gray-100 border border-gray-200 px-2.5 py-1 text-xs text-gray-800">
                     {f.name.slice(0, 20)}
-                    <button type="button" onClick={() => removeDocument(i)} className="text-navy-500 hover:text-red-400"><FiX className="h-3 w-3" /></button>
+                    <button type="button" onClick={() => removeDocument(i)} className="text-gray-400 hover:text-red-600"><FiX className="h-3 w-3" /></button>
                   </span>
                 ))}
               </div>
@@ -256,7 +256,7 @@ export default function RegisterProperty() {
 
         {/* Error */}
         {error && (
-          <p className="mt-6 rounded-lg bg-red-500/10 px-4 py-2 text-sm text-red-400">{error}</p>
+          <p className="mt-6 rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-sm font-medium text-red-700">{error}</p>
         )}
 
         {/* ── Submit ── */}
@@ -264,7 +264,7 @@ export default function RegisterProperty() {
           <button
             type="submit"
             disabled={loading}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="btn-primary text-sm px-8 py-3"
           >
             {loading ? (
               <>
@@ -290,8 +290,8 @@ export default function RegisterProperty() {
 function SectionHeading({ icon: Icon, title }) {
   return (
     <div className="flex items-center gap-2">
-      <Icon className="h-5 w-5 text-blue-400" />
-      <h2 className="text-base font-semibold text-white">{title}</h2>
+      <Icon className="h-5 w-5 text-blue-900" />
+      <h2 className="text-base font-bold font-serif text-gray-900">{title}</h2>
     </div>
   );
 }
@@ -300,14 +300,14 @@ function SectionHeading({ icon: Icon, title }) {
 function InputField({ id, label, placeholder, type = 'text', value, onChange }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-2 block text-sm font-medium text-navy-300">{label}</label>
+      <label htmlFor={id} className="ll-label">{label}</label>
       <input
         id={id}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-navy-600 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
+        className="ll-input"
       />
     </div>
   );
@@ -317,22 +317,21 @@ function InputField({ id, label, placeholder, type = 'text', value, onChange }) 
 function SelectField({ id, label, value, options, labels, onChange }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-2 block text-sm font-medium text-navy-300">{label}</label>
+      <label htmlFor={id} className="ll-label">{label}</label>
       <div className="relative">
         <select
           id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full appearance-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
+          className="ll-select"
         >
-          <option value="" className="bg-navy-800">Select...</option>
+          <option value="">Select...</option>
           {options.map((opt) => (
-            <option key={opt} value={opt} className="bg-navy-800">
+            <option key={opt} value={opt}>
               {labels ? (labels[opt] || opt) : opt}
             </option>
           ))}
         </select>
-        <FiChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-500" />
       </div>
     </div>
   );

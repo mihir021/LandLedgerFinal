@@ -204,7 +204,7 @@ export default function OfficerDashboard() {
                       <button
                         onClick={() => setTransferModal({ open: true, id: t._id })}
                         disabled={actionLoading === t._id}
-                        className="flex items-center gap-1 rounded-lg bg-green-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-800 disabled:opacity-50"
+                        className="btn-success text-xs py-1 px-2.5"
                       >
                         <Check className="h-3 w-3" /> Approve
                       </button>

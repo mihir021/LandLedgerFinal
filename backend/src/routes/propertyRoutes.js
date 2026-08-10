@@ -14,28 +14,9 @@ import {
   validateUpdateProperty,
   validateMongoId,
 } from '../middleware/validationMiddleware.js';
-import { uploadImages, uploadDocuments } from '../middleware/uploadMiddleware.js';
-import multer from 'multer';
+import { uploadPropertyFiles } from '../middleware/uploadMiddleware.js';
 
 const router = Router();
-
-// Combine image + document uploads into a single middleware
-const uploadPropertyFiles = (req, res, next) => {
-  uploadImages(req, res, (err) => {
-    if (err) return next(err);
-    // Store images that were already parsed
-    const images = req.files || [];
-    uploadDocuments(req, res, (err2) => {
-      if (err2) return next(err2);
-      // Merge: uploadDocuments overwrites req.files, so we combine
-      req.files = {
-        images,
-        documents: req.files || [],
-      };
-      next();
-    });
-  });
-};
 
 // Public — anyone can browse properties
 router.get('/', getProperties);

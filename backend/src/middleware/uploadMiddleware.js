@@ -5,6 +5,20 @@ import ApiError from '../utils/ApiError.js';
 
 // ---- Storage configuration ----
 
+const propertyStorage = multer.diskStorage({
+  destination: (_req, file, cb) => {
+    if (file.fieldname === 'documents') {
+      cb(null, 'uploads/documents');
+    } else {
+      cb(null, 'uploads/images');
+    }
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `${uuidv4()}${ext}`);
+  },
+});
+
 const imageStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     cb(null, 'uploads/images');
@@ -25,38 +39,59 @@ const documentStorage = multer.diskStorage({
   },
 });
 
-// ---- File filter ----
+// ---- File filters ----
+
+const propertyFileFilter = (_req, file, cb) => {
+  const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
+  
+  if (file.fieldname === 'documents') {
+    const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'doc', 'docx'];
+    if (allowedExts.includes(ext) || file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new ApiError(400, 'Only JPG, JPEG, PNG, WEBP, and PDF files are allowed for documents'), false);
+    }
+  } else {
+    const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'avif'];
+    if (allowedExts.includes(ext) || file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new ApiError(400, 'Only image files (JPG, JPEG, PNG, WEBP, GIF, SVG) are allowed'), false);
+    }
+  }
+};
 
 const imageFilter = (_req, file, cb) => {
-  const allowed = /jpg|jpeg|png/;
-  const extOk = allowed.test(path.extname(file.originalname).toLowerCase());
-  const mimeOk = allowed.test(file.mimetype.split('/')[1]);
-
-  if (extOk && mimeOk) {
+  const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
+  const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'avif'];
+  if (allowedExts.includes(ext) || file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
-    cb(new ApiError(400, 'Only JPG, JPEG, and PNG images are allowed'), false);
+    cb(new ApiError(400, 'Only image files (JPG, JPEG, PNG, WEBP, GIF, SVG) are allowed'), false);
   }
 };
 
 const documentFilter = (_req, file, cb) => {
-  const allowed = /jpg|jpeg|png|pdf/;
   const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
-  const mimeOk =
-    file.mimetype === 'application/pdf' ||
-    /image\/(jpeg|jpg|png)/.test(file.mimetype);
-
-  if (allowed.test(ext) && mimeOk) {
+  const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'doc', 'docx'];
+  if (allowedExts.includes(ext) || file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
     cb(null, true);
   } else {
-    cb(
-      new ApiError(400, 'Only JPG, JPEG, PNG, and PDF files are allowed'),
-      false
-    );
+    cb(new ApiError(400, 'Only JPG, JPEG, PNG, WEBP, and PDF files are allowed'), false);
   }
 };
 
 // ---- Multer instances ----
+
+/** Upload property images and documents in a single request pass */
+const uploadPropertyFiles = multer({
+  storage: propertyStorage,
+  fileFilter: propertyFileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit
+}).fields([
+  { name: 'images', maxCount: 5 },
+  { name: 'documents', maxCount: 5 },
+]);
 
 /** Upload up to 5 images (max 5 MB each) */
 const uploadImages = multer({
@@ -79,4 +114,5 @@ const uploadProfileImage = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
 }).single('profileImage');
 
-export { uploadImages, uploadDocuments, uploadProfileImage };
+export { uploadPropertyFiles, uploadImages, uploadDocuments, uploadProfileImage };
+

@@ -27,13 +27,13 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'ma
       />
 
       {/* Modal Panel */}
-      <div className={`relative w-full ${maxWidth} glass-card overflow-hidden p-0 animate-fade-in-up`}>
+      <div className={`relative w-full ${maxWidth} rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden p-0 animate-fade-in-up`}>
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+          <h3 className="text-lg font-bold font-serif text-gray-900">{title}</h3>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-navy-400 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
             aria-label="Close modal"
           >
             <HiX className="h-5 w-5" />

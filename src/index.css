@@ -174,7 +174,7 @@
   .delay-700 { animation-delay: 700ms; }
 
   /* Card — core reusable surface */
-  .ll-card {
+  .ll-card, .glass-card {
     background: var(--color-surface-0);
     border: 1px solid var(--color-border);
     border-radius: 10px;

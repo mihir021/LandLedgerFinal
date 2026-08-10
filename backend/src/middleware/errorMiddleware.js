@@ -44,6 +44,12 @@ const errorHandler = (err, _req, res, _next) => {
     message = 'Token has expired';
   }
 
+  // Multer errors
+  if (err.name === 'MulterError') {
+    statusCode = 400;
+    message = `File upload error: ${err.message}`;
+  }
+
   // Log the full error in development
   if (process.env.NODE_ENV === 'development') {
     logger.error(`${statusCode} — ${message}`);

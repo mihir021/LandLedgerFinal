@@ -35,6 +35,9 @@ import AdminUsers from '../pages/AdminUsers';
 import AdminProperties from '../pages/AdminProperties';
 import AdminTransfers from '../pages/AdminTransfers';
 
+import Profile from '../pages/Profile';
+import AdminSettings from '../pages/AdminSettings';
+
 // Route Protection
 import ProtectedRoute from './ProtectedRoute';
 
@@ -58,6 +61,11 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
+      {
+        path: 'profile',
+        element: <ProtectedRoute><Profile /></ProtectedRoute>,
+      },
+
       // Buyer
       {
         path: 'buyer',
@@ -140,6 +148,10 @@ const router = createBrowserRouter([
       {
         path: 'admin/officers',
         element: <ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>,
+      },
+      {
+        path: 'admin/settings',
+        element: <ProtectedRoute allowedRoles={['admin']}><AdminSettings /></ProtectedRoute>,
       },
     ],
   },

@@ -164,12 +164,19 @@ export default function PropertyDetails() {
   const hasBlockchain = !!(property.blockchainTx || property.blockchainPropertyId);
   const title = property.title || `${(property.landType || 'property').charAt(0).toUpperCase() + (property.landType || 'property').slice(1)} Land — ${property.city || ''}`;
 
+  const getImgUrl = (img) => {
+    if (!img) return null;
+    if (img.startsWith('http')) return img;
+    if (img.startsWith('uploads/') || img.startsWith('uploads\\')) return `/${img.replace(/\\/g, '/')}`;
+    return `/uploads/images/${img.replace(/\\/g, '/')}`;
+  };
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Back link */}
       <Link
         to="/search"
-        className="mb-6 inline-flex items-center gap-2 text-sm text-navy-400 transition-colors hover:text-white animate-fade-in"
+        className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-blue-900 transition-colors animate-fade-in"
       >
         <FiArrowLeft className="h-4 w-4" /> Back to Search
       </Link>
@@ -178,38 +185,38 @@ export default function PropertyDetails() {
         {/* ── Left Column ── */}
         <div className="space-y-6">
           {/* Image Gallery */}
-          <div className="glass-card overflow-hidden animate-fade-in-up">
+          <div className="ll-card overflow-hidden animate-fade-in-up">
             {/* Main image */}
             {hasRealImages ? (
               <img
-                src={`/uploads/${images[0].replace(/\\/g, '/')}`}
+                src={getImgUrl(images[0])}
                 alt={title}
                 className="h-72 w-full object-cover sm:h-96"
               />
             ) : (
               <div
-                className="h-72 w-full sm:h-96"
-                style={{
-                  background: `linear-gradient(135deg, ${images[0] || '#3b82f6'}DD, ${images[1] || '#6366f1'}99)`,
-                }}
-              />
+                className="h-72 w-full sm:h-96 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
+              >
+                <span className="text-6xl">🏡</span>
+              </div>
             )}
             {/* Thumbnail strip */}
             {images.length > 1 && (
-              <div className="flex gap-2 p-3">
+              <div className="flex gap-2 p-3 bg-gray-50 border-t border-gray-100">
                 {images.map((img, i) => (
                   <div key={i}>
                     {hasRealImages ? (
                       <img
-                        src={`/uploads/${img.replace(/\\/g, '/')}`}
+                        src={getImgUrl(img)}
                         alt={`Thumbnail ${i + 1}`}
-                        className="h-16 w-20 rounded-lg border-2 border-transparent cursor-pointer object-cover transition-all hover:border-blue-500 first:border-blue-500"
+                        className="h-16 w-20 rounded-lg border-2 border-transparent cursor-pointer object-cover transition-all hover:border-blue-700 first:border-blue-700"
                       />
                     ) : (
                       <div
-                        className="h-16 w-20 rounded-lg border-2 border-transparent cursor-pointer transition-all hover:border-blue-500 first:border-blue-500"
-                        style={{ background: `linear-gradient(135deg, ${img}CC, ${img}88)` }}
-                      />
+                        className="h-16 w-20 rounded-lg border-2 border-transparent cursor-pointer transition-all hover:border-blue-700 first:border-blue-700 bg-blue-100 flex items-center justify-center text-xl"
+                      >
+                        🏡
+                      </div>
                     )}
                   </div>
                 ))}
@@ -218,12 +225,12 @@ export default function PropertyDetails() {
           </div>
 
           {/* Property Info */}
-          <div className="glass-card p-6 animate-fade-in-up delay-100">
+          <div className="ll-card p-6 animate-fade-in-up delay-100">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h1 className="text-xl font-bold text-white sm:text-2xl">{title}</h1>
-                <div className="mt-2 flex items-center gap-1.5 text-sm text-navy-400">
-                  <FiMapPin className="h-4 w-4 text-navy-500" />
+                <h1 className="text-xl font-bold font-serif text-gray-900 sm:text-2xl">{title}</h1>
+                <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-600">
+                  <FiMapPin className="h-4 w-4 text-gray-400" />
                   {property.address}, {property.city}, {property.state}
                 </div>
               </div>
@@ -231,7 +238,7 @@ export default function PropertyDetails() {
             </div>
 
             {property.description && (
-              <p className="mt-4 text-sm leading-relaxed text-navy-300">{property.description}</p>
+              <p className="mt-4 text-sm leading-relaxed text-gray-700">{property.description}</p>
             )}
 
             {/* Key info grid */}
@@ -244,67 +251,67 @@ export default function PropertyDetails() {
           </div>
 
           {/* Documents */}
-          <div className="glass-card p-6 animate-fade-in-up delay-200">
+          <div className="ll-card p-6 animate-fade-in-up delay-200">
             <div className="flex items-center gap-2 mb-4">
-              <FiFileText className="h-5 w-5 text-blue-400" />
-              <h2 className="text-lg font-semibold text-white">Documents</h2>
+              <FiFileText className="h-5 w-5 text-blue-900" />
+              <h2 className="text-lg font-bold font-serif text-gray-900">Documents</h2>
             </div>
             {documents.length > 0 ? (
               <div className="grid gap-2 sm:grid-cols-2">
                 {documents.map((doc, i) => {
                   const fileName = typeof doc === 'string' ? doc.split(/[/\\]/).pop() : doc;
                   return (
-                    <div key={i} className="flex items-center gap-3 rounded-xl bg-white/5 px-4 py-3 border border-white/5">
-                      <FiFileText className="h-4 w-4 text-navy-400" />
-                      <span className="text-sm text-navy-200 truncate">{fileName}</span>
-                      <span className="ml-auto rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-400">Uploaded</span>
+                    <div key={i} className="flex items-center gap-3 rounded-xl bg-gray-50 px-4 py-3 border border-gray-200">
+                      <FiFileText className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm font-medium text-gray-800 truncate">{fileName}</span>
+                      <span className="ml-auto rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">Uploaded</span>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <p className="text-sm text-navy-500">No documents uploaded yet.</p>
+              <p className="text-sm text-gray-500">No documents uploaded yet.</p>
             )}
           </div>
 
           {/* Blockchain Section */}
-          <div className="glass-card p-6 animate-fade-in-up delay-300">
+          <div className="ll-card p-6 animate-fade-in-up delay-300">
             <div className="flex items-center gap-2 mb-6">
-              <SiBlockchaindotcom className="h-5 w-5 text-blue-400" />
-              <h2 className="text-lg font-semibold text-white">Blockchain Record</h2>
+              <SiBlockchaindotcom className="h-5 w-5 text-blue-900" />
+              <h2 className="text-lg font-bold font-serif text-gray-900">Blockchain Record</h2>
             </div>
 
             {hasBlockchain ? (
               <div className="space-y-4">
                 {property.blockchainTx && (
-                  <div className="flex items-center justify-between rounded-xl bg-white/[0.03] border border-white/5 p-4">
+                  <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-200 p-4">
                     <div>
-                      <p className="text-xs text-navy-500">Transaction Hash</p>
-                      <p className="mt-1 font-mono text-sm text-navy-200">{property.blockchainTx}</p>
+                      <p className="text-xs text-gray-500">Transaction Hash</p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-blue-950">{property.blockchainTx}</p>
                     </div>
                     <button
                       onClick={() => { navigator.clipboard.writeText(property.blockchainTx); toast.info('Hash copied!'); }}
-                      className="text-navy-500 hover:text-blue-400 transition-colors"
+                      className="text-gray-400 hover:text-blue-900 transition-colors"
                     >
                       <FiCopy className="h-4 w-4" />
                     </button>
                   </div>
                 )}
                 {property.blockchainPropertyId && (
-                  <div className="flex items-center justify-between rounded-xl bg-white/[0.03] border border-white/5 p-4">
+                  <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-200 p-4">
                     <div>
-                      <p className="text-xs text-navy-500">On-Chain Property ID</p>
-                      <p className="mt-1 font-mono text-sm text-navy-200">{property.blockchainPropertyId}</p>
+                      <p className="text-xs text-gray-500">On-Chain Property ID</p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-blue-950">{property.blockchainPropertyId}</p>
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-3 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-4">
-                <FiClock className="h-5 w-5 text-amber-400 shrink-0" />
+              <div className="flex items-center gap-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-4">
+                <FiClock className="h-5 w-5 text-amber-700 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-amber-400">Pending Blockchain Registration</p>
-                  <p className="text-xs text-amber-400/70">This property has not yet been registered on the blockchain.</p>
+                  <p className="text-sm font-semibold text-amber-900">Pending Blockchain Registration</p>
+                  <p className="text-xs text-amber-700">This property has not yet been registered on the blockchain.</p>
                 </div>
               </div>
             )}
@@ -314,17 +321,17 @@ export default function PropertyDetails() {
         {/* ── Right Column (Sidebar) ── */}
         <div className="space-y-6">
           {/* Price Card */}
-          <div className="glass-card p-6 animate-fade-in-up delay-100 sticky top-24">
-            <p className="text-sm text-navy-400">Listed Price</p>
-            <p className="mt-1 text-3xl font-bold text-white">{formatCurrency(property.price)}</p>
+          <div className="ll-card p-6 animate-fade-in-up delay-100 sticky top-24">
+            <p className="text-sm text-gray-500">Listed Price</p>
+            <p className="mt-1 text-3xl font-bold font-serif text-gray-900">{formatCurrency(property.price)}</p>
 
             {/* Verification badge */}
             {status === 'verified' && (
-              <div className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-3">
-                <FiShield className="h-5 w-5 text-emerald-400" />
+              <div className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
+                <FiShield className="h-5 w-5 text-emerald-700" />
                 <div>
-                  <p className="text-sm font-medium text-emerald-400">Verified</p>
-                  <p className="text-xs text-emerald-400/70">Property has been verified by a government officer</p>
+                  <p className="text-sm font-semibold text-emerald-900">Verified</p>
+                  <p className="text-xs text-emerald-700">Property has been verified by a government officer</p>
                 </div>
               </div>
             )}
@@ -334,7 +341,7 @@ export default function PropertyDetails() {
               <button
                 onClick={handlePurchase}
                 disabled={purchasing}
-                className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110 disabled:opacity-60"
+                className="mt-6 flex w-full items-center justify-center gap-2 btn-primary py-3.5 text-sm"
               >
                 {purchasing ? (
                   <FiLoader className="h-4 w-4 animate-spin" />
@@ -348,61 +355,61 @@ export default function PropertyDetails() {
             {/* Inquiry Button */}
             <button
               onClick={() => setShowInquiryModal(true)}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white/5 border border-white/10 py-3 text-sm font-medium text-navy-200 hover:bg-white/10 hover:text-white transition-colors"
+              className="mt-3 flex w-full items-center justify-center gap-2 btn-secondary py-3 text-sm"
             >
-              <FiMessageSquare className="h-4 w-4 text-blue-400" />
+              <FiMessageSquare className="h-4 w-4 text-blue-900" />
               Inquire About Property
             </button>
 
             {!isAuthenticated && (
               <Link
                 to="/login"
-                className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110"
+                className="mt-6 flex w-full items-center justify-center gap-2 btn-primary py-3.5 text-sm"
               >
                 Sign In to Purchase
               </Link>
             )}
 
-            <p className="mt-3 text-center text-xs text-navy-500">
+            <p className="mt-3 text-center text-xs text-gray-500">
               Secured by smart contract • Escrow protected
             </p>
           </div>
 
           {/* Owner Card */}
-          <div className="glass-card p-6 animate-fade-in-up delay-200">
+          <div className="ll-card p-6 animate-fade-in-up delay-200">
             <div className="flex items-center gap-2 mb-4">
-              <FiUser className="h-5 w-5 text-blue-400" />
-              <h3 className="text-base font-semibold text-white">Owner Information</h3>
+              <FiUser className="h-5 w-5 text-blue-900" />
+              <h3 className="text-base font-bold font-serif text-gray-900">Owner Information</h3>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-bold text-white">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-900 text-lg font-bold text-white">
                 {ownerName.charAt(0)}
               </div>
               <div>
-                <p className="text-sm font-medium text-white">{ownerName}</p>
+                <p className="text-sm font-semibold text-gray-900">{ownerName}</p>
                 {typeof property.owner === 'object' && property.owner.email && (
-                  <p className="text-xs text-navy-500">{property.owner.email}</p>
+                  <p className="text-xs text-gray-500">{property.owner.email}</p>
                 )}
               </div>
             </div>
           </div>
 
           {/* Survey Info */}
-          <div className="glass-card p-6 animate-fade-in-up delay-300">
-            <h3 className="mb-3 text-base font-semibold text-white">Survey Details</h3>
+          <div className="ll-card p-6 animate-fade-in-up delay-300">
+            <h3 className="mb-3 text-base font-bold font-serif text-gray-900">Survey Details</h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-navy-400">Survey No.</span>
-                <span className="font-mono text-xs text-navy-200">{property.surveyNumber || 'N/A'}</span>
+                <span className="text-gray-500">Survey No.</span>
+                <span className="font-mono text-xs font-semibold text-gray-800">{property.surveyNumber || 'N/A'}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-navy-400">District</span>
-                <span className="text-navy-200">{property.district || 'N/A'}</span>
+                <span className="text-gray-500">District</span>
+                <span className="font-semibold text-gray-800">{property.district || 'N/A'}</span>
               </div>
               {property.currentOwnerWallet && (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-navy-400">Owner Wallet</span>
-                  <span className="font-mono text-xs text-navy-200">{property.currentOwnerWallet.slice(0, 10)}...</span>
+                  <span className="text-gray-500">Owner Wallet</span>
+                  <span className="font-mono text-xs text-gray-700">{property.currentOwnerWallet.slice(0, 10)}...</span>
                 </div>
               )}
             </div>
@@ -412,16 +419,16 @@ export default function PropertyDetails() {
 
       {/* Inquiry Modal */}
       {showInquiryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-navy-900/95 p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div className="flex items-center gap-2">
-                <FiMessageSquare className="h-5 w-5 text-blue-400" />
-                <h3 className="text-lg font-semibold text-white">Property Inquiry</h3>
+                <FiMessageSquare className="h-5 w-5 text-blue-900" />
+                <h3 className="text-lg font-bold font-serif text-gray-900">Property Inquiry</h3>
               </div>
               <button
                 onClick={() => setShowInquiryModal(false)}
-                className="rounded-lg p-1 text-navy-400 hover:text-white hover:bg-white/10 transition-colors"
+                className="rounded-lg p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
               >
                 <FiX className="h-5 w-5" />
               </button>
@@ -429,61 +436,61 @@ export default function PropertyDetails() {
 
             <form onSubmit={handleInquirySubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-navy-300 mb-1">Your Name *</label>
+                <label className="ll-label">Your Name *</label>
                 <input
                   type="text"
                   required
                   value={inquiryName}
                   onChange={(e) => setInquiryName(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-navy-500 focus:border-blue-500 focus:outline-none"
+                  className="ll-input"
                   placeholder="Enter full name"
                 />
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-medium text-navy-300 mb-1">Email Address *</label>
+                  <label className="ll-label">Email Address *</label>
                   <input
                     type="email"
                     required
                     value={inquiryEmail}
                     onChange={(e) => setInquiryEmail(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-navy-500 focus:border-blue-500 focus:outline-none"
+                    className="ll-input"
                     placeholder="name@example.com"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-navy-300 mb-1">Phone Number</label>
+                  <label className="ll-label">Phone Number</label>
                   <input
                     type="tel"
                     value={inquiryPhone}
                     onChange={(e) => setInquiryPhone(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-navy-500 focus:border-blue-500 focus:outline-none"
+                    className="ll-input"
                     placeholder="+91..."
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-navy-300 mb-1">Subject *</label>
+                <label className="ll-label">Subject *</label>
                 <input
                   type="text"
                   required
                   value={inquirySubject}
                   onChange={(e) => setInquirySubject(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-navy-500 focus:border-blue-500 focus:outline-none"
+                  className="ll-input"
                   placeholder="e.g. Zoning question, Document verification..."
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-navy-300 mb-1">Message *</label>
+                <label className="ll-label">Message *</label>
                 <textarea
                   required
                   rows={4}
                   value={inquiryMessage}
                   onChange={(e) => setInquiryMessage(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-navy-500 focus:border-blue-500 focus:outline-none resize-none"
+                  className="ll-input resize-none"
                   placeholder="Write your questions or details about this property..."
                 />
               </div>
@@ -492,14 +499,14 @@ export default function PropertyDetails() {
                 <button
                   type="button"
                   onClick={() => setShowInquiryModal(false)}
-                  className="rounded-xl border border-white/10 px-4 py-2 text-xs text-navy-300 hover:text-white transition-colors"
+                  className="btn-secondary text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingInquiry}
-                  className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-xs font-semibold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-500 transition-colors disabled:opacity-60"
+                  className="btn-primary text-xs"
                 >
                   {submittingInquiry ? <FiLoader className="h-4 w-4 animate-spin" /> : <FiMessageSquare className="h-4 w-4" />}
                   {submittingInquiry ? 'Submitting...' : 'Send Inquiry to Database'}
@@ -516,12 +523,12 @@ export default function PropertyDetails() {
 /** Small info item with icon */
 function InfoItem({ icon: Icon, label, value }) {
   return (
-    <div className="rounded-xl bg-white/[0.03] border border-white/5 p-3">
-      <div className="flex items-center gap-1.5 text-navy-500">
+    <div className="rounded-xl bg-gray-50 border border-gray-200 p-3">
+      <div className="flex items-center gap-1.5 text-gray-500">
         <Icon className="h-3.5 w-3.5" />
         <span className="text-xs">{label}</span>
       </div>
-      <p className="mt-1 text-sm font-medium text-white">{value}</p>
+      <p className="mt-1 text-sm font-semibold text-gray-900">{value}</p>
     </div>
   );
 }
@@ -535,3 +542,4 @@ function FiHash(props) {
     </svg>
   );
 }
+
