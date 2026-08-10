@@ -1,0 +1,197 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #FFF8E7;
+  --color-[#FFF8E7]: #FFF8E7;
+  --color-comic-blue: #0099FF;
+  --color-comic-yellow: #FFD400;
+  --color-comic-black: #111111;
+  --color-comic-red: #FF4D5E;
+  --color-comic-green: #3FCB6B;
+  --color-comic-orange: #FF8500;
+  --color-comic-pink: #FF007F;
+  --font-comic: 'Bangers', cursive, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* ================================================================
+   GLOBAL BASE
+   ================================================================ */
+body {
+  background-color: #FFF8E7;
+  color: #111111;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-image: radial-gradient(#111111 0.75px, transparent 0.75px);
+  background-size: 24px 24px;
+  background-position: 0 0;
+  /* Smooth font rendering */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ================================================================
+   CUSTOM CURSOR — hide system cursor, zero latency
+   ================================================================ */
+@media (hover: hover) and (pointer: fine) {
+  body.custom-comic-cursor-active,
+  body.custom-comic-cursor-active *:not(input):not(textarea) {
+    cursor: none !important;
+  }
+}
+
+/* ================================================================
+   HALFTONE PATTERNS
+   ================================================================ */
+.halftone-pattern {
+  background-image: radial-gradient(rgba(17, 17, 17, 0.12) 1.5px, transparent 1.5px);
+  background-size: 16px 16px;
+}
+
+.halftone-yellow {
+  background-image: radial-gradient(rgba(255, 212, 0, 0.4) 2px, transparent 2px);
+  background-size: 14px 14px;
+}
+
+.halftone-lightblue {
+  background-image: radial-gradient(rgba(0, 153, 255, 0.22) 2px, transparent 2px);
+  background-size: 14px 14px;
+}
+
+/* ================================================================
+   SPEECH BUBBLES
+   ================================================================ */
+.speech-bubble-bottom {
+  position: relative;
+}
+.speech-bubble-bottom::after {
+  content: '';
+  position: absolute;
+  bottom: -16px;
+  left: 28px;
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-top: 16px solid #111111;
+}
+.speech-bubble-bottom::before {
+  content: '';
+  position: absolute;
+  bottom: -11px;
+  left: 31px;
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 13px solid #FFD400;
+  z-index: 1;
+}
+
+.speech-bubble-left {
+  position: relative;
+}
+.speech-bubble-left::after {
+  content: '';
+  position: absolute;
+  left: -16px;
+  top: 20px;
+  width: 0;
+  height: 0;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  border-right: 16px solid #111111;
+}
+
+/* ================================================================
+   COMIC CARD — GPU-only hover (transform + opacity, NO box-shadow anim)
+   The pop shadow is baked in and static. Only translateY + scale
+   animate, both compositor-only (zero repaint).
+   ================================================================ */
+.comic-card {
+  position: relative;
+  border: 3.5px solid #111111;
+  box-shadow: 6px 6px 0px #111111;
+  /* Only animate transform — GPU-accelerated, zero repaint */
+  transition: transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+}
+
+.comic-card:hover {
+  transform: translateY(-5px) scale(1.015);
+}
+
+.comic-card:active {
+  transform: translateY(1px) scale(0.99);
+  transition-duration: 60ms;
+}
+
+/* ================================================================
+   COMIC BUTTON — GPU-only press feel (translate only, no shadow anim)
+   ================================================================ */
+.comic-button {
+  position: relative;
+  border: 3px solid #111111;
+  box-shadow: 5px 5px 0px #111111;
+  /* Only animate transform */
+  transition: transform 100ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+}
+
+.comic-button:hover {
+  transform: translate(-2px, -3px);
+}
+
+.comic-button:active {
+  transform: translate(3px, 4px) !important;
+  box-shadow: 0px 0px 0px #111111 !important;
+  transition-duration: 50ms;
+}
+
+/* ================================================================
+   NAV LINK HOVER — clean, instant color fill
+   ================================================================ */
+.nav-link {
+  transition: background-color 80ms ease, color 80ms ease;
+}
+
+/* ================================================================
+   CUSTOM SCROLLBAR
+   ================================================================ */
+::-webkit-scrollbar {
+  width: 12px;
+}
+::-webkit-scrollbar-track {
+  background: #FFF8E7;
+  border-left: 3px solid #111111;
+}
+::-webkit-scrollbar-thumb {
+  background: #FFD400;
+  border: 3px solid #111111;
+  border-radius: 4px;
+  transition: background 120ms ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #0099FF;
+}
+
+/* ================================================================
+   FONT COMIC HELPER
+   ================================================================ */
+.font-comic {
+  font-family: 'Bangers', cursive, sans-serif;
+  letter-spacing: 0.04em;
+}
+
+/* ================================================================
+   PERFORMANCE — Promote heavy animated sections to their own layer
+   ================================================================ */
+section {
+  /* Prevents scroll-jank painting */
+  contain: paint;
+}
+
+/* Framer Motion elements — hint the GPU */
+[data-framer-motion],
+.framer-motion-element {
+  will-change: transform, opacity;
+}
