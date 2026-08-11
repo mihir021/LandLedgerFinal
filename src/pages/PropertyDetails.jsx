@@ -21,14 +21,17 @@ import { createDispute } from '../services/disputeService';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency, formatDate } from '../utils/helpers';
-import { useReadContract } from 'wagmi';
-import { CONTRACT_ADDRESS } from '../config/web3';
+import { useReadContract, useWriteContract, useAccount, usePublicClient } from 'wagmi';
+import { CONTRACT_ADDRESS, getSafeFeeOverrides, BLOCK_EXPLORER_TX_URL } from '../config/web3';
 import { LandLedgerABI } from '../config/LandLedgerABI.js';
 
 export default function PropertyDetails() {
   const { id } = useParams();
   const { user, isAuthenticated } = useAuth();
   const toast = useToast();
+  const { address: walletAddress, isConnected } = useAccount();
+  const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
 
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -102,14 +105,31 @@ export default function PropertyDetails() {
     }
   });
 
+  const isRegisteredOnCurrentContract = Boolean(
+    onChainData?.[0] && onChainData[0] !== '0x0000000000000000000000000000000000000000'
+  );
+
   /** Handle purchase request */
   const handlePurchase = async () => {
     if (!isAuthenticated || !property) return;
+    if (!isConnected || !walletAddress) {
+      toast.error('Connect your buyer wallet before requesting this property.');
+      return;
+    }
     setPurchasing(true);
     try {
       const ownerId = property.ownerId && typeof property.ownerId === 'object' ? property.ownerId._id : property.ownerId;
-      await requestTransfer({ propertyId: property._id, sellerId: ownerId });
-      toast.success('Purchase request submitted successfully!');
+      if (!parcelId) throw new Error('This property does not have an on-chain parcel ID.');
+      if (!isRegisteredOnCurrentContract) {
+        throw new Error('This older property is not registered in the current blockchain contract. Register a new property with the seller wallet before requesting a purchase.');
+      }
+      toast.info('Confirm the purchase request in your wallet...');
+      const feeOverrides = await getSafeFeeOverrides(publicClient);
+      const txHash = await writeContractAsync({
+        address: CONTRACT_ADDRESS, abi: LandLedgerABI, functionName: 'requestPurchase', args: [parcelId], ...feeOverrides,
+      });
+      await requestTransfer({ propertyId: property._id, sellerId: ownerId, txHash, buyerWallet: walletAddress });
+      toast.success('Purchase request recorded on-chain and sent to the seller.');
     } catch (err) {
       toast.error(err.message || 'Failed to submit purchase request');
     } finally {
@@ -228,7 +248,8 @@ export default function PropertyDetails() {
     ? property.images
     : documents.map(d => d.url).filter(Boolean);
   const hasRealImages = images.length > 0 && images[0] && !images[0].startsWith('#');
-  const hasBlockchain = !!(property.blockchainTx || property.blockchain?.transactionHash || property.blockchain?.propertyIdOnChain);
+  const propertyTxHash = property?.blockchain?.txHash || property?.blockchainTx;
+  const hasBlockchain = !!(propertyTxHash || property?.blockchain?.parcelId || property?.blockchain?.propertyIdOnChain);
   const title = property.title || `${(property.landDetails?.landType || 'property').charAt(0).toUpperCase() + (property.landDetails?.landType || 'property').slice(1)} Land — ${property.location?.city || ''}`;
   const price = property.pricing?.priceINR || 0;
 
@@ -367,19 +388,24 @@ export default function PropertyDetails() {
 
             {hasBlockchain ? (
               <div className="space-y-4">
-                {(property.blockchainTx || property.blockchain?.transactionHash) && (
+                {propertyTxHash && (
                   <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-200 p-4">
                     <div>
                       <p className="text-xs text-gray-500">Transaction Hash</p>
-                      <p className="mt-1 font-mono text-sm font-semibold text-blue-950">{(property.blockchainTx || property.blockchain?.transactionHash).slice(0, 10)}...{(property.blockchainTx || property.blockchain?.transactionHash).slice(-8)}</p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-blue-950">{propertyTxHash.slice(0, 10)}...{propertyTxHash.slice(-8)}</p>
                     </div>
                     <button
-                      onClick={() => { navigator.clipboard.writeText(property.blockchainTx || property.blockchain?.transactionHash); toast.info('Hash copied!'); }}
+                      onClick={() => { navigator.clipboard.writeText(propertyTxHash); toast.info('Hash copied!'); }}
                       className="text-gray-400 hover:text-blue-900 transition-colors"
                     >
                       <FiCopy className="h-4 w-4" />
                     </button>
                   </div>
+                )}
+                {propertyTxHash && (
+                  <a href={`${BLOCK_EXPLORER_TX_URL}${propertyTxHash}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-100">
+                    View property transaction on Arbiscan ↗
+                  </a>
                 )}
                 
                 {onChainLoading ? (

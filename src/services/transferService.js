@@ -18,8 +18,8 @@ export const getTransfers = async () => {
  * @param {{ propertyId: string, sellerId: string }} payload
  * @returns {Object} Created transfer document.
  */
-export const requestTransfer = async ({ propertyId, sellerId }) => {
-  const { data } = await api.post('/transfers/request', { propertyId, sellerId });
+export const requestTransfer = async ({ propertyId, sellerId, txHash, buyerWallet }) => {
+  const { data } = await api.post('/transfers/request', { propertyId, sellerId, txHash, buyerWallet });
   return data.data;
 };
 
@@ -28,8 +28,8 @@ export const requestTransfer = async ({ propertyId, sellerId }) => {
  * @param {string} transferId
  * @returns {Object} Updated transfer document.
  */
-export const sellerApprove = async (transferId) => {
-  const { data } = await api.post('/transfers/seller-approve', { transferId });
+export const sellerApprove = async (transferId, txHash) => {
+  const { data } = await api.post('/transfers/seller-approve', { transferId, txHash });
   return data.data;
 };
 
@@ -38,8 +38,8 @@ export const sellerApprove = async (transferId) => {
  * @param {string} transferId
  * @returns {Object} Updated transfer document.
  */
-export const buyerApprove = async (transferId) => {
-  const { data } = await api.post('/transfers/buyer-approve', { transferId });
+export const buyerApprove = async (transferId, txHash) => {
+  const { data } = await api.post('/transfers/buyer-approve', { transferId, txHash });
   return data.data;
 };
 

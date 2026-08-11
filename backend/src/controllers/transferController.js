@@ -23,7 +23,7 @@ const pushTimeline = (transfer, stage, actor, note = '') => {
 // =====================================================
 const requestTransfer = async (req, res, next) => {
   try {
-    const { propertyId, sellerId } = req.body;
+    const { propertyId, sellerId, txHash, buyerWallet } = req.body;
     const buyerId = req.user._id;
 
     // Ensure property exists and is verified + listed
@@ -54,6 +54,8 @@ const requestTransfer = async (req, res, next) => {
       toUserId: buyerId,
       transferType: 'Sale',
       status: 'Initiated',
+      buyerWallet,
+      buyerRequestTxHash: txHash,
     });
 
     pushTimeline(transfer, 'Transfer Requested', req.user, 'Buyer initiated the transfer request');
@@ -98,7 +100,7 @@ const requestTransfer = async (req, res, next) => {
 // =====================================================
 const sellerApprove = async (req, res, next) => {
   try {
-    const { transferId } = req.body;
+    const { transferId, txHash } = req.body;
 
     const transfer = await Transfer.findById(transferId);
     if (!transfer) return next(new ApiError(404, 'Transfer not found'));
@@ -112,6 +114,7 @@ const sellerApprove = async (req, res, next) => {
 
     transfer.sellerApproved = true;
     transfer.status = 'sellerApproved';
+    transfer.sellerApprovalTxHash = txHash;
     pushTimeline(transfer, 'Seller Approved', req.user, 'Seller agreed to the transfer');
     await transfer.save();
 
@@ -148,7 +151,7 @@ const sellerApprove = async (req, res, next) => {
 // =====================================================
 const buyerApprove = async (req, res, next) => {
   try {
-    const { transferId } = req.body;
+    const { transferId, txHash } = req.body;
 
     const transfer = await Transfer.findById(transferId);
     if (!transfer) return next(new ApiError(404, 'Transfer not found'));
@@ -165,6 +168,7 @@ const buyerApprove = async (req, res, next) => {
 
     transfer.buyerApproved = true;
     transfer.status = 'buyerApproved';
+    transfer.buyerApprovalTxHash = txHash;
     pushTimeline(transfer, 'Buyer Signed', req.user, 'Buyer signed and approved the transfer');
     await transfer.save();
 
@@ -227,6 +231,8 @@ const officerApprove = async (req, res, next) => {
 
     transfer.officerApproved = true;
     transfer.status = 'officerApproved';
+    transfer.officerApprovalTxHash = txHash;
+    transfer.blockchainTxHash = txHash;
     pushTimeline(transfer, 'Officer Approved', req.user, 'Government officer approved the transfer');
     await transfer.save();
     
@@ -234,7 +240,8 @@ const officerApprove = async (req, res, next) => {
       const pId = transfer.propertyId || transfer.property;
       if (pId) {
         await Property.findByIdAndUpdate(pId, {
-          blockchainTx: txHash
+          'blockchain.txHash': txHash,
+          'blockchain.chainNetwork': 'Sepolia',
         });
       }
     }

@@ -353,7 +353,9 @@ const verifyProperty = async (req, res, next) => {
       'verification.verificationDate': new Date()
     };
     if (txHash) {
-      updateData.blockchainTx = txHash;
+      updateData['blockchain.txHash'] = txHash;
+      updateData['blockchain.contractAddress'] = process.env.LAND_LEDGER_CONTRACT_ADDRESS || undefined;
+      updateData['blockchain.chainNetwork'] = 'Sepolia';
     }
 
     const property = await Property.findByIdAndUpdate(

@@ -2,14 +2,16 @@ import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { arbitrumSepolia } from 'wagmi/chains';
 import { http } from 'wagmi';
 
-export const CONTRACT_ADDRESS = '0x1a9250a291fa960b10082e6c38935b8016123f1b';
+// Set VITE_CONTRACT_ADDRESS after deploying the current Stylus contract.
+export const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0xdf7f1c05ce7380019f0f8fbd8cce6a6a41aa3b50';
+export const BLOCK_EXPLORER_TX_URL = 'https://sepolia.arbiscan.io/tx/';
 
 export const web3Config = getDefaultConfig({
   appName: 'LandLedger',
   projectId: 'a0280ebdb26c11b1bfbe9c3b838c64bb', // Required for WalletConnect (using a public template ID for now, user can change later if needed)
   chains: [arbitrumSepolia],
   transports: {
-    [arbitrumSepolia.id]: http(),
+    [arbitrumSepolia.id]: http('https://sepolia-rollup.arbitrum.io/rpc'),
   },
 });
 
@@ -33,7 +35,14 @@ export async function getSafeFeeOverrides(publicClient) {
       maxFeePerGas: (estimatedMaxFee > bufferedBaseFee ? estimatedMaxFee : bufferedBaseFee) + priority,
     };
   } catch (error) {
-    console.warn('Could not retrieve live gas fees; using wallet estimate.', error);
-    return {};
+    // Do not leave fee selection entirely to the wallet: some MetaMask
+    // Arbitrum Sepolia sessions show "Network fee unavailable" in that case.
+    // 0.1 gwei is well above the testnet base fee while still only charging
+    // the fee actually used by the transaction.
+    console.warn('Could not retrieve live gas fees; using safe Arbitrum Sepolia fallback.', error);
+    return {
+      maxPriorityFeePerGas: 1_000_000n,
+      maxFeePerGas: 100_000_000n,
+    };
   }
 }

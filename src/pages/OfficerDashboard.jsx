@@ -129,7 +129,7 @@ export default function OfficerDashboard() {
     try {
       const transfer = pendingTransfers.find(t => t._id === transferModal.id);
       const parcelId = transfer?.property?.blockchain?.parcelId || transfer?.property?.blockchainPropertyId || transfer?.property?.surveyNumber || transfer?.property?.propertyId;
-      const buyerWallet = transfer?.buyer?.walletAddress;
+      const buyerWallet = transfer?.buyerWallet || transfer?.buyer?.walletAddress;
       
       if (!isConnected || !walletAddress) {
         throw new Error('Connect the approving wallet in the top bar before approving a transfer.');
@@ -143,8 +143,8 @@ export default function OfficerDashboard() {
       const txHash = await writeContractAsync({
         address: CONTRACT_ADDRESS,
         abi: LandLedgerABI,
-        functionName: 'transferOwnership',
-        args: [parcelId, buyerWallet],
+        functionName: 'finalizeTransfer',
+        args: [parcelId],
         ...feeOverrides,
       });
       toast.info(`Transfer submitted on-chain: ${txHash}. Syncing with database...`);
