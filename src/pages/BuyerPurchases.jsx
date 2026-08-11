@@ -44,9 +44,9 @@ export default function BuyerPurchases() {
       'Pending Verification': 'buyer_signed',
       buyer_signed: 'officer_approved',
       buyerApproved: 'officer_approved',
-      officer_approved: 'chain_processing',
-      officerApproved: 'chain_processing',
-      Approved: 'chain_processing',
+      officer_approved: 'completed',
+      officerApproved: 'completed',
+      Approved: 'completed',
       completed: 'completed',
       Completed: 'completed',
     };
@@ -107,7 +107,8 @@ export default function BuyerPurchases() {
               : (req.property && typeof req.property === 'object' ? req.property : null);
             const propId = property?._id || (typeof req.propertyId === 'string' ? req.propertyId : null) || (typeof req.property === 'string' ? req.property : null);
             const propTitle = property?.title || property?.location?.district || property?.location?.surveyNumber || req.propertyTitle || 'Property';
-            const status = req.status || 'pending';
+            const rawStatus = req.status || 'pending';
+            const status = ['officerApproved', 'Approved'].includes(rawStatus) ? 'completed' : rawStatus;
             const amount = req.agreedPrice || req.property?.pricing?.priceINR || req.amount;
             const lifecycleStage = statusToLifecycle(status);
 

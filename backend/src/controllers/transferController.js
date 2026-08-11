@@ -229,13 +229,12 @@ const officerApprove = async (req, res, next) => {
       return next(new ApiError(400, 'Buyer must sign before the officer can approve the transfer'));
     }
 
+    // Step 1: Mark officer approval
     transfer.officerApproved = true;
-    transfer.status = 'officerApproved';
     transfer.officerApprovalTxHash = txHash;
     transfer.blockchainTxHash = txHash;
     pushTimeline(transfer, 'Officer Approved', req.user, 'Government officer approved the transfer');
-    await transfer.save();
-    
+
     if (txHash) {
       const pId = transfer.propertyId || transfer.property;
       if (pId) {
@@ -246,23 +245,49 @@ const officerApprove = async (req, res, next) => {
       }
     }
 
-    // Notify both parties
-    const msg = 'Government officer has approved the property transfer.';
+    // Step 2: Automatically complete the transfer & transfer ownership
+    const targetPropertyId = transfer.propertyId?._id || transfer.propertyId || transfer.property?._id || transfer.property;
+    const property = await Property.findById(targetPropertyId);
+
+    if (property) {
+      // Move current owner to previousOwners
+      if (property.ownerId || property.owner) {
+        property.previousOwners = property.previousOwners || [];
+        property.previousOwners.push(property.ownerId || property.owner);
+      }
+      // Transfer ownership to buyer
+      property.ownerId = transfer.toUserId || transfer.buyer;
+      property.owner = transfer.toUserId || transfer.buyer;
+      const buyer = await User.findById(transfer.toUserId).select('walletAddress');
+      property.currentOwnerWallet = buyer?.walletAddress || null;
+      // Remove from seller's listings so they can't sell it again
+      property.isListed = false;
+      await property.save();
+    }
+
+    transfer.status = 'completed';
+    transfer.completedAt = new Date();
+    pushTimeline(transfer, 'Transfer Completed', req.user, 'Ownership officially transferred');
+    await transfer.save();
+
+    // Notify both parties about the completed transfer
+    const msg = 'Property transfer has been completed successfully. Ownership has been transferred.';
     await Notification.insertMany([
-      { receiver: transfer.fromUserId, title: 'Officer Approved', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
-      { receiver: transfer.toUserId, title: 'Officer Approved', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+      { receiver: transfer.fromUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+      { receiver: transfer.toUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
     ]);
 
     await logAudit({
       req,
-      action: 'transfer.officer_approve',
+      action: 'transfer.officer_approve_and_complete',
       targetType: 'Transfer',
       targetId: transfer._id,
+      details: { propertyId: property?.propertyId, newOwner: transfer.toUserId || transfer.buyer },
     });
 
     res.status(200).json({
       success: true,
-      message: 'Officer approval recorded',
+      message: 'Transfer approved and completed — ownership transferred',
       data: transfer,
     });
   } catch (error) {

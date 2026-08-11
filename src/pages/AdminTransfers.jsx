@@ -7,7 +7,7 @@ import { ArrowLeft, CheckCircle, Loader2, ArrowLeftRight, ExternalLink } from 'l
 import StatusBadge from '../components/StatusBadge';
 import LifecycleTracker from '../components/LifecycleTracker';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { getTransfers, officerApprove, completeTransfer } from '../services/transferService';
+import { getTransfers, officerApprove } from '../services/transferService';
 import { useToast } from '../context/ToastContext';
 import { formatPrice } from '../utils/helpers';
 
@@ -26,16 +26,15 @@ export default function AdminTransfers() {
       .finally(() => setLoading(false));
   }, []);
 
-  const pending  = transfers.filter(t => t.sellerApproved && t.buyerApproved && !t.officerApproved && t.status !== 'completed');
-  const active   = transfers.filter(t => (!t.sellerApproved || !t.buyerApproved) && t.status !== 'completed');
-  const completed= transfers.filter(t => t.status === 'completed');
+  const isCompleted = (t) => ['completed', 'Completed', 'officerApproved', 'Approved'].includes(t.status);
+  const pending  = transfers.filter(t => t.sellerApproved && t.buyerApproved && !t.officerApproved && !isCompleted(t));
+  const active   = transfers.filter(t => (!t.sellerApproved || !t.buyerApproved) && !isCompleted(t));
+  const completed= transfers.filter(t => isCompleted(t));
 
   const handleApprove = async () => {
     setActionLoading(true);
     try {
       await officerApprove(modal.id);
-      // Skip the blockchain interaction for now and immediately mark it as complete
-      await completeTransfer(modal.id);
       toast.success('Transfer approved and ownership completed!');
       setTransfers(prev => prev.map(t =>
         (t._id === modal.id) ? { ...t, officerApproved: true, status: 'completed' } : t
@@ -89,7 +88,7 @@ export default function AdminTransfers() {
           <div className="border-t border-gray-100 p-4 bg-gray-50 animate-fade-in">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Transfer Progress</p>
             <LifecycleTracker
-              currentStage={t.status === 'Completed' || t.status === 'completed' ? 'completed' : t.status === 'Approved' || t.officerApproved ? 'chain_processing' : t.status === 'buyerApproved' || t.buyerApproved ? 'officer_approved' : t.status === 'Pending Verification' || t.sellerApproved ? 'buyer_signed' : 'seller_approved'}
+              currentStage={t.status === 'Completed' || t.status === 'completed' ? 'completed' : t.status === 'Approved' || t.officerApproved ? 'completed' : t.status === 'buyerApproved' || t.buyerApproved ? 'officer_approved' : t.status === 'Pending Verification' || t.sellerApproved ? 'buyer_signed' : 'seller_approved'}
               compact
             />
           </div>
