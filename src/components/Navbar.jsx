@@ -78,15 +78,7 @@ export default function Navbar() {
 
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-2">
-          {isAuthenticated && (
-            <>
-              <NavLink to={dashboardRoute} label="Dashboard" />
-              <NavLink to="/search" label="Search" />
-              {(user?.role === 'seller' || user?.role === 'admin') && (
-                <NavLink to="/register-property" label="Register Property" />
-              )}
-            </>
-          )}
+          {/* Links for authenticated users have been moved to the Sidebar */}
         </div>
 
         {/* Desktop Auth */}
@@ -127,14 +119,6 @@ export default function Navbar() {
 
                 {userMenuOpen && (
                   <div className="absolute right-0 top-full mt-2 z-50 w-52 rounded-xl bg-white border border-gray-100 shadow-xl py-1 animate-fade-in">
-                    <Link
-                      to={dashboardRoute}
-                      onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-                    >
-                      <LayoutDashboard className="h-4 w-4 text-amber-600" />
-                      Dashboard
-                    </Link>
                     <Link
                       to="/profile"
                       onClick={() => setUserMenuOpen(false)}
@@ -198,11 +182,6 @@ export default function Navbar() {
                 <div className="px-1 mb-3">
                   <ConnectButton />
                 </div>
-                <MobileLink to={dashboardRoute} label="Dashboard" onClick={() => setMobileOpen(false)} />
-                <MobileLink to="/search" label="Search Properties" onClick={() => setMobileOpen(false)} />
-                {(user?.role === 'seller' || user?.role === 'admin') && (
-                  <MobileLink to="/register-property" label="Register Property" onClick={() => setMobileOpen(false)} />
-                )}
                 <hr className="border-gray-100 my-3" />
                 <button
                   onClick={handleLogout}

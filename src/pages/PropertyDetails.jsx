@@ -228,7 +228,7 @@ export default function PropertyDetails() {
     ? property.images
     : documents.map(d => d.url).filter(Boolean);
   const hasRealImages = images.length > 0 && images[0] && !images[0].startsWith('#');
-  const hasBlockchain = !!(property.blockchain?.transactionHash || property.blockchain?.propertyIdOnChain);
+  const hasBlockchain = !!(property.blockchainTx || property.blockchain?.transactionHash || property.blockchain?.propertyIdOnChain);
   const title = property.title || `${(property.landDetails?.landType || 'property').charAt(0).toUpperCase() + (property.landDetails?.landType || 'property').slice(1)} Land — ${property.location?.city || ''}`;
   const price = property.pricing?.priceINR || 0;
 
@@ -367,14 +367,14 @@ export default function PropertyDetails() {
 
             {hasBlockchain ? (
               <div className="space-y-4">
-                {property.blockchain?.transactionHash && (
+                {(property.blockchainTx || property.blockchain?.transactionHash) && (
                   <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-200 p-4">
                     <div>
                       <p className="text-xs text-gray-500">Transaction Hash</p>
-                      <p className="mt-1 font-mono text-sm font-semibold text-blue-950">{property.blockchain.transactionHash.slice(0, 10)}...{property.blockchain.transactionHash.slice(-8)}</p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-blue-950">{(property.blockchainTx || property.blockchain?.transactionHash).slice(0, 10)}...{(property.blockchainTx || property.blockchain?.transactionHash).slice(-8)}</p>
                     </div>
                     <button
-                      onClick={() => { navigator.clipboard.writeText(property.blockchain.transactionHash); toast.info('Hash copied!'); }}
+                      onClick={() => { navigator.clipboard.writeText(property.blockchainTx || property.blockchain?.transactionHash); toast.info('Hash copied!'); }}
                       className="text-gray-400 hover:text-blue-900 transition-colors"
                     >
                       <FiCopy className="h-4 w-4" />

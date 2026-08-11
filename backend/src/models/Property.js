@@ -73,6 +73,8 @@ const propertySchema = new mongoose.Schema(
       blockTimestamp: Date,
       ipfsDocumentHash: String,
     },
+    blockchainTx: String,
+    blockchainPropertyId: String,
 
     documents: [
       {
