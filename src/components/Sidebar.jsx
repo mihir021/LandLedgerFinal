@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, LogOut,
   LayoutDashboard, Search, FilePlus, FileText,
   Users, ShieldCheck, ArrowLeftRight, Bell, Wallet,
-  Settings, BarChart3, MessageSquare, Home, BookOpen,
+  Settings, MessageSquare, Home, BookOpen,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 

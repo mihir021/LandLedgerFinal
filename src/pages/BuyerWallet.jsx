@@ -1,10 +1,12 @@
 /**
- * BuyerWallet — mock blockchain wallet page
+ * BuyerWallet — blockchain wallet page backed by real user wallet + transfer data
  */
-import { ArrowLeft, TrendingDown, TrendingUp, Minus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowLeft, TrendingDown, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import WalletConnectButton from '../components/WalletConnectButton';
-import { MOCK_WALLET_TRANSACTIONS } from '../data/mock';
+import { getTransfers } from '../services/transferService';
+import { useAuth } from '../context/AuthContext';
 
 function formatINR(amount) {
   const abs = Math.abs(amount);
@@ -13,20 +15,39 @@ function formatINR(amount) {
   return `₹${abs.toLocaleString('en-IN')}`;
 }
 
-const TX_ICONS = {
-  purchase: TrendingDown,
-  deposit:  TrendingUp,
-  fee:      Minus,
-};
-
-const TX_COLORS = {
-  purchase: 'text-red-600 bg-red-50',
-  deposit:  'text-green-700 bg-green-50',
-  fee:      'text-gray-600 bg-gray-100',
-};
-
 export default function BuyerWallet() {
-  const balance = MOCK_WALLET_TRANSACTIONS.reduce((sum, t) => sum + t.amount, 0);
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [transactions, setTransactions] = useState([]);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const transfers = await getTransfers();
+        const completed = (Array.isArray(transfers) ? transfers : []).filter(t => t.status === 'completed');
+        // Derive purchase transactions from completed transfers
+        const txs = completed.map(t => ({
+          id: t._id,
+          type: 'purchase',
+          description: t.property?.propertyId || t.property?.address || 'Property Purchase',
+          amount: -(t.property?.price || 0),
+          txHash: t.transactionHash || `${t._id}`.slice(0, 18),
+          date: t.createdAt,
+        }));
+        setTransactions(txs);
+      } catch {
+        setTransactions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const totalInvested = Math.abs(transactions.reduce((sum, t) => sum + t.amount, 0));
+  const walletAddress = user?.walletAddress || 'Not connected';
+  const shortAddress = walletAddress.length > 18 ? `${walletAddress.slice(0, 10)}...${walletAddress.slice(-6)}` : walletAddress;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -44,18 +65,22 @@ export default function BuyerWallet() {
       <div className="ll-card p-6 animate-fade-in-up" style={{ background: 'linear-gradient(135deg, #0A1628 0%, #1E3A5F 100%)' }}>
         <div className="flex items-start justify-between mb-6">
           <div>
-            <p className="text-sm text-white/60 mb-1">Total Balance</p>
-            <p className="font-serif text-4xl font-bold text-white">{formatINR(balance)}</p>
-            <p className="text-sm text-white/50 mt-1">≈ {(balance / 83).toFixed(0)} USD</p>
+            <p className="text-sm text-white/60 mb-1">Total Invested in Properties</p>
+            <p className="font-serif text-4xl font-bold text-white">{formatINR(totalInvested)}</p>
+            <p className="text-sm text-white/50 mt-1">≈ {(totalInvested / 83).toFixed(0)} USD</p>
           </div>
           <WalletConnectButton className="shrink-0" />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="rounded-xl bg-white/10 border border-white/15 px-4 py-3 mb-4">
+          <p className="text-xs text-white/60">Wallet Address</p>
+          <p className="font-mono text-sm font-semibold text-white truncate mt-0.5">{shortAddress}</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           {[
-            { label: 'Total Invested', value: formatINR(16500000), sub: 'in properties' },
-            { label: 'Fees Paid',      value: formatINR(15000),    sub: 'registration fees' },
-            { label: 'Transactions',   value: '3',                 sub: 'total tx' },
+            { label: 'Total Invested', value: formatINR(totalInvested), sub: 'in properties' },
+            { label: 'Transactions',   value: transactions.length,      sub: 'total completed' },
           ].map(s => (
             <div key={s.label} className="rounded-xl bg-white/10 border border-white/15 px-3 py-3">
               <p className="text-xs text-white/60">{s.label}</p>
@@ -69,30 +94,29 @@ export default function BuyerWallet() {
       {/* Transactions */}
       <div className="ll-card animate-fade-in-up delay-200">
         <div className="border-b border-gray-100 px-5 py-4">
-          <h2 className="font-serif text-lg font-semibold text-gray-900">Transaction History</h2>
+          <h2 className="font-serif text-lg font-semibold text-gray-900">Property Transactions</h2>
         </div>
-        <div className="divide-y divide-gray-50">
-          {MOCK_WALLET_TRANSACTIONS.map((tx, i) => {
-            const Icon = TX_ICONS[tx.type] || Minus;
-            const colorClass = TX_COLORS[tx.type] || TX_COLORS.fee;
-            const isNeg = tx.amount < 0;
-            return (
+        {loading ? (
+          <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 text-blue-800 animate-spin" /></div>
+        ) : transactions.length === 0 ? (
+          <p className="text-center text-sm text-gray-400 py-12">No completed property transactions yet.</p>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {transactions.map(tx => (
               <div key={tx.id} className="flex items-center gap-4 px-5 py-4">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full shrink-0 ${colorClass}`}>
-                  <Icon className="h-5 w-5" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full shrink-0 text-red-600 bg-red-50">
+                  <TrendingDown className="h-5 w-5" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-800">{tx.description}</p>
                   <p className="mono-data text-xs truncate mt-0.5">{tx.txHash}</p>
                   <p className="text-xs text-gray-400">{new Date(tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                 </div>
-                <p className={`text-base font-bold shrink-0 ${isNeg ? 'text-red-600' : 'text-green-700'}`}>
-                  {isNeg ? '−' : '+'}{formatINR(tx.amount)}
-                </p>
+                <p className="text-base font-bold shrink-0 text-red-600">−{formatINR(Math.abs(tx.amount))}</p>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Info note */}

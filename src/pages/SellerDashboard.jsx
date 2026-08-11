@@ -24,7 +24,7 @@ export default function SellerDashboard() {
       setLoading(true);
       try {
         const [props, transfers] = await Promise.all([
-          getProperties({ limit: 20 }).catch(() => ({ properties: [] })),
+          getProperties({ owner: user?._id, limit: 20 }).catch(() => ({ properties: [] })),
           getTransfers().catch(() => []),
         ]);
         setProperties(props.properties || []);
@@ -35,9 +35,9 @@ export default function SellerDashboard() {
       }
     };
     load();
-  }, []);
+  }, [user]);
 
-  const listed = properties.filter(p => p.verificationStatus === 'verified' || p.verificationStatus === 'listed');
+  const listed = properties.filter(p => p.verificationStatus === 'verified' && p.isListed);
   const pending = requests.filter(r => r.status === 'pending');
 
   const stats = [

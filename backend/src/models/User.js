@@ -43,8 +43,13 @@ const userSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'verified', 'rejected'],
+      enum: ['pending', 'verified', 'rejected', 'suspended'],
       default: 'pending',
+    },
+    jurisdiction: {
+      type: String,
+      trim: true,
+      default: null,
     },
     profileImage: {
       type: String,

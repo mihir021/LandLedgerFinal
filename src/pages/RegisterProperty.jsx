@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FiMapPin, FiHash, FiFileText, FiDollarSign,
-  FiImage, FiUpload, FiCheckCircle, FiChevronDown,
+  FiImage, FiUpload, FiCheckCircle,
   FiLoader, FiX,
 } from 'react-icons/fi';
 import { createProperty } from '../services/propertyService';

@@ -8,13 +8,16 @@ import { useParams, Link } from 'react-router-dom';
 import {
   FiMapPin, FiMaximize, FiTag, FiUser, FiCalendar,
   FiFileText, FiShield, FiArrowLeft, FiShoppingCart, FiCopy,
-  FiLoader, FiAlertCircle, FiClock, FiMessageSquare, FiX,
+  FiLoader, FiAlertCircle, FiClock, FiMessageSquare, FiX, FiFlag, FiMap,
 } from 'react-icons/fi';
 import { SiBlockchaindotcom } from 'react-icons/si';
+import { QRCodeSVG } from 'qrcode.react';
 import StatusBadge from '../components/StatusBadge';
-import { getPropertyById } from '../services/propertyService';
+import PropertyMap from '../components/PropertyMap';
+import { getPropertyById, getPropertyHistory } from '../services/propertyService';
 import { requestTransfer } from '../services/transferService';
 import { createInquiry } from '../services/inquiryService';
+import { createDispute } from '../services/disputeService';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency, formatDate } from '../utils/helpers';
@@ -28,6 +31,16 @@ export default function PropertyDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [purchasing, setPurchasing] = useState(false);
+
+  // History state
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  // Dispute state
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [disputeSubject, setDisputeSubject] = useState('');
+  const [disputeDescription, setDisputeDescription] = useState('');
+  const [submittingDispute, setSubmittingDispute] = useState(false);
 
   // Inquiry state
   const [showInquiryModal, setShowInquiryModal] = useState(false);
@@ -60,6 +73,19 @@ export default function PropertyDetails() {
       }
     };
     fetchProperty();
+
+    const fetchHistory = async () => {
+      setHistoryLoading(true);
+      try {
+        const data = await getPropertyHistory(id);
+        setHistory(Array.isArray(data) ? data : []);
+      } catch {
+        setHistory([]);
+      } finally {
+        setHistoryLoading(false);
+      }
+    };
+    fetchHistory();
   }, [id]);
 
   /** Handle purchase request */
@@ -102,6 +128,31 @@ export default function PropertyDetails() {
       toast.error(err.message || 'Failed to submit inquiry');
     } finally {
       setSubmittingInquiry(false);
+    }
+  };
+
+  /** Handle dispute filing */
+  const handleDisputeSubmit = async (e) => {
+    e.preventDefault();
+    if (!disputeSubject.trim() || !disputeDescription.trim()) {
+      toast.error('Please provide a subject and description');
+      return;
+    }
+    setSubmittingDispute(true);
+    try {
+      await createDispute({
+        property: property._id,
+        subject: disputeSubject,
+        description: disputeDescription,
+      });
+      toast.success('Dispute filed — a government officer will review it');
+      setShowDisputeModal(false);
+      setDisputeSubject('');
+      setDisputeDescription('');
+    } catch (err) {
+      toast.error(err.message || 'Failed to file dispute');
+    } finally {
+      setSubmittingDispute(false);
     }
   };
 
@@ -157,7 +208,6 @@ export default function PropertyDetails() {
   // Normalize data
   const status = property.verificationStatus || 'pending';
   const ownerName = typeof property.owner === 'object' ? property.owner.fullName : (property.owner || 'Unknown');
-  const ownerId = typeof property.owner === 'object' ? property.owner._id : property.owner;
   const images = property.images || [];
   const documents = property.documents || [];
   const hasRealImages = images.length > 0 && images[0] && !images[0].startsWith('#');
@@ -250,6 +300,21 @@ export default function PropertyDetails() {
             </div>
           </div>
 
+          {/* Location Map */}
+          {(property.latitude && property.longitude) && (
+            <div className="ll-card p-6 animate-fade-in-up delay-150">
+              <div className="flex items-center gap-2 mb-4">
+                <FiMap className="h-5 w-5 text-blue-900" />
+                <h2 className="text-lg font-bold font-serif text-gray-900">Location</h2>
+              </div>
+              <PropertyMap
+                latitude={property.latitude}
+                longitude={property.longitude}
+                label={`${property.address}, ${property.city}`}
+              />
+            </div>
+          )}
+
           {/* Documents */}
           <div className="ll-card p-6 animate-fade-in-up delay-200">
             <div className="flex items-center gap-2 mb-4">
@@ -315,6 +380,67 @@ export default function PropertyDetails() {
                 </div>
               </div>
             )}
+
+            {/* QR Code Certificate */}
+            <div className="mt-5 flex items-center gap-4 rounded-xl bg-gray-50 border border-gray-200 p-4">
+              <QRCodeSVG
+                value={`landledger://property/${property._id}?survey=${property.surveyNumber || ''}`}
+                size={88}
+                fgColor="#0f172a"
+              />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-900">Property Certificate</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Scan this QR code to verify the authenticity of property {property.propertyId || ''} on the registry.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Property History / Title Chain */}
+          <div className="ll-card p-6 animate-fade-in-up delay-300">
+            <div className="flex items-center gap-2 mb-6">
+              <FiClock className="h-5 w-5 text-blue-900" />
+              <h2 className="text-lg font-bold font-serif text-gray-900">Property History</h2>
+            </div>
+
+            {historyLoading ? (
+              <div className="flex justify-center py-8">
+                <FiLoader className="h-6 w-6 text-blue-400 animate-spin" />
+              </div>
+            ) : history.length === 0 ? (
+              <p className="text-sm text-gray-500">No title chain history available yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {history.map((entry, i) => (
+                  <div key={i} className="ll-card p-4">
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <div className="flex items-center gap-2">
+                        <FiClock className="h-4 w-4 text-blue-700 shrink-0" />
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full border bg-blue-50 text-blue-700 border-blue-100">
+                          {entry.label || entry.stage}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">{formatDate(entry.timestamp)}</p>
+                    </div>
+                    <p className="text-sm text-gray-700">{entry.details}</p>
+                    <p className="text-xs text-gray-500 mt-1">By: {entry.actor}</p>
+                    {entry.transactionHash && (
+                      <div className="mt-2 flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                        <span className="text-xs text-gray-500 font-medium shrink-0">Tx Hash</span>
+                        <code className="mono-data flex-1 truncate text-gray-700">{entry.transactionHash}</code>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(entry.transactionHash); toast.info('Hash copied!'); }}
+                          className="text-gray-400 hover:text-blue-900 transition-colors"
+                        >
+                          <FiCopy className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -360,6 +486,17 @@ export default function PropertyDetails() {
               <FiMessageSquare className="h-4 w-4 text-blue-900" />
               Inquire About Property
             </button>
+
+            {/* Raise Dispute */}
+            {isAuthenticated && (
+              <button
+                onClick={() => setShowDisputeModal(true)}
+                className="mt-3 flex w-full items-center justify-center gap-2 btn-secondary py-3 text-sm border-red-200 text-red-700 hover:bg-red-50"
+              >
+                <FiFlag className="h-4 w-4 text-red-600" />
+                Raise a Dispute
+              </button>
+            )}
 
             {!isAuthenticated && (
               <Link
@@ -416,6 +553,68 @@ export default function PropertyDetails() {
           </div>
         </div>
       </div>
+
+      {/* Dispute Modal */}
+      {showDisputeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2">
+                <FiFlag className="h-5 w-5 text-red-600" />
+                <h3 className="text-lg font-bold font-serif text-gray-900">Raise a Dispute</h3>
+              </div>
+              <button
+                onClick={() => setShowDisputeModal(false)}
+                className="rounded-lg p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleDisputeSubmit} className="space-y-4">
+              <div>
+                <label className="ll-label">Subject *</label>
+                <input
+                  type="text"
+                  required
+                  value={disputeSubject}
+                  onChange={(e) => setDisputeSubject(e.target.value)}
+                  className="ll-input"
+                  placeholder="e.g. Boundary discrepancy, Title dispute..."
+                />
+              </div>
+              <div>
+                <label className="ll-label">Description *</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={disputeDescription}
+                  onChange={(e) => setDisputeDescription(e.target.value)}
+                  className="ll-input resize-none"
+                  placeholder="Describe the issue in detail. A government officer will review your claim."
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDisputeModal(false)}
+                  className="btn-secondary text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingDispute}
+                  className="btn-danger text-xs"
+                >
+                  {submittingDispute ? <FiLoader className="h-4 w-4 animate-spin" /> : <FiFlag className="h-4 w-4" />}
+                  {submittingDispute ? 'Filing...' : 'File Dispute'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Inquiry Modal */}
       {showInquiryModal && (

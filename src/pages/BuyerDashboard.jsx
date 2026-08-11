@@ -3,21 +3,20 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, FileText, Home, Bell, ArrowRight, ShieldCheck, Clock, CheckCircle } from 'lucide-react';
+import { Search, FileText, Home, ArrowRight, ShieldCheck, Clock, CheckCircle } from 'lucide-react';
 import DashboardCard from '../components/DashboardCard';
 import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
-import { useToast } from '../context/ToastContext';
 import { getProperties } from '../services/propertyService';
 import { getTransfers } from '../services/transferService';
-import { MOCK_NOTIFICATIONS } from '../data/mock';
+import { getNotifications } from '../services/notificationService';
 
 export default function BuyerDashboard() {
   const { user } = useAuth();
-  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [properties, setProperties] = useState([]);
   const [purchases, setPurchases] = useState([]);
+  const [notifications, setNotifications] = useState([]);
 
   const displayName = user?.fullName || user?.name || 'Buyer';
   const firstName = displayName.split(' ')[0];
@@ -26,12 +25,14 @@ export default function BuyerDashboard() {
     const load = async () => {
       setLoading(true);
       try {
-        const [props, transfers] = await Promise.all([
+        const [props, transfers, notifs] = await Promise.all([
           getProperties({ verificationStatus: 'verified', limit: 6 }).catch(() => ({ properties: [] })),
           getTransfers().catch(() => []),
+          getNotifications().catch(() => []),
         ]);
         setProperties(props.properties || []);
         setPurchases(Array.isArray(transfers) ? transfers : []);
+        setNotifications(Array.isArray(notifs) ? notifs : []);
       } catch {
         // Still render with empty data
       } finally {
@@ -48,7 +49,7 @@ export default function BuyerDashboard() {
     { icon: CheckCircle, label: 'Completed',            value: purchases.filter(p => p.status === 'completed').length, color: 'emerald' },
   ];
 
-  const unreadNotifs = MOCK_NOTIFICATIONS.filter(n => !n.read).slice(0, 4);
+  const unreadNotifs = notifications.filter(n => !n.isRead).slice(0, 4);
 
   return (
     <div className="space-y-8">
@@ -114,9 +115,10 @@ export default function BuyerDashboard() {
               <p className="text-sm text-gray-400 py-6 text-center">No new notifications</p>
             ) : (
               unreadNotifs.map(n => (
-                <div key={n.id} className={`flex gap-3 rounded-lg p-3 border ${n.read ? 'bg-white border-gray-100' : 'bg-blue-50 border-blue-100'}`}>
-                  <div className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${n.read ? 'bg-gray-300' : 'bg-blue-600'}`} />
+                <div key={n._id || n.id} className={`flex gap-3 rounded-lg p-3 border ${n.isRead || n.read ? 'bg-white border-gray-100' : 'bg-blue-50 border-blue-100'}`}>
+                  <div className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${n.isRead || n.read ? 'bg-gray-300' : 'bg-blue-600'}`} />
                   <div>
+                    {n.title && <p className="text-sm font-semibold text-gray-800">{n.title}</p>}
                     <p className="text-sm text-gray-700">{n.message}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{new Date(n.createdAt).toLocaleDateString('en-IN')}</p>
                   </div>

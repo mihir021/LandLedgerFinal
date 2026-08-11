@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, ShieldCheck, ArrowLeftRight, MessageSquare, Check, X, Loader2, Send, ArrowRight } from 'lucide-react';
+import { Users, ShieldCheck, ArrowLeftRight, MessageSquare, Check, X, Loader2, Send, ArrowRight, Scale } from 'lucide-react';
 import DashboardCard from '../components/DashboardCard';
 import StatusBadge from '../components/StatusBadge';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -14,6 +14,7 @@ import { getProperties, verifyProperty } from '../services/propertyService';
 import { getTransfers, officerApprove } from '../services/transferService';
 import { getUsers } from '../services/userService';
 import { getInquiries, updateInquiryStatus } from '../services/inquiryService';
+import { getDisputes, updateDispute } from '../services/disputeService';
 
 export default function OfficerDashboard() {
   const { user } = useAuth();
@@ -24,6 +25,7 @@ export default function OfficerDashboard() {
   const [pendingTransfers, setPendingTransfers] = useState([]);
   const [pendingUsers, setPendingUsers] = useState(0);
   const [inquiries, setInquiries] = useState([]);
+  const [disputes, setDisputes] = useState([]);
   const [actionLoading, setActionLoading] = useState(null);
 
   // Inquiry reply state
@@ -31,9 +33,14 @@ export default function OfficerDashboard() {
   const [replyText, setReplyText] = useState('');
   const [replyStatus, setReplyStatus] = useState('resolved');
 
+  // Dispute resolve state
+  const [resolvingId, setResolvingId] = useState(null);
+  const [resolutionText, setResolutionText] = useState('');
+
   // Confirmation modals
   const [propModal, setPropModal] = useState({ open: false, id: null, status: null, name: '' });
   const [transferModal, setTransferModal] = useState({ open: false, id: null });
+  const [disputeModal, setDisputeModal] = useState({ open: false, id: null, status: null });
 
   const displayName = user?.fullName || user?.name || 'Officer';
 
@@ -44,16 +51,18 @@ export default function OfficerDashboard() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [propRes, transfers, userRes, inqData] = await Promise.all([
+      const [propRes, transfers, userRes, inqData, disputeRes] = await Promise.all([
         getProperties({ verificationStatus: 'pending', limit: 20 }).catch(() => ({ properties: [] })),
         getTransfers().catch(() => []),
         getUsers({ status: 'pending', limit: 1 }).catch(() => ({ pagination: { total: 0 } })),
         getInquiries().catch(() => []),
+        getDisputes({ status: 'open', limit: 20 }).catch(() => ({ disputes: [] })),
       ]);
       setPendingProperties(propRes.properties || []);
-      setPendingTransfers((Array.isArray(transfers) ? transfers : []).filter(t => t.sellerApproved && !t.officerApproved));
+      setPendingTransfers((Array.isArray(transfers) ? transfers : []).filter(t => t.sellerApproved && t.buyerApproved && !t.officerApproved));
       setPendingUsers(userRes.pagination?.total || 0);
       setInquiries(Array.isArray(inqData) ? inqData : []);
+      setDisputes(disputeRes.disputes || []);
     } catch {
       // Dashboard still usable
     } finally {
@@ -104,11 +113,27 @@ export default function OfficerDashboard() {
     }
   };
 
+  const handleResolveDispute = async () => {
+    setActionLoading(disputeModal.id);
+    try {
+      await updateDispute(disputeModal.id, { status: disputeModal.status, resolution: resolutionText });
+      toast.success(`Dispute marked as ${disputeModal.status}`);
+      setDisputes(prev => prev.filter(d => d._id !== disputeModal.id));
+    } catch (err) {
+      toast.error(err.message || 'Failed');
+    } finally {
+      setActionLoading(null);
+      setDisputeModal({ open: false, id: null, status: null });
+      setResolutionText('');
+    }
+  };
+
   const stats = [
     { icon: Users,          label: 'Pending KYC',           value: pendingUsers,             color: 'amber'  },
     { icon: ShieldCheck,    label: 'Pending Verification',  value: pendingProperties.length, color: 'navy'   },
     { icon: ArrowLeftRight, label: 'Awaiting Approval',     value: pendingTransfers.length,  color: 'purple' },
     { icon: MessageSquare,  label: 'Open Inquiries',        value: inquiries.filter(i=>i.status==='pending').length, color: 'green' },
+    { icon: Scale,          label: 'Open Disputes',         value: disputes.length,          color: 'red'    },
   ];
 
   return (
@@ -209,6 +234,78 @@ export default function OfficerDashboard() {
                         <Check className="h-3 w-3" /> Approve
                       </button>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Disputes */}
+          <div className="ll-card overflow-hidden animate-fade-in-up delay-500">
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <Scale className="h-4 w-4 text-red-600" />
+                <h2 className="font-serif text-base font-semibold text-gray-900">Property Disputes</h2>
+              </div>
+              {disputes.length > 0 && (
+                <span className="rounded-full bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5">{disputes.length}</span>
+              )}
+            </div>
+            {disputes.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 py-10">No open disputes. ✓</p>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {disputes.map(d => (
+                  <div key={d._id} className="p-5 space-y-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800">{d.subject}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {d.property?.propertyId || 'Property'} · Filed by {d.raiser?.fullName || 'User'}
+                        </p>
+                      </div>
+                      <StatusBadge status={d.status || 'open'} />
+                    </div>
+                    <blockquote className="rounded-lg bg-gray-50 border border-gray-100 p-3 text-xs text-gray-700 italic leading-relaxed">
+                      "{d.description}"
+                    </blockquote>
+                    {resolvingId === d._id ? (
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+                        <textarea
+                          rows={2}
+                          value={resolutionText}
+                          onChange={e => setResolutionText(e.target.value)}
+                          placeholder="Official resolution note..."
+                          className="ll-input text-xs resize-none"
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => setResolvingId(null)} className="btn-secondary text-xs py-1.5 px-3">Cancel</button>
+                          <button
+                            onClick={() => setDisputeModal({ open: true, id: d._id, status: 'resolved' })}
+                            disabled={actionLoading === d._id}
+                            className="btn-success text-xs py-1.5 px-3"
+                          >
+                            <Check className="h-3 w-3" /> Resolve
+                          </button>
+                          <button
+                            onClick={() => setDisputeModal({ open: true, id: d._id, status: 'rejected' })}
+                            disabled={actionLoading === d._id}
+                            className="btn-danger text-xs py-1.5 px-3"
+                          >
+                            <X className="h-3 w-3" /> Reject Claim
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => { setResolvingId(d._id); setResolutionText(''); }}
+                          className="flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline"
+                        >
+                          <Scale className="h-3.5 w-3.5" /> Review & Decide
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -324,6 +421,18 @@ export default function OfficerDashboard() {
         title="Approve Transfer — Final Officer Compliance"
         message="This is the final officer compliance check. The smart contract will execute the ownership transfer and record it immutably on the blockchain."
         confirmLabel="Approve Transfer"
+      />
+      <ConfirmationModal
+        isOpen={disputeModal.open}
+        onClose={() => setDisputeModal({ open: false, id: null, status: null })}
+        onConfirm={handleResolveDispute}
+        loading={actionLoading !== null}
+        variant={disputeModal.status === 'resolved' ? 'approve' : 'reject'}
+        title={disputeModal.status === 'resolved' ? 'Resolve Dispute' : 'Reject Dispute Claim'}
+        message={disputeModal.status === 'resolved'
+          ? 'The dispute will be marked as resolved and the involved parties will be notified of the official outcome.'
+          : 'The dispute claim will be rejected as unsubstantiated and the involved parties will be notified.'}
+        confirmLabel={disputeModal.status === 'resolved' ? 'Confirm Resolution' : 'Confirm Rejection'}
       />
     </div>
   );

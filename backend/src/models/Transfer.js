@@ -41,6 +41,32 @@ const transferSchema = new mongoose.Schema(
       default: false,
     },
 
+    timeline: [
+      {
+        stage: {
+          type: String,
+          trim: true,
+        },
+        actor: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        actorName: {
+          type: String,
+          trim: true,
+        },
+        note: {
+          type: String,
+          trim: true,
+          default: '',
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+
     // ----- Blockchain integration field -----
     // TODO: Populate when transfer is recorded on-chain via Stylus Smart Contract
     transactionHash: {

@@ -3,7 +3,7 @@
  * Shows thumbnail, address, type badge, price, lifecycle pill, and verification.
  */
 import { Link } from 'react-router-dom';
-import { MapPin, Maximize, Tag, ArrowRight } from 'lucide-react';
+import { MapPin, ArrowRight } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import VerificationBadge from './VerificationBadge';
 

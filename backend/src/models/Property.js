@@ -80,6 +80,14 @@ const propertySchema = new mongoose.Schema(
       enum: ['pending', 'verified', 'rejected'],
       default: 'pending',
     },
+    isListed: {
+      type: Boolean,
+      default: false,
+    },
+    isDraft: {
+      type: Boolean,
+      default: false,
+    },
 
     // ----- Blockchain integration fields -----
     // TODO: Populate these fields when Stylus Smart Contract is integrated

@@ -13,6 +13,10 @@ const STATUS_CONFIG = {
   officer_approved:   { label: 'Officer Approved',  cls: 'status-transfer'  },
   chain_processing:   { label: 'Processing',        cls: 'status-pending'   },
   completed:          { label: 'Completed',         cls: 'status-completed' },
+  // Transfer statuses as stored in the DB (camelCase)
+  sellerApproved:     { label: 'Seller Approved',   cls: 'status-transfer'  },
+  buyerApproved:      { label: 'Buyer Signed',      cls: 'status-transfer'  },
+  officerApproved:    { label: 'Officer Approved',  cls: 'status-transfer'  },
   'in-progress':      { label: 'In Progress',       cls: 'status-listed'    },
   closed:             { label: 'Closed',            cls: 'status-draft'     },
   // User KYC
@@ -21,6 +25,10 @@ const STATUS_CONFIG = {
   kyc_rejected:       { label: 'KYC Rejected',      cls: 'status-rejected'  },
   active:             { label: 'Active',            cls: 'status-verified'  },
   inactive:           { label: 'Inactive',          cls: 'status-draft'     },
+  suspended:          { label: 'Suspended',         cls: 'status-rejected'  },
+  // Disputes
+  open:               { label: 'Open',              cls: 'status-transfer'  },
+  resolved:           { label: 'Resolved',          cls: 'status-verified'  },
 };
 
 export default function StatusBadge({ status, size = 'sm' }) {

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   requestTransfer,
   sellerApprove,
+  buyerApprove,
   officerApprove,
   completeTransfer,
   getTransfers,
@@ -23,6 +24,9 @@ router.post('/request', authorize('buyer'), validateTransferRequest, requestTran
 
 // Seller approves
 router.post('/seller-approve', authorize('seller'), validateTransferAction, sellerApprove);
+
+// Buyer approves / signs
+router.post('/buyer-approve', authorize('buyer'), validateTransferAction, buyerApprove);
 
 // Officer approves
 router.post(

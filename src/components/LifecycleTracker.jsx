@@ -39,7 +39,6 @@ function HorizontalTracker({ currentIdx }) {
         {LIFECYCLE_STAGES.map((stage, idx) => {
           const done    = idx < currentIdx;
           const active  = idx === currentIdx;
-          const pending = idx > currentIdx;
           const actor   = ACTOR_STYLES[stage.actor];
 
           return (

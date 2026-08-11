@@ -3,14 +3,15 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, ShieldCheck, ArrowLeftRight, Home, ArrowRight, Activity, Loader2, CheckCircle2 } from 'lucide-react';
+import { Users, ShieldCheck, ArrowLeftRight, Home, ArrowRight, Activity, Loader2, CheckCircle2, FileClock, UserPlus, X } from 'lucide-react';
 import DashboardCard from '../components/DashboardCard';
 import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getProperties } from '../services/propertyService';
 import { getTransfers } from '../services/transferService';
-import { getUsers } from '../services/userService';
+import { getUsers, registerOfficer } from '../services/userService';
+import { getAuditLogs } from '../services/auditService';
 import { MOCK_SYSTEM_STATS } from '../data/mock';
 
 export default function AdminDashboard() {
@@ -20,6 +21,10 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(MOCK_SYSTEM_STATS);
   const [pendingProperties, setPendingProperties] = useState([]);
   const [recentTransfers, setRecentTransfers] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [showOfficerModal, setShowOfficerModal] = useState(false);
+  const [officerForm, setOfficerForm] = useState({ fullName: '', email: '', password: '', phone: '', jurisdiction: '' });
+  const [submittingOfficer, setSubmittingOfficer] = useState(false);
 
   const displayName = user?.fullName || user?.name || 'Admin';
   const firstName = displayName.split(' ')[0];
@@ -28,13 +33,15 @@ export default function AdminDashboard() {
     const load = async () => {
       setLoading(true);
       try {
-        const [propRes, transfers, userRes] = await Promise.all([
+        const [propRes, transfers, userRes, logs] = await Promise.all([
           getProperties({ verificationStatus: 'pending', limit: 5 }).catch(() => ({ properties: [], pagination: { total: 0 } })),
           getTransfers().catch(() => []),
           getUsers({ status: 'pending', limit: 1 }).catch(() => ({ pagination: { total: 0 } })),
+          getAuditLogs({ limit: 6 }).catch(() => ({ logs: [] })),
         ]);
         setPendingProperties(propRes.properties || []);
         setRecentTransfers(Array.isArray(transfers) ? transfers.slice(0, 5) : []);
+        setAuditLogs(logs.logs || []);
         setStats(s => ({
           ...s,
           pendingKyc: userRes.pagination?.total || s.pendingKyc,
@@ -50,6 +57,44 @@ export default function AdminDashboard() {
     };
     load();
   }, []);
+
+  const handleRegisterOfficer = async (e) => {
+    e.preventDefault();
+    if (!officerForm.fullName.trim() || !officerForm.email.trim() || !officerForm.password.trim()) {
+      toast.error('Full name, email and password are required');
+      return;
+    }
+    setSubmittingOfficer(true);
+    try {
+      await registerOfficer(officerForm);
+      toast.success('Government officer registered successfully');
+      setShowOfficerModal(false);
+      setOfficerForm({ fullName: '', email: '', password: '', phone: '', jurisdiction: '' });
+    } catch (err) {
+      toast.error(err.message || 'Failed to register officer');
+    } finally {
+      setSubmittingOfficer(false);
+    }
+  };
+
+  const ACTION_LABELS = {
+    'user.verify': 'User Verified',
+    'user.suspend': 'User Suspended',
+    'user.reinstate': 'User Reinstate',
+    'officer.create': 'Officer Created',
+    'property.verify': 'Property Verified',
+    'property.list': 'Property Listed',
+    'property.unlist': 'Property Unlisted',
+    'transfer.request': 'Transfer Requested',
+    'transfer.seller_approve': 'Seller Approved',
+    'transfer.buyer_approve': 'Buyer Signed',
+    'transfer.officer_approve': 'Officer Approved',
+    'transfer.complete': 'Transfer Completed',
+    'dispute.create': 'Dispute Filed',
+    'dispute.update': 'Dispute Updated',
+    'dispute.delete': 'Dispute Deleted',
+    'settings.update': 'Settings Updated',
+  };
 
   const cards = [
     { icon: Users,          label: 'Pending KYC',          value: stats.pendingKyc,            color: 'amber',  link: '/admin/users' },
@@ -172,6 +217,150 @@ export default function AdminDashboard() {
           );
         })}
       </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Audit Logs */}
+        <div className="ll-card overflow-hidden animate-fade-in-up delay-700">
+          <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <FileClock className="h-4 w-4 text-emerald-700" />
+              <h2 className="font-serif text-base font-semibold text-gray-900">Recent Audit Activity</h2>
+            </div>
+          </div>
+          {auditLogs.length === 0 ? (
+            <p className="text-center text-sm text-gray-400 py-10">No audit logs recorded yet.</p>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {auditLogs.map(log => (
+                <div key={log._id} className="flex items-start gap-3 px-5 py-3.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 shrink-0">
+                    <FileClock className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800">
+                      {ACTION_LABELS[log.action] || log.action.replace(/_/g, ' ')}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">
+                      {log.userEmail || 'System'} · {new Date(log.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Register Government Officer */}
+        <div className="ll-card overflow-hidden animate-fade-in-up delay-800">
+          <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <UserPlus className="h-4 w-4 text-blue-800" />
+              <h2 className="font-serif text-base font-semibold text-gray-900">Government Officers</h2>
+            </div>
+          </div>
+          <div className="p-5">
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Register a new government officer account to handle property verification, KYC approval and transfer compliance in a designated jurisdiction.
+            </p>
+            <button
+              onClick={() => setShowOfficerModal(true)}
+              className="mt-4 flex w-full items-center justify-center gap-2 btn-primary py-3 text-sm"
+            >
+              <UserPlus className="h-4 w-4" /> Register New Officer
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Register Officer Modal */}
+      {showOfficerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-blue-900" />
+                <h3 className="text-lg font-bold font-serif text-gray-900">Register Government Officer</h3>
+              </div>
+              <button
+                onClick={() => setShowOfficerModal(false)}
+                className="rounded-lg p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRegisterOfficer} className="space-y-4">
+              <div>
+                <label className="ll-label">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={officerForm.fullName}
+                  onChange={e => setOfficerForm({ ...officerForm, fullName: e.target.value })}
+                  className="ll-input"
+                  placeholder="e.g. District Registrar"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="ll-label">Email *</label>
+                  <input
+                    type="email"
+                    required
+                    value={officerForm.email}
+                    onChange={e => setOfficerForm({ ...officerForm, email: e.target.value })}
+                    className="ll-input"
+                    placeholder="officer@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="ll-label">Password *</label>
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    value={officerForm.password}
+                    onChange={e => setOfficerForm({ ...officerForm, password: e.target.value })}
+                    className="ll-input"
+                    placeholder="Min. 8 characters"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="ll-label">Phone</label>
+                  <input
+                    type="tel"
+                    value={officerForm.phone}
+                    onChange={e => setOfficerForm({ ...officerForm, phone: e.target.value })}
+                    className="ll-input"
+                    placeholder="+91..."
+                  />
+                </div>
+                <div>
+                  <label className="ll-label">Jurisdiction</label>
+                  <input
+                    type="text"
+                    value={officerForm.jurisdiction}
+                    onChange={e => setOfficerForm({ ...officerForm, jurisdiction: e.target.value })}
+                    className="ll-input"
+                    placeholder="e.g. Bengaluru Urban"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setShowOfficerModal(false)} className="btn-secondary text-xs">
+                  Cancel
+                </button>
+                <button type="submit" disabled={submittingOfficer} className="btn-primary text-xs">
+                  {submittingOfficer ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                  {submittingOfficer ? 'Registering...' : 'Register Officer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

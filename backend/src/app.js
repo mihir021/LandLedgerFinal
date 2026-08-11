@@ -14,6 +14,9 @@ import transferRoutes from './routes/transferRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import inquiryRoutes from './routes/inquiryRoutes.js';
+import disputeRoutes from './routes/disputeRoutes.js';
+import auditLogRoutes from './routes/auditLogRoutes.js';
+import settingRoutes from './routes/settingRoutes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 
 // __dirname equivalent for ES Modules
@@ -84,6 +87,9 @@ app.use('/api/transfers', transferRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/inquiries', inquiryRoutes);
+app.use('/api/disputes', disputeRoutes);
+app.use('/api/audit-logs', auditLogRoutes);
+app.use('/api/settings', settingRoutes);
 
 // =====================================================
 // Error Handling

@@ -72,6 +72,12 @@ const login = async (req, res, next) => {
       return next(new ApiError(401, 'Invalid email or password'));
     }
 
+    if (user.status === 'suspended') {
+      return next(
+        new ApiError(403, 'Account suspended — contact the administrator')
+      );
+    }
+
     const token = generateToken(user);
 
     res.status(200).json({
