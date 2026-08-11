@@ -4,7 +4,7 @@ Your DB has 5 collections already: `properties`, `users`, `transfers`, `inquirie
 Below is the proper schema for each, how your CSV maps into `properties`, and a ready-to-paste prompt for your coding agent (Cursor/Claude Code).
 
 Stack assumption: **Node.js + Express + Mongoose + MongoDB Atlas** (matching your Dinexa/FormBuddy stack). If BhoomiChain backend is different, tell the agent to adjust — the schema logic stays the same.
-
+.
 ---
 
 ## 1. `users` collection
