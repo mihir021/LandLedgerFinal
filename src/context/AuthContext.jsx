@@ -21,6 +21,7 @@ export const ROLE_ROUTES = {
   buyer: '/buyer',
   seller: '/seller',
   officer: '/officer',
+  registrar: '/officer', // Map DB role 'registrar' to the frontend officer dashboard
   admin: '/admin',
 };
 

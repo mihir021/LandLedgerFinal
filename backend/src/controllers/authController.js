@@ -67,8 +67,8 @@ const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    // Find user and explicitly include the passwordHash field
-    const user = await User.findOne({ email }).select('+passwordHash');
+    // Find user and explicitly include the password fields
+    const user = await User.findOne({ email }).select('+passwordHash +password');
     if (!user) {
       return next(new ApiError(401, 'Invalid email or password'));
     }
