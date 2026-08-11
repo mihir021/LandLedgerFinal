@@ -17,8 +17,8 @@ import { getInquiries, updateInquiryStatus } from '../services/inquiryService';
 import { getDisputes, updateDispute } from '../services/disputeService';
 import { deepSearchProperty } from '../utils/searchFilters';
 
-import { useWriteContract } from 'wagmi';
-import { CONTRACT_ADDRESS } from '../config/web3';
+import { useWriteContract, useAccount, usePublicClient } from 'wagmi';
+import { CONTRACT_ADDRESS, getSafeFeeOverrides } from '../config/web3';
 import { LandLedgerABI } from '../config/LandLedgerABI.js';
 
 export default function OfficerDashboard() {
@@ -35,6 +35,8 @@ export default function OfficerDashboard() {
   const [actionLoading, setActionLoading] = useState(null);
 
   const { writeContractAsync } = useWriteContract();
+  const { address: walletAddress, isConnected } = useAccount();
+  const publicClient = usePublicClient();
 
   // Inquiry reply state
   const [replyingId, setReplyingId] = useState(null);
@@ -60,13 +62,19 @@ export default function OfficerDashboard() {
     setLoading(true);
     try {
       const [propRes, transfers, userRes, inqData, disputeRes] = await Promise.all([
-        getProperties({ verificationStatus: 'pending', limit: 20 }).catch(() => getProperties({ status: 'Pending', limit: 1000 }).catch(() => ({ properties: [] }))),
+        getProperties({ verificationStatus: 'pending', limit: 100 }).catch(() => getProperties({ limit: 1000 }).catch(() => ({ properties: [] }))),
         getTransfers().catch(() => []),
         getUsers({ status: 'pending', limit: 1 }).catch(() => ({ pagination: { total: 0 } })),
         getInquiries().catch(() => []),
         getDisputes({ status: 'open', limit: 20 }).catch(() => ({ disputes: [] })),
       ]);
-      setPendingProperties(propRes.properties || []);
+
+      const allFetchedProps = propRes.properties || [];
+      const pendingProps = allFetchedProps.filter(
+        p => (p.verification?.status || p.verificationStatus || 'Pending').toLowerCase() === 'pending'
+      );
+
+      setPendingProperties(pendingProps);
       setPendingTransfers((Array.isArray(transfers) ? transfers : []).filter(t => t.sellerApproved && t.buyerApproved && !t.officerApproved));
       setPendingUsers(userRes.pagination?.total || 0);
       setInquiries(Array.isArray(inqData) ? inqData : []);
@@ -81,26 +89,32 @@ export default function OfficerDashboard() {
   const handleVerifyProperty = async () => {
     setActionLoading(propModal.id);
     try {
-      if (propModal.status === 'verified') {
+      const isApprove = propModal.status?.toLowerCase() === 'verified';
+      if (isApprove) {
         const prop = pendingProperties.find(p => p._id === propModal.id);
-        const parcelId = prop?.surveyNumber || prop?.propertyId || propModal.id;
+        const parcelId = prop?.blockchain?.parcelId || prop?.blockchainPropertyId || prop?.surveyNumber || prop?.propertyId || propModal.id;
         
-        toast.info('Please confirm the verification transaction in your wallet...');
+        if (!isConnected || !walletAddress) {
+          throw new Error('Connect the officer wallet in the top bar before approving a property.');
+        }
+
+        toast.info('Confirm the property verification in your wallet...');
+        const feeOverrides = await getSafeFeeOverrides(publicClient);
         const txHash = await writeContractAsync({
           address: CONTRACT_ADDRESS,
           abi: LandLedgerABI,
           functionName: 'verifyLand',
           args: [parcelId],
-          maxFeePerGas: 500000000n
+          ...feeOverrides,
         });
         toast.info(`Verification submitted on-chain: ${txHash}. Syncing with database...`);
         
-        await verifyProperty(propModal.id, propModal.status, txHash);
+        await verifyProperty(propModal.id, 'Verified', txHash);
       } else {
-        await verifyProperty(propModal.id, propModal.status);
+        await verifyProperty(propModal.id, 'Rejected');
       }
       
-      toast.success(`Property ${propModal.status} successfully`);
+      toast.success(`Property ${isApprove ? 'Verified' : 'Rejected'} successfully`);
       setPendingProperties(prev => prev.filter(p => p._id !== propModal.id));
     } catch (err) {
       toast.error(err.message || 'Failed to verify property.');
@@ -114,16 +128,24 @@ export default function OfficerDashboard() {
     setActionLoading(transferModal.id);
     try {
       const transfer = pendingTransfers.find(t => t._id === transferModal.id);
-      const parcelId = transfer?.property?.surveyNumber || transfer?.property?.propertyId || 'UNKNOWN';
-      const buyerWallet = transfer?.buyer?.walletAddress || '0x0000000000000000000000000000000000000001'; // Fallback for demo
+      const parcelId = transfer?.property?.blockchain?.parcelId || transfer?.property?.blockchainPropertyId || transfer?.property?.surveyNumber || transfer?.property?.propertyId;
+      const buyerWallet = transfer?.buyer?.walletAddress;
       
-      toast.info('Please confirm the transfer transaction in your wallet...');
+      if (!isConnected || !walletAddress) {
+        throw new Error('Connect the approving wallet in the top bar before approving a transfer.');
+      }
+      if (!parcelId || !buyerWallet) {
+        throw new Error('The transfer is missing its on-chain parcel ID or buyer wallet address.');
+      }
+
+      toast.info('Confirm the transfer transaction in your wallet...');
+      const feeOverrides = await getSafeFeeOverrides(publicClient);
       const txHash = await writeContractAsync({
         address: CONTRACT_ADDRESS,
         abi: LandLedgerABI,
         functionName: 'transferOwnership',
         args: [parcelId, buyerWallet],
-        maxFeePerGas: 500000000n
+        ...feeOverrides,
       });
       toast.info(`Transfer submitted on-chain: ${txHash}. Syncing with database...`);
 
@@ -207,14 +229,15 @@ export default function OfficerDashboard() {
             {/* Search Bar for Pending Properties */}
             {pendingProperties.length > 0 && (
               <div className="px-5 py-3 border-b border-gray-50">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <div className="relative flex items-center">
+                  <Search className="absolute left-3.5 h-4 w-4 text-gray-400 pointer-events-none z-10" />
                   <input
                     type="text"
                     value={searchProp}
                     onChange={(e) => setSearchProp(e.target.value)}
                     placeholder="Search properties by ID, address, type..."
-                    className="ll-input pl-9 text-sm py-2"
+                    className="ll-input text-sm py-2"
+                    style={{ paddingLeft: '2.5rem' }}
                   />
                 </div>
               </div>
@@ -464,13 +487,13 @@ export default function OfficerDashboard() {
         onClose={() => setPropModal({ open: false, id: null, status: null, name: '' })}
         onConfirm={handleVerifyProperty}
         loading={actionLoading !== null}
-        variant={propModal.status === 'verified' ? 'approve' : 'reject'}
-        title={propModal.status === 'verified' ? 'Approve Property Verification' : 'Reject Property Verification'}
-        message={propModal.status === 'verified'
+        variant={propModal.status?.toLowerCase() === 'verified' ? 'approve' : 'reject'}
+        title={propModal.status?.toLowerCase() === 'verified' ? 'Approve Property Verification' : 'Reject Property Verification'}
+        message={propModal.status?.toLowerCase() === 'verified'
           ? 'This property will be marked as government-verified and listed on the marketplace.'
           : 'This property will be rejected. The seller must resubmit with corrected documents.'}
         details={propModal.name ? { 'Property': propModal.name } : undefined}
-        confirmLabel={propModal.status === 'verified' ? 'Approve Verification' : 'Reject Verification'}
+        confirmLabel={propModal.status?.toLowerCase() === 'verified' ? 'Approve Verification' : 'Reject Verification'}
       />
       <ConfirmationModal
         isOpen={transferModal.open}

@@ -15,8 +15,8 @@ import { INDIA_LOCATION_DATA, STATES_LIST } from '../data/indiaStatesDistrictsCi
 import SearchableSelect from '../components/SearchableSelect';
 import { createProperty } from '../services/propertyService';
 import { useToast } from '../context/ToastContext';
-import { useWriteContract, useAccount } from 'wagmi';
-import { CONTRACT_ADDRESS } from '../config/web3';
+import { useWriteContract, useAccount, usePublicClient } from 'wagmi';
+import { CONTRACT_ADDRESS, getSafeFeeOverrides } from '../config/web3';
 import { LandLedgerABI } from '../config/LandLedgerABI.js';
 
 const landTypes = ['residential', 'commercial', 'agricultural', 'industrial', 'mixed'];
@@ -60,7 +60,8 @@ export default function RegisterProperty() {
   const [submitError, setSubmitError] = useState('');
 
   const { writeContractAsync } = useWriteContract();
-  const { address: walletAddress } = useAccount();
+  const { address: walletAddress, isConnected } = useAccount();
+  const publicClient = usePublicClient();
 
   // Create image object URLs for live preview thumbnails
   useEffect(() => {
@@ -160,6 +161,15 @@ export default function RegisterProperty() {
       return;
     }
 
+    // A property must be anchored by the seller's wallet.  Continuing without
+    // a signature leaves the officer with nothing that can be verified later.
+    if (!isConnected || !walletAddress) {
+      const message = 'Connect the seller wallet in the top bar before submitting a property.';
+      setSubmitError(message);
+      toast.error(message);
+      return;
+    }
+
     setLoading(true);
     try {
       const formData = new FormData();
@@ -176,37 +186,32 @@ export default function RegisterProperty() {
       imageFiles.forEach((file) => formData.append('images', file));
       documentFiles.forEach((file) => formData.append('documents', file));
 
-      // 1. Blockchain Interaction (Best effort)
-      let txHash = null;
-      if (walletAddress) {
-        try {
-          toast.info('Please confirm the transaction in your Web3 wallet...');
-          
-          // Formulate unique parcel ID for contract to prevent "Parcel already registered" revert
-          const rawSurvey = form.surveyNumber.trim().toUpperCase();
-          const uniqueParcelId = rawSurvey.length > 5 && !rawSurvey.match(/^\d+$/)
-            ? rawSurvey
-            : `SRV-${rawSurvey}-${Date.now().toString().slice(-4)}`;
+      // Use one stable parcel id everywhere.  The officer reads this same id
+      // when verifying, so a successful seller registration always opens a
+      // wallet request for the officer instead of being mistaken for missing.
+      const rawSurvey = form.surveyNumber.trim().toUpperCase();
+      const uniqueParcelId = rawSurvey.length > 5 && !rawSurvey.match(/^\d+$/)
+        ? rawSurvey
+        : `SRV-${rawSurvey}-${Date.now().toString().slice(-4)}`;
 
-          txHash = await writeContractAsync({
-            address: CONTRACT_ADDRESS,
-            abi: LandLedgerABI,
-            functionName: 'registerLand',
-            args: [
-              uniqueParcelId,
-              `${form.address}, ${form.city}, ${form.state}`,
-              BigInt(Number(form.area) || 1)
-            ]
-          });
-          toast.info('Blockchain transaction confirmed! Syncing with server...');
-        } catch (chainErr) {
-          console.warn('Blockchain execution skipped/failed:', chainErr.message);
-          toast.warning('Blockchain confirmation skipped. Saving property to registry database...');
-        }
-      }
+      toast.info('Confirm the property registration in your wallet...');
+      const feeOverrides = await getSafeFeeOverrides(publicClient);
+      const txHash = await writeContractAsync({
+        address: CONTRACT_ADDRESS,
+        abi: LandLedgerABI,
+        functionName: 'registerLand',
+        args: [
+          uniqueParcelId,
+          `${form.address}, ${form.city}, ${form.state}`,
+          BigInt(Number(form.area) || 1)
+        ],
+        ...feeOverrides,
+      });
+      toast.info('Registration submitted on-chain. Saving the property record...');
 
-      if (walletAddress) formData.append('walletAddress', walletAddress);
-      if (txHash) formData.append('txHash', txHash);
+      formData.append('walletAddress', walletAddress);
+      formData.append('txHash', txHash);
+      formData.append('blockchainParcelId', uniqueParcelId);
 
       // 2. Backend Storage
       await createProperty(formData);

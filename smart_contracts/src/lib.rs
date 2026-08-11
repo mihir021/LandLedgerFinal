@@ -57,8 +57,10 @@ impl LandLedger {
         let sender = self.vm().msg_sender();
         
         let mut record = self.records.setter(key);
-        if record.owner.get() != sender {
-            return Err(b"Unauthorized: not the owner".to_vec());
+        // The title holder can initiate a transfer, while the registry admin
+        // can execute the final officer-approved transfer from the dashboard.
+        if record.owner.get() != sender && self.admin.get() != sender {
+            return Err(b"Unauthorized: not owner or registry admin".to_vec());
         }
         if new_owner == Address::ZERO {
             return Err(b"Invalid new owner".to_vec());

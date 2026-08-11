@@ -12,3 +12,28 @@ export const web3Config = getDefaultConfig({
     [arbitrumSepolia.id]: http(),
   },
 });
+
+/**
+ * Arbitrum Sepolia's base fee can move between wallet estimation and broadcast.
+ * Use the latest network fee plus a 50% base-fee buffer so a transaction is not
+ * rejected for being a few wei below the next block's base fee.
+ */
+export async function getSafeFeeOverrides(publicClient) {
+  try {
+    const [fees, block] = await Promise.all([
+      publicClient.estimateFeesPerGas(),
+      publicClient.getBlock({ blockTag: 'latest' }),
+    ]);
+    const priority = fees.maxPriorityFeePerGas ?? 0n;
+    const bufferedBaseFee = (block.baseFeePerGas ?? 0n) * 3n / 2n + 1n;
+    const estimatedMaxFee = fees.maxFeePerGas ?? 0n;
+
+    return {
+      maxPriorityFeePerGas: priority,
+      maxFeePerGas: (estimatedMaxFee > bufferedBaseFee ? estimatedMaxFee : bufferedBaseFee) + priority,
+    };
+  } catch (error) {
+    console.warn('Could not retrieve live gas fees; using wallet estimate.', error);
+    return {};
+  }
+}

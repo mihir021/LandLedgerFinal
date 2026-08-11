@@ -23,20 +23,66 @@ const getProperties = async (req, res, next) => {
       limit = 2000,
     } = req.query;
 
-    // Build dynamic filter using nested fields
+    // Build dynamic filter using nested and top-level fields safely with $and
     const filter = {};
-    if (state) filter.$or = [{ state: new RegExp(state, 'i') }, { 'location.state': new RegExp(state, 'i') }];
-    if (district) filter.district = district;
-    if (city) filter.city = city;
-    if (landType) filter.landType = landType;
-    if (verificationStatus || status) filter.verificationStatus = verificationStatus || status;
-    if (listed !== undefined) filter.isListed = listed === 'true';
+    const andConditions = [];
+
+    if (state) {
+      andConditions.push({
+        $or: [
+          { state: new RegExp(state, 'i') },
+          { 'location.state': new RegExp(state, 'i') },
+        ],
+      });
+    }
+    if (district) {
+      andConditions.push({
+        $or: [
+          { district: new RegExp(district, 'i') },
+          { 'location.district': new RegExp(district, 'i') },
+        ],
+      });
+    }
+    if (city) {
+      andConditions.push({
+        $or: [
+          { city: new RegExp(city, 'i') },
+          { 'location.city': new RegExp(city, 'i') },
+        ],
+      });
+    }
+    if (landType) {
+      andConditions.push({
+        $or: [
+          { landType: new RegExp(landType, 'i') },
+          { 'landDetails.landType': new RegExp(landType, 'i') },
+        ],
+      });
+    }
+    if (verificationStatus || status) {
+      const val = verificationStatus || status;
+      andConditions.push({
+        $or: [
+          { verificationStatus: new RegExp(`^${val}$`, 'i') },
+          { 'verification.status': new RegExp(`^${val}$`, 'i') },
+        ],
+      });
+    }
+    if (listed !== undefined) {
+      filter.isListed = listed === 'true';
+    }
     if (owner) {
-      filter.$or = [
-        { owner: owner },
-        { ownerId: owner },
-        { currentOwnerWallet: owner },
-      ];
+      andConditions.push({
+        $or: [
+          { owner: owner },
+          { ownerId: owner },
+          { currentOwnerWallet: owner },
+        ],
+      });
+    }
+
+    if (andConditions.length > 0) {
+      filter.$and = andConditions;
     }
 
     const skip = (Number(page) - 1) * Number(limit);
@@ -111,6 +157,7 @@ const createProperty = async (req, res, next) => {
       latitude,
       longitude,
       txHash,
+      blockchainParcelId,
       walletAddress
     } = req.body;
 
@@ -154,6 +201,7 @@ const createProperty = async (req, res, next) => {
       city,
       address,
       landType,
+      verificationStatus: 'Pending',
       area: Number(area),
       price: Number(price),
       description,
@@ -186,7 +234,13 @@ const createProperty = async (req, res, next) => {
       documents: docObjects,
       currentOwnerWallet: walletAddress || req.user.walletAddress || null,
       blockchainTx: txHash || null,
-      blockchainPropertyId: txHash ? surveyNumber : null,
+      blockchainPropertyId: txHash ? blockchainParcelId || surveyNumber : null,
+      blockchain: txHash ? {
+        txHash,
+        parcelId: blockchainParcelId || surveyNumber,
+        contractAddress: process.env.LAND_LEDGER_CONTRACT_ADDRESS || undefined,
+        chainNetwork: 'Sepolia',
+      } : undefined,
     });
 
     res.status(201).json({
@@ -292,7 +346,12 @@ const verifyProperty = async (req, res, next) => {
 
     const properStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 
-    const updateData = { 'verification.status': properStatus, 'verification.verifiedBy': req.user._id, 'verification.verificationDate': new Date() };
+    const updateData = {
+      verificationStatus: properStatus,
+      'verification.status': properStatus,
+      'verification.verifiedBy': req.user._id,
+      'verification.verificationDate': new Date()
+    };
     if (txHash) {
       updateData.blockchainTx = txHash;
     }
