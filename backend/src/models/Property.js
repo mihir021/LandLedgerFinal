@@ -6,79 +6,22 @@ const propertySchema = new mongoose.Schema(
     propertyId: {
       type: String,
       unique: true,
-      default: () => `PROP-${uuidv4().slice(0, 8).toUpperCase()}`,
+      required: true,
+      default: () => `LAND-REG-${uuidv4().slice(0, 8).toUpperCase()}`,
     },
-    surveyNumber: {
-      type: String,
-      required: [true, 'Survey number is required'],
-      trim: true,
-    },
-    owner: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: [true, 'Owner is required'],
-    },
-    district: {
-      type: String,
-      required: [true, 'District is required'],
-      trim: true,
-    },
-    state: {
-      type: String,
-      required: [true, 'State is required'],
-      trim: true,
-    },
-    city: {
-      type: String,
-      required: [true, 'City is required'],
-      trim: true,
-    },
-    address: {
-      type: String,
-      required: [true, 'Address is required'],
-      trim: true,
-    },
-    landType: {
-      type: String,
-      enum: ['agricultural', 'residential', 'commercial', 'industrial', 'mixed'],
-      required: [true, 'Land type is required'],
-    },
-    area: {
-      type: Number,
-      required: [true, 'Area is required'],
-      min: [0, 'Area must be positive'],
-    },
-    price: {
-      type: Number,
-      required: [true, 'Price is required'],
-      min: [0, 'Price must be positive'],
-    },
-    description: {
-      type: String,
-      trim: true,
-    },
-    latitude: {
-      type: Number,
-      default: null,
-    },
-    longitude: {
-      type: Number,
-      default: null,
-    },
-    images: [
-      {
-        type: String, // file paths
-      },
-    ],
-    documents: [
-      {
-        type: String, // file paths
-      },
-    ],
-    verificationStatus: {
-      type: String,
-      enum: ['pending', 'verified', 'rejected'],
-      default: 'pending',
+    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    previousOwners: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+
+    location: {
+      state: String,
+      district: String,
+      city: String,
+      taluka: String,
+      pincode: String,
+      surveyNumber: String,
+      subDivisionNumber: String,
+      latitude: Number,
+      longitude: Number,
     },
     isListed: {
       type: Boolean,
@@ -89,30 +32,67 @@ const propertySchema = new mongoose.Schema(
       default: false,
     },
 
-    // ----- Blockchain integration fields -----
-    // TODO: Populate these fields when Stylus Smart Contract is integrated
-    blockchainTx: {
-      type: String,
-      default: null,
+    landDetails: {
+      landType: {
+        type: String,
+        enum: ['Agricultural Land', 'Residential Plot', 'Commercial Land', 'Industrial Land'],
+      },
+      landUseZone: String,
+      areaSqft: Number,
+      boundaryGeoJson: Object,
     },
-    blockchainPropertyId: {
-      type: String,
-      default: null,
+
+    pricing: {
+      priceINR: Number,
+      pricePerSqft: Number,
+      govtCircleRate: Number,
     },
-    currentOwnerWallet: {
-      type: String,
-      default: null,
+
+    legalStatus: {
+      ownershipType: { type: String, enum: ['Freehold', 'Leasehold'] },
+      documentType: { type: String, enum: ['Sale Deed', 'Gift Deed', 'Inheritance', 'Lease Deed'] },
+      encumbranceStatus: { type: String, enum: ['Clear', 'Mortgaged', 'Under Litigation'], default: 'Clear' },
+      disputeStatus: { type: String, enum: ['None', 'Disputed'], default: 'None' },
+      mutationStatus: { type: String, enum: ['Pending', 'Updated'], default: 'Pending' },
+      registrationNumber: String,
+      registrationDate: Date,
+      stampDuty: { paid: Boolean, amount: Number },
     },
+
+    verification: {
+      status: { type: String, enum: ['Pending', 'Under Review', 'Verified', 'Rejected'], default: 'Pending' },
+      verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      verificationDate: Date,
+      remarks: String,
+    },
+
+    blockchain: {
+      contractAddress: String,
+      txHash: String,
+      chainNetwork: { type: String, enum: ['Polygon', 'Solana', 'Sepolia'], default: 'Polygon' },
+      blockTimestamp: Date,
+      ipfsDocumentHash: String,
+    },
+
+    documents: [
+      {
+        type: { type: String, enum: ['Sale Deed', 'Survey Map', 'Tax Receipt', 'NOC', 'Other'] },
+        url: String,
+        ipfsHash: String,
+        uploadedAt: Date,
+      },
+    ],
   },
   {
     timestamps: true,
   }
 );
 
-// Index for common query patterns
-propertySchema.index({ owner: 1 });
-propertySchema.index({ verificationStatus: 1 });
-propertySchema.index({ state: 1, district: 1 });
+// Indexes
+propertySchema.index({ propertyId: 1 }, { unique: true });
+propertySchema.index({ 'location.state': 1, 'location.city': 1 });
+propertySchema.index({ 'verification.status': 1 });
+propertySchema.index({ ownerId: 1 });
 
 const Property = mongoose.model('Property', propertySchema);
 

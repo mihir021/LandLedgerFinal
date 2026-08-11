@@ -30,27 +30,29 @@ const requestTransfer = async (req, res, next) => {
     if (!property) {
       return next(new ApiError(404, 'Property not found'));
     }
-    if (property.verificationStatus !== 'verified') {
+    if (property.verification.status !== 'Verified') {
       return next(new ApiError(400, 'Property must be verified before transfer'));
     }
-    if (property.owner.toString() !== sellerId) {
+    if (property.ownerId.toString() !== sellerId) {
       return next(new ApiError(400, 'Seller does not own this property'));
     }
 
     // Prevent duplicate pending transfers
     const existingTransfer = await Transfer.findOne({
-      property: propertyId,
-      buyer: buyerId,
-      status: { $nin: ['completed'] },
+      propertyId: propertyId,
+      toUserId: buyerId,
+      status: { $nin: ['Completed', 'Rejected'] },
     });
     if (existingTransfer) {
       return next(new ApiError(409, 'A transfer request already exists for this property'));
     }
 
     const transfer = await Transfer.create({
-      property: propertyId,
-      seller: sellerId,
-      buyer: buyerId,
+      propertyId: propertyId,
+      fromUserId: sellerId,
+      toUserId: buyerId,
+      transferType: 'Sale',
+      status: 'Initiated',
     });
 
     pushTimeline(transfer, 'Transfer Requested', req.user, 'Buyer initiated the transfer request');
@@ -62,10 +64,12 @@ const requestTransfer = async (req, res, next) => {
 
     // Notify the seller
     await Notification.create({
-      receiver: sellerId,
+      userId: sellerId,
       title: 'New Transfer Request',
       message: `A buyer has requested to purchase property ${property.propertyId}.`,
-      type: 'transfer',
+      type: 'Transfer Update',
+      relatedEntityType: 'Transfer',
+      relatedEntityId: transfer._id,
     });
 
     await logAudit({
@@ -98,24 +102,26 @@ const sellerApprove = async (req, res, next) => {
     const transfer = await Transfer.findById(transferId);
     if (!transfer) return next(new ApiError(404, 'Transfer not found'));
 
-    if (transfer.seller.toString() !== req.user._id.toString()) {
+    if (transfer.fromUserId.toString() !== req.user._id.toString()) {
       return next(new ApiError(403, 'Only the property seller can approve'));
     }
-    if (transfer.sellerApproved) {
-      return next(new ApiError(400, 'Seller has already approved'));
+    if (transfer.status !== 'Initiated') {
+      return next(new ApiError(400, 'Seller has already approved or transfer is past this stage'));
     }
 
     transfer.sellerApproved = true;
-    transfer.status = 'sellerApproved';
+    transfer.status = 'Pending Verification';
     pushTimeline(transfer, 'Seller Approved', req.user, 'Seller agreed to the transfer');
     await transfer.save();
 
     // Notify buyer
     await Notification.create({
-      receiver: transfer.buyer,
+      userId: transfer.toUserId,
       title: 'Seller Approved Transfer',
       message: 'The seller has approved the property transfer.',
-      type: 'transfer',
+      type: 'Transfer Update',
+      relatedEntityType: 'Transfer',
+      relatedEntityId: transfer._id,
     });
 
     await logAudit({
@@ -124,9 +130,6 @@ const sellerApprove = async (req, res, next) => {
       targetType: 'Transfer',
       targetId: transfer._id,
     });
-
-    // TODO: Call Stylus Smart Contract Here — record seller approval on-chain
-
     res.status(200).json({
       success: true,
       message: 'Seller approval recorded',
@@ -196,30 +199,34 @@ const buyerApprove = async (req, res, next) => {
 // =====================================================
 const officerApprove = async (req, res, next) => {
   try {
-    const { transferId } = req.body;
+    const { transferId, txHash } = req.body;
 
     const transfer = await Transfer.findById(transferId);
     if (!transfer) return next(new ApiError(404, 'Transfer not found'));
 
-    if (!transfer.sellerApproved || !transfer.buyerApproved) {
-      return next(
-        new ApiError(400, 'Both seller and buyer must approve before the officer')
-      );
-    }
-    if (transfer.officerApproved) {
-      return next(new ApiError(400, 'Officer has already approved'));
+    if (!transfer.sellerApproved && transfer.status === 'Initiated') {
+      return next(new ApiError(400, 'Seller must approve before the officer'));
     }
 
     transfer.officerApproved = true;
-    transfer.status = 'officerApproved';
+    transfer.status = 'Approved';
     pushTimeline(transfer, 'Officer Approved', req.user, 'Government officer approved the transfer');
     await transfer.save();
+    
+    if (txHash) {
+      const pId = transfer.propertyId || transfer.property;
+      if (pId) {
+        await Property.findByIdAndUpdate(pId, {
+          blockchainTx: txHash
+        });
+      }
+    }
 
     // Notify both parties
     const msg = 'Government officer has approved the property transfer.';
     await Notification.insertMany([
-      { receiver: transfer.seller, title: 'Officer Approved', message: msg, type: 'transfer' },
-      { receiver: transfer.buyer, title: 'Officer Approved', message: msg, type: 'transfer' },
+      { userId: transfer.fromUserId, title: 'Officer Approved', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+      { userId: transfer.toUserId, title: 'Officer Approved', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
     ]);
 
     await logAudit({
@@ -228,8 +235,6 @@ const officerApprove = async (req, res, next) => {
       targetType: 'Transfer',
       targetId: transfer._id,
     });
-
-    // TODO: Call Stylus Smart Contract Here — record officer approval on-chain
 
     res.status(200).json({
       success: true,
@@ -250,42 +255,41 @@ const completeTransfer = async (req, res, next) => {
   try {
     const { transferId } = req.body;
 
-    const transfer = await Transfer.findById(transferId).populate('property');
+    const transfer = await Transfer.findById(transferId).populate('propertyId');
     if (!transfer) return next(new ApiError(404, 'Transfer not found'));
 
-    if (!transfer.sellerApproved || !transfer.buyerApproved || !transfer.officerApproved) {
+    if (transfer.status !== 'Approved' && !transfer.officerApproved) {
       return next(
-        new ApiError(
-          400,
-          'Seller, buyer and officer must all approve before completion'
-        )
+        new ApiError(400, 'Transfer must be approved by officer before completion')
       );
-    }
-    if (transfer.status === 'completed') {
-      return next(new ApiError(400, 'Transfer is already completed'));
     }
 
     // Update property ownership
-    const property = await Property.findById(transfer.property._id || transfer.property);
-    property.owner = transfer.buyer;
-    property.currentOwnerWallet = req.user.walletAddress || null;
-    property.isListed = false;
-    // TODO: Call Stylus Smart Contract Here — execute on-chain ownership transfer
-    // After successful on-chain transfer, update:
-    //   property.currentOwnerWallet = <buyer wallet>;
-    //   transfer.transactionHash = <tx hash>;
-    await property.save();
+    const targetPropertyId = transfer.propertyId?._id || transfer.propertyId || transfer.property?._id || transfer.property;
+    const property = await Property.findById(targetPropertyId);
+    
+    if (property) {
+      if (property.ownerId || property.owner) {
+        property.previousOwners = property.previousOwners || [];
+        property.previousOwners.push(property.ownerId || property.owner);
+      }
+      property.ownerId = transfer.toUserId || transfer.buyer;
+      property.owner = transfer.toUserId || transfer.buyer;
+      property.currentOwnerWallet = req.user.walletAddress || null;
+      property.isListed = false;
+      await property.save();
+    }
 
-    transfer.buyerApproved = true;
-    transfer.status = 'completed';
+    transfer.status = 'Completed';
+    transfer.completedAt = new Date();
     pushTimeline(transfer, 'Transfer Completed', req.user, 'Ownership officially transferred');
     await transfer.save();
 
     // Notify both parties
     const msg = 'Property transfer has been completed successfully.';
     await Notification.insertMany([
-      { receiver: transfer.seller, title: 'Transfer Completed', message: msg, type: 'success' },
-      { receiver: transfer.buyer, title: 'Transfer Completed', message: msg, type: 'success' },
+      { userId: transfer.fromUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+      { userId: transfer.toUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
     ]);
 
     await logAudit({
@@ -293,7 +297,7 @@ const completeTransfer = async (req, res, next) => {
       action: 'transfer.complete',
       targetType: 'Transfer',
       targetId: transfer._id,
-      details: { propertyId: property.propertyId, newOwner: transfer.buyer },
+      details: { propertyId: property?.propertyId, newOwner: transfer.toUserId || transfer.buyer },
     });
 
     res.status(200).json({
@@ -316,16 +320,17 @@ const getTransfers = async (req, res, next) => {
     let filter = {};
 
     // Non-admin/officer users only see their own transfers
-    if (!['admin', 'officer'].includes(req.user.role)) {
+    if (!['admin', 'officer', 'registrar'].includes(req.user.role)) {
       filter = {
-        $or: [{ seller: req.user._id }, { buyer: req.user._id }],
+        $or: [{ fromUserId: req.user._id }, { toUserId: req.user._id }],
       };
     }
 
     const transfers = await Transfer.find(filter)
-      .populate('property', 'propertyId surveyNumber address city district state')
-      .populate('seller', 'fullName email')
-      .populate('buyer', 'fullName email')
+      .populate('propertyId', 'propertyId location')
+      .populate('fromUserId', 'name email')
+      .populate('toUserId', 'name email')
+      .sort({ createdAt: -1 });
       .sort({ createdAt: -1 });
 
     res.status(200).json({

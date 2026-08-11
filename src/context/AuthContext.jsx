@@ -21,6 +21,7 @@ export const ROLE_ROUTES = {
   buyer: '/buyer',
   seller: '/seller',
   officer: '/officer',
+  registrar: '/officer', // Map DB role 'registrar' to the frontend officer dashboard
   admin: '/admin',
 };
 
@@ -79,10 +80,7 @@ export function AuthProvider({ children }) {
    */
   const register = useCallback(async (payload) => {
     const data = await authService.registerUser(payload);
-    localStorage.setItem('ll_token', data.token);
-    localStorage.setItem('ll_user', JSON.stringify(data));
-    setUser(data);
-    setIsAuthenticated(true);
+    // Do NOT auto-login. The user must proceed to the login screen.
     return data;
   }, []);
 

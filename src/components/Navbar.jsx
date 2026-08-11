@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, LogOut, User, LayoutDashboard, ChevronDown } from 'lucide-react';
 import { useAuth, ROLE_ROUTES } from '../context/AuthContext';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 const ROLE_LABELS = {
   buyer: 'Buyer',
@@ -82,7 +83,9 @@ export default function Navbar() {
               </Link>
             </>
           ) : (
-            <div className="relative">
+            <div className="flex items-center gap-3">
+              <ConnectButton />
+              <div className="relative">
               <button
                 onClick={() => setUserMenuOpen(o => !o)}
                 className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
@@ -126,6 +129,7 @@ export default function Navbar() {
                 </div>
               )}
             </div>
+            </div>
           )}
         </div>
 
@@ -167,6 +171,9 @@ export default function Navbar() {
                     <p className="text-sm font-semibold text-gray-800">{displayName}</p>
                     <p className="text-xs text-gray-500">{ROLE_LABELS[user?.role]}</p>
                   </div>
+                </div>
+                <div className="px-3 mb-3">
+                  <ConnectButton />
                 </div>
                 <MobileLink to={dashboardRoute} label="Dashboard" onClick={() => setMobileOpen(false)} />
                 <MobileLink to="/search" label="Search Properties" onClick={() => setMobileOpen(false)} />

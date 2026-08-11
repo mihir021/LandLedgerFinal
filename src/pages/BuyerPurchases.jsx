@@ -9,24 +9,24 @@ import LifecycleTracker from '../components/LifecycleTracker';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { getTransfers, buyerApprove } from '../services/transferService';
 import { useToast } from '../context/ToastContext';
-import { MOCK_PURCHASE_REQUESTS } from '../data/mock';
 
 export default function BuyerPurchases() {
   const toast = useToast();
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [expanded, setExpanded] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [signModal, setSignModal] = useState(null);
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true);
+      setError('');
       try {
         const data = await getTransfers();
-        setPurchases(Array.isArray(data) ? data : MOCK_PURCHASE_REQUESTS);
-      } catch {
-        setPurchases(MOCK_PURCHASE_REQUESTS);
+        setPurchases(Array.isArray(data) ? data : []);
+      } catch (err) {
+        setError(err.message || 'Failed to load purchase requests.');
       } finally {
         setLoading(false);
       }
@@ -74,6 +74,12 @@ export default function BuyerPurchases() {
         </div>
       </div>
 
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 font-medium animate-fade-in">
+          {error}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="h-8 w-8 text-blue-800 animate-spin" />
@@ -90,9 +96,9 @@ export default function BuyerPurchases() {
           {purchases.map((req, i) => {
             const isExpanded = expanded === (req._id || req.id);
             const propId = req.property?._id || req.property || req.propertyId;
-            const propTitle = req.property?.title || req.property?.address || req.propertyTitle || 'Property';
+            const propTitle = req.property?.title || req.property?.location?.district || req.property?.location?.surveyNumber || req.propertyTitle || 'Property';
             const status = req.status || 'pending';
-            const amount = req.agreedPrice || req.property?.price || req.amount;
+            const amount = req.agreedPrice || req.property?.pricing?.priceINR || req.amount;
             const lifecycleStage = statusToLifecycle(status);
 
             return (

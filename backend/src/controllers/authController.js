@@ -9,7 +9,10 @@ import ApiError from '../utils/ApiError.js';
 // =====================================================
 const register = async (req, res, next) => {
   try {
-    const { fullName, email, password, phone, aadhaarNumber, role } = req.body;
+    const { fullName, name, email, password, phone, aadhaarNumber, role } = req.body;
+
+    // Support both fullName and name from frontend
+    const finalName = name || fullName;
 
     // Only buyer and seller may self-register
     if (role && !['buyer', 'seller'].includes(role)) {
@@ -24,12 +27,13 @@ const register = async (req, res, next) => {
       return next(new ApiError(409, 'Email is already registered'));
     }
 
+    // Construct new user structure
     const user = await User.create({
-      fullName,
+      name: finalName,
       email,
-      password,
+      passwordHash: password,
       phone,
-      aadhaarNumber,
+      govtId: aadhaarNumber ? { type: 'Aadhaar', numberHash: aadhaarNumber } : undefined,
       role: role || 'buyer',
     });
 
@@ -40,10 +44,12 @@ const register = async (req, res, next) => {
       message: 'Registration successful',
       data: {
         _id: user._id,
-        fullName: user.fullName,
+        name: user.name,
+        fullName: user.name, // backward compatibility
         email: user.email,
         role: user.role,
-        status: user.status,
+        kycStatus: user.kycStatus,
+        status: user.kycStatus, // backward compatibility
         token,
       },
     });
@@ -61,8 +67,8 @@ const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    // Find user and explicitly include the password field
-    const user = await User.findOne({ email }).select('+password');
+    // Find user and explicitly include the password fields
+    const user = await User.findOne({ email }).select('+passwordHash +password');
     if (!user) {
       return next(new ApiError(401, 'Invalid email or password'));
     }
@@ -85,10 +91,12 @@ const login = async (req, res, next) => {
       message: 'Login successful',
       data: {
         _id: user._id,
-        fullName: user.fullName,
+        name: user.name,
+        fullName: user.name, // backward compatibility
         email: user.email,
         role: user.role,
-        status: user.status,
+        kycStatus: user.kycStatus,
+        status: user.kycStatus, // backward compatibility
         token,
       },
     });
@@ -109,10 +117,15 @@ const getMe = async (req, res, next) => {
       return next(new ApiError(404, 'User not found'));
     }
 
+    // Attach backward compatibility fields if necessary, or just return user
+    const userData = user.toObject();
+    userData.fullName = userData.name;
+    userData.status = userData.kycStatus;
+
     res.status(200).json({
       success: true,
       message: 'User profile retrieved',
-      data: user,
+      data: userData,
     });
   } catch (error) {
     next(error);

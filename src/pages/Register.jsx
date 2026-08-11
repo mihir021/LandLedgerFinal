@@ -1,10 +1,10 @@
 /**
  * Register Page — role selection (Buyer / Seller) + form fields
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserPlus, Eye, EyeOff, AlertCircle, Home, ShoppingBag, ArrowRight } from 'lucide-react';
-import { useAuth, ROLE_ROUTES } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
 const ROLE_OPTIONS = [
@@ -28,14 +28,21 @@ const ROLE_OPTIONS = [
 
 export default function Register() {
   const [role, setRole] = useState('buyer');
-  const [form, setForm] = useState({ fullName: '', email: '', phone: '', password: '', aadhaarNumber: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', aadhaarNumber: '' });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { register } = useAuth();
+  const { register, isAuthenticated } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  
+  // If already authenticated, redirect to dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
 
   const set = (field) => (e) => setForm(f => ({ ...f, [field]: e.target.value }));
 
@@ -49,8 +56,8 @@ export default function Register() {
     setLoading(true);
     try {
       const data = await register({ ...form, role });
-      toast.success('Account created successfully!');
-      navigate(ROLE_ROUTES[data.role] || '/');
+      toast.success('Registration successful! Please sign in with your credentials.');
+      navigate('/login', { state: { email: form.email, registered: true } });
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.');
     } finally {
@@ -107,7 +114,7 @@ export default function Register() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className="ll-label">Full Name *</label>
-                <input type="text" required value={form.fullName} onChange={set('fullName')} placeholder="As on official documents" className="ll-input" />
+                <input type="text" required value={form.name} onChange={set('name')} placeholder="As on official documents" className="ll-input" />
               </div>
               <div>
                 <label className="ll-label">Email Address *</label>

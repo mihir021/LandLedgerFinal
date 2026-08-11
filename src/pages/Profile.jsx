@@ -20,12 +20,12 @@ export default function Profile() {
       <div className="ll-card p-6 space-y-6 animate-fade-in-up delay-100">
         <div className="flex items-center gap-4 pb-6 border-b border-gray-100">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-900 text-2xl font-bold text-white shadow-md">
-            {user.fullName ? user.fullName.slice(0, 2).toUpperCase() : 'US'}
+            {(user.name || user.fullName || 'US').slice(0, 2).toUpperCase()}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold font-serif text-gray-900">{user.fullName || 'User'}</h2>
-              <StatusBadge status={user.verificationStatus || 'verified'} size="sm" />
+              <h2 className="text-xl font-bold font-serif text-gray-900">{user.name || user.fullName || 'User'}</h2>
+              <StatusBadge status={user.kycStatus || user.status || 'Verified'} size="sm" />
             </div>
             <p className="text-sm font-medium text-blue-900 capitalize mt-0.5">{user.role} Account</p>
           </div>

@@ -16,19 +16,20 @@ const getProperties = async (req, res, next) => {
       city,
       landType,
       verificationStatus,
+      status,
       listed,
       owner,
       page = 1,
-      limit = 10,
+      limit = 100,
     } = req.query;
 
-    // Build dynamic filter
+    // Build dynamic filter using nested fields
     const filter = {};
-    if (state) filter.state = state;
+    if (state) filter.$or = [{ state: new RegExp(state, 'i') }, { 'location.state': new RegExp(state, 'i') }];
     if (district) filter.district = district;
     if (city) filter.city = city;
     if (landType) filter.landType = landType;
-    if (verificationStatus) filter.verificationStatus = verificationStatus;
+    if (verificationStatus || status) filter.verificationStatus = verificationStatus || status;
     if (listed !== undefined) filter.isListed = listed === 'true';
     if (owner) filter.owner = owner;
 
@@ -36,7 +37,7 @@ const getProperties = async (req, res, next) => {
     const total = await Property.countDocuments(filter);
 
     const properties = await Property.find(filter)
-      .populate('owner', 'fullName email phone')
+      .populate('ownerId', 'name email phone')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit));
@@ -66,8 +67,8 @@ const getProperties = async (req, res, next) => {
 const getPropertyById = async (req, res, next) => {
   try {
     const property = await Property.findById(req.params.id).populate(
-      'owner',
-      'fullName email phone walletAddress'
+      'ownerId',
+      'name email phone walletAddress'
     );
 
     if (!property) {
@@ -96,22 +97,29 @@ const createProperty = async (req, res, next) => {
       district,
       state,
       city,
-      address,
+      address, // Note: no explicit address field in new schema, maybe map to pincode or taluka, or just ignore.
       landType,
       area,
       price,
       description,
       latitude,
       longitude,
+      txHash,
+      walletAddress
     } = req.body;
 
-    // Collect uploaded file paths
-    const images = req.files?.images
-      ? req.files.images.map((f) => f.path)
-      : [];
-    const documents = req.files?.documents
-      ? req.files.documents.map((f) => f.path)
-      : [];
+    // Collect uploaded file paths into documents array
+    let documentsArray = [];
+    if (req.files?.images) {
+      documentsArray = documentsArray.concat(
+        req.files.images.map((f) => ({ type: 'Other', url: f.path }))
+      );
+    }
+    if (req.files?.documents) {
+      documentsArray = documentsArray.concat(
+        req.files.documents.map((f) => ({ type: 'Other', url: f.path }))
+      );
+    }
 
     const property = await Property.create({
       surveyNumber,
@@ -126,16 +134,12 @@ const createProperty = async (req, res, next) => {
       description,
       latitude,
       longitude,
-      images,
-      documents,
-      currentOwnerWallet: req.user.walletAddress || null,
+      images: req.files?.images ? req.files.images.map((f) => f.path) : [],
+      documents: req.files?.documents ? req.files.documents.map((f) => f.path) : [],
+      currentOwnerWallet: walletAddress || req.user.walletAddress || null,
+      blockchainTx: txHash || null,
+      blockchainPropertyId: txHash ? surveyNumber : null,
     });
-
-    // TODO: Call Stylus Smart Contract Here — register property on-chain
-    // After successful on-chain registration, update:
-    //   property.blockchainPropertyId = <on-chain ID>
-    //   property.blockchainTx = <transaction hash>
-    //   await property.save();
 
     res.status(201).json({
       success: true,
@@ -162,7 +166,7 @@ const updateProperty = async (req, res, next) => {
 
     // Only the owner or an admin can update
     if (
-      property.owner.toString() !== req.user._id.toString() &&
+      property.ownerId.toString() !== req.user._id.toString() &&
       req.user.role !== 'admin'
     ) {
       return next(
@@ -170,26 +174,13 @@ const updateProperty = async (req, res, next) => {
       );
     }
 
-    // Merge uploaded files if provided
-    if (req.files?.images) {
-      req.body.images = [
-        ...property.images,
-        ...req.files.images.map((f) => f.path),
-      ];
-    }
-    if (req.files?.documents) {
-      req.body.documents = [
-        ...property.documents,
-        ...req.files.documents.map((f) => f.path),
-      ];
-    }
-
+    // Since req.body might be flat from an old frontend or nested,
+    // we should ideally expect the frontend to send the nested structure.
+    // For now we just pass req.body directly to findByIdAndUpdate.
     property = await Property.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     });
-
-    // TODO: Call Stylus Smart Contract Here — update property metadata on-chain
 
     res.status(200).json({
       success: true,
@@ -215,7 +206,7 @@ const deleteProperty = async (req, res, next) => {
     }
 
     if (
-      property.owner.toString() !== req.user._id.toString() &&
+      property.ownerId.toString() !== req.user._id.toString() &&
       req.user.role !== 'admin'
     ) {
       return next(
@@ -224,8 +215,6 @@ const deleteProperty = async (req, res, next) => {
     }
 
     await Property.findByIdAndDelete(req.params.id);
-
-    // TODO: Call Stylus Smart Contract Here — deactivate or mark property as deleted on-chain
 
     res.status(200).json({
       success: true,
@@ -245,17 +234,24 @@ const deleteProperty = async (req, res, next) => {
 
 const verifyProperty = async (req, res, next) => {
   try {
-    const { verificationStatus } = req.body;
+    const { status, txHash } = req.body;
 
-    if (!['verified', 'rejected'].includes(verificationStatus)) {
+    if (!['Verified', 'Rejected'].includes(status) && !['verified', 'rejected'].includes(status)) {
       return next(
-        new ApiError(400, 'Verification status must be "verified" or "rejected"')
+        new ApiError(400, 'Status must be "Verified" or "Rejected"')
       );
+    }
+
+    const properStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+
+    const updateData = { 'verification.status': properStatus, 'verification.verifiedBy': req.user._id, 'verification.verificationDate': new Date() };
+    if (txHash) {
+      updateData.blockchainTx = txHash;
     }
 
     const property = await Property.findByIdAndUpdate(
       req.params.id,
-      { verificationStatus },
+      updateData,
       { new: true, runValidators: true }
     );
 
@@ -263,11 +259,9 @@ const verifyProperty = async (req, res, next) => {
       return next(new ApiError(404, 'Property not found'));
     }
 
-    // TODO: Call Stylus Smart Contract Here — update verification status on-chain
-
     res.status(200).json({
       success: true,
-      message: `Property ${verificationStatus}`,
+      message: `Property ${properStatus}`,
       data: property,
     });
   } catch (error) {

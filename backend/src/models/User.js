@@ -3,11 +3,11 @@ import bcrypt from 'bcrypt';
 
 const userSchema = new mongoose.Schema(
   {
-    fullName: {
+    name: {
       type: String,
-      required: [true, 'Full name is required'],
+      required: [true, 'Name is required'],
       trim: true,
-      maxlength: [100, 'Full name cannot exceed 100 characters'],
+      maxlength: [100, 'Name cannot exceed 100 characters'],
     },
     email: {
       type: String,
@@ -17,31 +17,40 @@ const userSchema = new mongoose.Schema(
       trim: true,
       match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email'],
     },
-    password: {
+    passwordHash: {
       type: String,
-      required: [true, 'Password is required'],
-      minlength: [8, 'Password must be at least 8 characters'],
-      select: false, // never return password by default
+      select: false,
+    },
+    password: { // Backward compatibility
+      type: String,
+      select: false,
     },
     phone: {
       type: String,
       trim: true,
     },
+    role: {
+      type: String,
+      enum: ['buyer', 'seller', 'registrar', 'admin'],
+      default: 'buyer',
+    },
+    govtId: {
+      type: {
+        type: String,
+        enum: ['Aadhaar', 'PAN', 'Passport'],
+      },
+      numberHash: {
+        type: String,
+      },
+    },
     walletAddress: {
       type: String,
+      unique: true,
+      sparse: true,
       trim: true,
       default: null,
     },
-    aadhaarNumber: {
-      type: String,
-      trim: true,
-    },
-    role: {
-      type: String,
-      enum: ['buyer', 'seller', 'officer', 'admin'],
-      default: 'buyer',
-    },
-    status: {
+    kycStatus: {
       type: String,
       enum: ['pending', 'verified', 'rejected', 'suspended'],
       default: 'pending',
@@ -57,29 +66,23 @@ const userSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // adds createdAt & updatedAt
+    timestamps: true,
   }
 );
 
 // ---- Middleware ----
-
-/** Hash password before saving if it was modified. */
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('passwordHash')) return next();
   const salt = await bcrypt.genSalt(12);
-  this.password = await bcrypt.hash(this.password, salt);
+  this.passwordHash = await bcrypt.hash(this.passwordHash, salt);
   next();
 });
 
 // ---- Instance Methods ----
-
-/**
- * Compare a candidate password with the stored hash.
- * @param {string} candidatePassword
- * @returns {Promise<boolean>}
- */
 userSchema.methods.comparePassword = async function (candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
+  const hash = this.passwordHash || this.password;
+  if (!hash) return false;
+  return bcrypt.compare(candidatePassword, hash);
 };
 
 const User = mongoose.model('User', userSchema);

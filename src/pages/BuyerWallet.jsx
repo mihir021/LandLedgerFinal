@@ -18,26 +18,31 @@ function formatINR(amount) {
 export default function BuyerWallet() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [transactions, setTransactions] = useState([]);
+  const [transfers, setTransfers] = useState([]);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
+      setError('');
       try {
-        const transfers = await getTransfers();
-        const completed = (Array.isArray(transfers) ? transfers : []).filter(t => t.status === 'completed');
-        // Derive purchase transactions from completed transfers
+        const rawTransfers = await getTransfers();
+        const transferList = Array.isArray(rawTransfers) ? rawTransfers : [];
+        setTransfers(transferList);
+        
+        const completed = transferList.filter(t => t.status === 'completed' || t.status === 'Completed');
         const txs = completed.map(t => ({
           id: t._id,
           type: 'purchase',
-          description: t.property?.propertyId || t.property?.address || 'Property Purchase',
-          amount: -(t.property?.price || 0),
-          txHash: t.transactionHash || `${t._id}`.slice(0, 18),
+          description: t.property?.propertyId || t.property?.title || t.property?.location?.district || 'Property Purchase',
+          amount: -(t.agreedPrice || t.property?.price || t.property?.pricing?.priceINR || 0),
+          txHash: t.transactionHash || t.blockchainTxHash || `${t._id}`.slice(0, 18),
           date: t.createdAt,
         }));
         setTransactions(txs);
-      } catch {
-        setTransactions([]);
+      } catch (err) {
+        setError(err.message || 'Failed to load wallet transactions.');
       } finally {
         setLoading(false);
       }
@@ -61,8 +66,20 @@ export default function BuyerWallet() {
         </div>
       </div>
 
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 font-medium animate-fade-in">
+          {error}
+        </div>
+      )}
+
       {/* Wallet connect + balance */}
-      <div className="ll-card p-6 animate-fade-in-up" style={{ background: 'linear-gradient(135deg, #0A1628 0%, #1E3A5F 100%)' }}>
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-8 w-8 text-blue-800 animate-spin" />
+        </div>
+      ) : (
+      <>
+        <div className="ll-card p-6 animate-fade-in-up" style={{ background: 'linear-gradient(135deg, #0A1628 0%, #1E3A5F 100%)' }}>
         <div className="flex items-start justify-between mb-6">
           <div>
             <p className="text-sm text-white/60 mb-1">Total Invested in Properties</p>
@@ -80,7 +97,7 @@ export default function BuyerWallet() {
         <div className="grid grid-cols-2 gap-4">
           {[
             { label: 'Total Invested', value: formatINR(totalInvested), sub: 'in properties' },
-            { label: 'Transactions',   value: transactions.length,      sub: 'total completed' },
+            { label: 'Transactions',   value: transfers.length.toString(), sub: 'total tx' },
           ].map(s => (
             <div key={s.label} className="rounded-xl bg-white/10 border border-white/15 px-3 py-3">
               <p className="text-xs text-white/60">{s.label}</p>
@@ -118,6 +135,7 @@ export default function BuyerWallet() {
           </div>
         )}
       </div>
+      </div>
 
       {/* Info note */}
       <div className="ll-card p-4 bg-amber-50 border-amber-200 flex gap-3 animate-fade-in-up delay-300">
@@ -127,6 +145,8 @@ export default function BuyerWallet() {
           <p className="text-xs text-amber-700 mt-0.5">All transactions on LandLedger are secured by multi-signature smart contracts. No funds move without your explicit cryptographic signature and government officer approval.</p>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

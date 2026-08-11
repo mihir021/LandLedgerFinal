@@ -1,6 +1,9 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+import dns from 'dns';
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+
 import mongoose from 'mongoose';
 import User from './models/User.js';
 import Property from './models/Property.js';
@@ -52,9 +55,9 @@ const seedUsers = [
 
 const seed = async () => {
   try {
-    const dbUri = process.env.MONGO_URI || process.env.DB;
+    const dbUri = process.env.MONGODB_URI || process.env.MONGO_URI || process.env.DB;
     if (!dbUri) {
-      throw new Error('No MONGO_URI or DB specified in environment.');
+      throw new Error('No MONGODB_URI, MONGO_URI or DB specified in environment.');
     }
 
     await mongoose.connect(dbUri);

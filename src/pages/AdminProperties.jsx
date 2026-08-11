@@ -19,7 +19,7 @@ export default function AdminProperties() {
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    const params = filter !== 'all' ? { verificationStatus: filter, limit: 50 } : { limit: 50 };
+    const params = filter !== 'all' ? { status: filter.charAt(0).toUpperCase() + filter.slice(1), limit: 1000 } : { limit: 1000 };
     getProperties(params)
       .then(res => setProperties(res.properties || []))
       .catch(() => setProperties([]))
@@ -34,7 +34,7 @@ export default function AdminProperties() {
   const handleAction = async () => {
     setActionLoading(true);
     try {
-      await verifyProperty(modal.id, modal.action === 'approve' ? 'verified' : 'rejected');
+      await verifyProperty(modal.id, modal.action === 'approve' ? 'Verified' : 'Rejected');
       toast.success(`Property ${modal.action === 'approve' ? 'verified' : 'rejected'} successfully.`);
       setProperties(prev => prev.filter(p => p._id !== modal.id));
     } catch (err) {
@@ -88,37 +88,39 @@ export default function AdminProperties() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.map((p, i) => (
+              {filtered.map((p, i) => {
+                const image = p.documents?.[0]?.url;
+                return (
                 <tr key={p._id} className="hover:bg-gray-50 transition-colors animate-fade-in-up" style={{ animationDelay: `${i * 40}ms`, opacity: 0 }}>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center overflow-hidden shrink-0">
-                        {p.images?.[0] ? <img src={p.images[0]} alt="" className="h-full w-full object-cover" /> : '🏠'}
+                        {image ? <img src={image.startsWith('http') ? image : `/${image.replace(/\\/g, '/')}`} alt="" className="h-full w-full object-cover" /> : '🏠'}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-gray-800 truncate max-w-[160px]">{p.address}, {p.city}</p>
+                        <p className="font-medium text-gray-800 truncate max-w-[160px]">{p.location?.district || p.location?.surveyNumber}, {p.location?.city}</p>
                         <p className="text-xs text-gray-400 font-mono">{p.propertyId || p._id?.slice(-8)}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-4 hidden sm:table-cell text-gray-600 text-sm">{p.owner?.fullName || '—'}</td>
+                  <td className="px-5 py-4 hidden sm:table-cell text-gray-600 text-sm">{p.ownerId?.name || p.ownerId?.fullName || '—'}</td>
                   <td className="px-5 py-4 hidden md:table-cell">
-                    <p className="capitalize text-gray-600">{p.landType}</p>
-                    <p className="text-xs text-gray-400">{p.area?.toLocaleString()} sq ft</p>
+                    <p className="capitalize text-gray-600">{p.landDetails?.landType || 'Unknown'}</p>
+                    <p className="text-xs text-gray-400">{p.landDetails?.areaSqft?.toLocaleString() || 0} sq ft</p>
                   </td>
-                  <td className="px-5 py-4"><StatusBadge status={p.verificationStatus || 'pending'} /></td>
+                  <td className="px-5 py-4"><StatusBadge status={p.verification?.status || 'Pending'} /></td>
                   <td className="px-5 py-4">
                     <div className="flex gap-2">
                       <Link to={`/property/${p._id}`} className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-700" title="View Property">
                         <ExternalLink className="h-4 w-4" />
                       </Link>
-                      {(p.verificationStatus === 'pending' || !p.verificationStatus) && (
+                      {(p.verification?.status === 'Pending' || !p.verification?.status) && (
                         <>
-                          <button onClick={() => setModal({ open: true, id: p._id, action: 'approve', propName: `${p.address}, ${p.city}` })}
+                          <button onClick={() => setModal({ open: true, id: p._id, action: 'approve', propName: `${p.location?.district || p.location?.surveyNumber}, ${p.location?.city}` })}
                             className="flex items-center gap-1 rounded-lg bg-green-50 border border-green-200 px-2.5 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100 transition-colors">
                             <CheckCircle className="h-3.5 w-3.5" /> Approve
                           </button>
-                          <button onClick={() => setModal({ open: true, id: p._id, action: 'reject', propName: `${p.address}, ${p.city}` })}
+                          <button onClick={() => setModal({ open: true, id: p._id, action: 'reject', propName: `${p.location?.district || p.location?.surveyNumber}, ${p.location?.city}` })}
                             className="flex items-center gap-1 rounded-lg bg-red-50 border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors">
                             <XCircle className="h-3.5 w-3.5" /> Reject
                           </button>
@@ -127,7 +129,7 @@ export default function AdminProperties() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              )})}
               {filtered.length === 0 && (
                 <tr><td colSpan={5} className="py-10 text-center text-sm text-gray-400">No properties found.</td></tr>
               )}

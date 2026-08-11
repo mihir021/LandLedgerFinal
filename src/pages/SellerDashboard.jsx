@@ -13,6 +13,7 @@ import { getTransfers } from '../services/transferService';
 export default function SellerDashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [properties, setProperties] = useState([]);
   const [requests, setRequests] = useState([]);
 
@@ -22,14 +23,16 @@ export default function SellerDashboard() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
+      setError('');
       try {
         const [props, transfers] = await Promise.all([
-          getProperties({ owner: user?._id, limit: 20 }).catch(() => ({ properties: [] })),
+          getProperties({ owner: user?._id, limit: 20 }).catch(() => getProperties({ limit: 1000 }).catch(() => ({ properties: [] }))),
           getTransfers().catch(() => []),
         ]);
         setProperties(props.properties || []);
         setRequests(Array.isArray(transfers) ? transfers : []);
-      } catch {
+      } catch (err) {
+        setError(err.message || 'Failed to load dashboard data.');
       } finally {
         setLoading(false);
       }
@@ -37,7 +40,7 @@ export default function SellerDashboard() {
     load();
   }, [user]);
 
-  const listed = properties.filter(p => p.verificationStatus === 'verified' && p.isListed);
+  const listed = properties.filter(p => (p.verificationStatus === 'verified' && p.isListed) || p.verification?.status === 'Verified' || p.verification?.status === 'listed');
   const pending = requests.filter(r => r.status === 'pending');
 
   const stats = [
@@ -53,6 +56,12 @@ export default function SellerDashboard() {
         <h1 className="font-serif text-3xl font-bold text-gray-900">Seller Dashboard</h1>
         <p className="text-gray-500 mt-1">Welcome back, {firstName} — manage your properties and listings.</p>
       </div>
+
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 font-medium">
+          {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {stats.map((s, i) => <DashboardCard key={s.label} {...s} delay={i * 80} />)}
@@ -95,22 +104,24 @@ export default function SellerDashboard() {
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
-            {properties.slice(0, 5).map(p => (
+            {properties.slice(0, 5).map(p => {
+              const image = p.documents?.[0]?.url;
+              return (
               <Link key={p._id} to={`/property/${p._id}`}
                 className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
                 <div className="h-12 w-12 rounded-lg bg-blue-50 flex items-center justify-center text-xl shrink-0 overflow-hidden">
-                  {p.images?.[0] ? <img src={p.images[0]} className="h-full w-full object-cover" alt="" /> : '🏠'}
+                  {image ? <img src={image.startsWith('http') ? image : `/${image.replace(/\\/g, '/')}`} className="h-full w-full object-cover" alt="" /> : '🏠'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{p.address}, {p.city}</p>
-                  <p className="text-xs text-gray-500">{p.landType} · {p.area?.toLocaleString()} sq ft</p>
+                  <p className="text-sm font-semibold text-gray-800 truncate">{p.location?.district || p.location?.surveyNumber}, {p.location?.city}</p>
+                  <p className="text-xs text-gray-500">{p.landDetails?.landType || 'Unknown'} · {p.landDetails?.areaSqft?.toLocaleString() || 0} sq ft</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-gray-900">₹{(p.price/100000).toFixed(1)}L</p>
-                  <StatusBadge status={p.verificationStatus || 'pending'} />
+                  <p className="text-sm font-bold text-gray-900">₹{((p.pricing?.priceINR || 0)/100000).toFixed(1)}L</p>
+                  <StatusBadge status={p.verification?.status || 'Pending'} />
                 </div>
               </Link>
-            ))}
+            )})}
           </div>
         )}
       </div>

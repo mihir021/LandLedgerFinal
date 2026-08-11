@@ -2,21 +2,11 @@ import mongoose from 'mongoose';
 
 const transferSchema = new mongoose.Schema(
   {
-    property: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Property',
-      required: [true, 'Property is required'],
-    },
-    seller: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: [true, 'Seller is required'],
-    },
-    buyer: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: [true, 'Buyer is required'],
-    },
+    propertyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Property' },
+    fromUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    toUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    transferType: { type: String, enum: ['Sale', 'Gift', 'Inheritance', 'Lease'] },
+    transferAmount: Number,
     status: {
       type: String,
       enum: [
@@ -25,6 +15,10 @@ const transferSchema = new mongoose.Schema(
         'buyerApproved',
         'officerApproved',
         'completed',
+        'Initiated',
+        'Pending Verification',
+        'Approved',
+        'Rejected',
       ],
       default: 'pending',
     },
@@ -68,11 +62,14 @@ const transferSchema = new mongoose.Schema(
     ],
 
     // ----- Blockchain integration field -----
-    // TODO: Populate when transfer is recorded on-chain via Stylus Smart Contract
     transactionHash: {
       type: String,
       default: null,
     },
+    documents: [{ type: String, url: String }],
+    blockchainTxHash: String,
+    initiatedAt: { type: Date, default: Date.now },
+    completedAt: Date,
   },
   {
     timestamps: true,
@@ -80,9 +77,9 @@ const transferSchema = new mongoose.Schema(
 );
 
 // Indexes
-transferSchema.index({ property: 1 });
-transferSchema.index({ seller: 1 });
-transferSchema.index({ buyer: 1 });
+transferSchema.index({ propertyId: 1 });
+transferSchema.index({ fromUserId: 1 });
+transferSchema.index({ toUserId: 1 });
 transferSchema.index({ status: 1 });
 
 const Transfer = mongoose.model('Transfer', transferSchema);

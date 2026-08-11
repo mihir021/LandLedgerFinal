@@ -5,23 +5,25 @@ const notificationSchema = new mongoose.Schema(
     receiver: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: [true, 'Receiver is required'],
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
     },
     title: {
       type: String,
-      required: [true, 'Notification title is required'],
       trim: true,
     },
     message: {
       type: String,
-      required: [true, 'Notification message is required'],
       trim: true,
     },
     type: {
       type: String,
-      enum: ['info', 'success', 'warning', 'error', 'transfer', 'verification', 'dispute'],
       default: 'info',
     },
+    relatedEntityType: { type: String },
+    relatedEntityId: mongoose.Schema.Types.ObjectId,
     isRead: {
       type: Boolean,
       default: false,
@@ -33,7 +35,7 @@ const notificationSchema = new mongoose.Schema(
 );
 
 // Index for fast lookups by receiver
-notificationSchema.index({ receiver: 1, isRead: 1 });
+notificationSchema.index({ userId: 1, isRead: 1 });
 
 const Notification = mongoose.model('Notification', notificationSchema);
 

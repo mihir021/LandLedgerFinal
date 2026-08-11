@@ -21,6 +21,9 @@ import { createDispute } from '../services/disputeService';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency, formatDate } from '../utils/helpers';
+import { useReadContract } from 'wagmi';
+import { CONTRACT_ADDRESS } from '../config/web3';
+import { LandLedgerABI } from '../config/LandLedgerABI.js';
 
 export default function PropertyDetails() {
   const { id } = useParams();
@@ -46,14 +49,14 @@ export default function PropertyDetails() {
   const [showInquiryModal, setShowInquiryModal] = useState(false);
   const [inquirySubject, setInquirySubject] = useState('');
   const [inquiryMessage, setInquiryMessage] = useState('');
-  const [inquiryName, setInquiryName] = useState(user?.fullName || '');
+  const [inquiryName, setInquiryName] = useState(user?.name || user?.fullName || '');
   const [inquiryEmail, setInquiryEmail] = useState(user?.email || '');
   const [inquiryPhone, setInquiryPhone] = useState(user?.phone || '');
   const [submittingInquiry, setSubmittingInquiry] = useState(false);
 
   useEffect(() => {
     if (user) {
-      setInquiryName(user.fullName || '');
+      setInquiryName(user.name || user.fullName || '');
       setInquiryEmail(user.email || '');
       setInquiryPhone(user.phone || '');
     }
@@ -88,12 +91,23 @@ export default function PropertyDetails() {
     fetchHistory();
   }, [id]);
 
+  const parcelId = property?.location?.surveyNumber || property?.surveyNumber;
+  const { data: onChainData, isLoading: onChainLoading } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: LandLedgerABI,
+    functionName: 'getLand',
+    args: parcelId ? [parcelId] : undefined,
+    query: {
+      enabled: !!parcelId,
+    }
+  });
+
   /** Handle purchase request */
   const handlePurchase = async () => {
     if (!isAuthenticated || !property) return;
     setPurchasing(true);
     try {
-      const ownerId = typeof property.owner === 'object' ? property.owner._id : property.owner;
+      const ownerId = property.ownerId && typeof property.ownerId === 'object' ? property.ownerId._id : property.ownerId;
       await requestTransfer({ propertyId: property._id, sellerId: ownerId });
       toast.success('Purchase request submitted successfully!');
     } catch (err) {
@@ -206,13 +220,15 @@ export default function PropertyDetails() {
   }
 
   // Normalize data
-  const status = property.verificationStatus || 'pending';
-  const ownerName = typeof property.owner === 'object' ? property.owner.fullName : (property.owner || 'Unknown');
-  const images = property.images || [];
+  const status = property.verificationStatus || property.verification?.status || 'pending';
+  const ownerName = typeof property.owner === 'object' ? (property.owner?.fullName || property.owner?.name) : (property.ownerId && typeof property.ownerId === 'object' ? (property.ownerId.name || property.ownerId.fullName) : (property.owner || 'Unknown'));
   const documents = property.documents || [];
+  // Assuming images were mixed into documents array based on my controller change
+  const images = documents.map(d => d.url).filter(Boolean);
   const hasRealImages = images.length > 0 && images[0] && !images[0].startsWith('#');
-  const hasBlockchain = !!(property.blockchainTx || property.blockchainPropertyId);
-  const title = property.title || `${(property.landType || 'property').charAt(0).toUpperCase() + (property.landType || 'property').slice(1)} Land — ${property.city || ''}`;
+  const hasBlockchain = !!(property.blockchain?.transactionHash || property.blockchain?.propertyIdOnChain);
+  const title = property.title || `${(property.landDetails?.landType || 'property').charAt(0).toUpperCase() + (property.landDetails?.landType || 'property').slice(1)} Land — ${property.location?.city || ''}`;
+  const price = property.pricing?.priceINR || 0;
 
   const getImgUrl = (img) => {
     if (!img) return null;
@@ -281,21 +297,21 @@ export default function PropertyDetails() {
                 <h1 className="text-xl font-bold font-serif text-gray-900 sm:text-2xl">{title}</h1>
                 <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-600">
                   <FiMapPin className="h-4 w-4 text-gray-400" />
-                  {property.address}, {property.city}, {property.state}
+                  {property.location?.city}, {property.location?.district}, {property.location?.state}
                 </div>
               </div>
               <StatusBadge status={status} size="md" />
             </div>
 
-            {property.description && (
-              <p className="mt-4 text-sm leading-relaxed text-gray-700">{property.description}</p>
+            {property.verification?.remarks && (
+              <p className="mt-4 text-sm leading-relaxed text-gray-700">{property.verification.remarks}</p>
             )}
 
             {/* Key info grid */}
             <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
               <InfoItem icon={FiHash} label="Property ID" value={property.propertyId || property._id?.slice(-8)} />
-              <InfoItem icon={FiMaximize} label="Area" value={`${property.area?.toLocaleString() || 0} sq ft`} />
-              <InfoItem icon={FiTag} label="Land Type" value={(property.landType || '').charAt(0).toUpperCase() + (property.landType || '').slice(1)} />
+              <InfoItem icon={FiMaximize} label="Area" value={`${property.landDetails?.areaSqft?.toLocaleString() || 0} sq ft`} />
+              <InfoItem icon={FiTag} label="Land Type" value={(property.landDetails?.landType || '').charAt(0).toUpperCase() + (property.landDetails?.landType || '').slice(1)} />
               <InfoItem icon={FiCalendar} label="Listed" value={formatDate(property.createdAt)} />
             </div>
           </div>
@@ -324,7 +340,8 @@ export default function PropertyDetails() {
             {documents.length > 0 ? (
               <div className="grid gap-2 sm:grid-cols-2">
                 {documents.map((doc, i) => {
-                  const fileName = typeof doc === 'string' ? doc.split(/[/\\]/).pop() : doc;
+                  const url = typeof doc === 'string' ? doc : doc.url;
+                  const fileName = url ? url.split(/[/\\]/).pop() : `Document ${i+1}`;
                   return (
                     <div key={i} className="flex items-center gap-3 rounded-xl bg-gray-50 px-4 py-3 border border-gray-200">
                       <FiFileText className="h-4 w-4 text-gray-500" />
@@ -348,27 +365,40 @@ export default function PropertyDetails() {
 
             {hasBlockchain ? (
               <div className="space-y-4">
-                {property.blockchainTx && (
+                {property.blockchain?.transactionHash && (
                   <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-200 p-4">
                     <div>
                       <p className="text-xs text-gray-500">Transaction Hash</p>
-                      <p className="mt-1 font-mono text-sm font-semibold text-blue-950">{property.blockchainTx}</p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-blue-950">{property.blockchain.transactionHash.slice(0, 10)}...{property.blockchain.transactionHash.slice(-8)}</p>
                     </div>
                     <button
-                      onClick={() => { navigator.clipboard.writeText(property.blockchainTx); toast.info('Hash copied!'); }}
+                      onClick={() => { navigator.clipboard.writeText(property.blockchain.transactionHash); toast.info('Hash copied!'); }}
                       className="text-gray-400 hover:text-blue-900 transition-colors"
                     >
                       <FiCopy className="h-4 w-4" />
                     </button>
                   </div>
                 )}
-                {property.blockchainPropertyId && (
-                  <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-200 p-4">
-                    <div>
-                      <p className="text-xs text-gray-500">On-Chain Property ID</p>
-                      <p className="mt-1 font-mono text-sm font-semibold text-blue-950">{property.blockchainPropertyId}</p>
+                
+                {onChainLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <FiLoader className="h-4 w-4 animate-spin" /> Fetching live on-chain status...
+                  </div>
+                ) : onChainData ? (
+                  <div className="rounded-xl bg-blue-50/50 border border-blue-100 p-4 space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">On-Chain Owner</span>
+                      <span className="font-mono font-medium text-blue-900">{onChainData[0].slice(0, 6)}...{onChainData[0].slice(-4)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">On-Chain Status</span>
+                      <span className={`font-semibold ${onChainData[3] ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {onChainData[3] ? 'Verified' : 'Pending Verification'}
+                      </span>
                     </div>
                   </div>
+                ) : (
+                  <p className="text-sm text-red-500">Failed to load on-chain data</p>
                 )}
               </div>
             ) : (
@@ -449,10 +479,10 @@ export default function PropertyDetails() {
           {/* Price Card */}
           <div className="ll-card p-6 animate-fade-in-up delay-100">
             <p className="text-sm text-gray-500">Listed Price</p>
-            <p className="mt-1 text-3xl font-bold font-serif text-gray-900">{formatCurrency(property.price)}</p>
+            <p className="mt-1 text-3xl font-bold font-serif text-gray-900">{formatCurrency(price)}</p>
 
             {/* Verification badge */}
-            {status === 'verified' && (
+            {status === 'Verified' && (
               <div className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
                 <FiShield className="h-5 w-5 text-emerald-700" />
                 <div>
@@ -463,7 +493,7 @@ export default function PropertyDetails() {
             )}
 
             {/* CTA Button */}
-            {isAuthenticated && user?.role === 'buyer' && status === 'verified' && (
+            {isAuthenticated && user?.role === 'buyer' && status === 'Verified' && (
               <button
                 onClick={handlePurchase}
                 disabled={purchasing}
@@ -524,8 +554,8 @@ export default function PropertyDetails() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-900">{ownerName}</p>
-                {typeof property.owner === 'object' && property.owner.email && (
-                  <p className="text-xs text-gray-500">{property.owner.email}</p>
+                {property.ownerId && typeof property.ownerId === 'object' && property.ownerId.email && (
+                  <p className="text-xs text-gray-500">{property.ownerId.email}</p>
                 )}
               </div>
             </div>
@@ -537,18 +567,12 @@ export default function PropertyDetails() {
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500">Survey No.</span>
-                <span className="font-mono text-xs font-semibold text-gray-800">{property.surveyNumber || 'N/A'}</span>
+                <span className="font-mono text-xs font-semibold text-gray-800">{property.location?.surveyNumber || 'N/A'}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500">District</span>
-                <span className="font-semibold text-gray-800">{property.district || 'N/A'}</span>
+                <span className="font-semibold text-gray-800">{property.location?.district || 'N/A'}</span>
               </div>
-              {property.currentOwnerWallet && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Owner Wallet</span>
-                  <span className="font-mono text-xs text-gray-700">{property.currentOwnerWallet.slice(0, 10)}...</span>
-                </div>
-              )}
             </div>
           </div>
         </div>

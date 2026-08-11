@@ -12,6 +12,9 @@ import {
 } from 'react-icons/fi';
 import { createProperty } from '../services/propertyService';
 import { useToast } from '../context/ToastContext';
+import { useWriteContract, useAccount } from 'wagmi';
+import { CONTRACT_ADDRESS } from '../config/web3';
+import { LandLedgerABI } from '../config/LandLedgerABI.js';
 
 /** Static options (matching backend model enums) */
 const states = ['Maharashtra', 'Karnataka', 'Uttar Pradesh', 'Tamil Nadu', 'Rajasthan', 'Gujarat', 'Delhi', 'Telangana'];
@@ -37,6 +40,9 @@ export default function RegisterProperty() {
   const [documentFiles, setDocumentFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const { writeContractAsync } = useWriteContract();
+  const { address: walletAddress } = useAccount();
 
   /** Update a single form field */
   const updateField = (field, value) => {
@@ -85,8 +91,27 @@ export default function RegisterProperty() {
       imageFiles.forEach((file) => formData.append('images', file));
       documentFiles.forEach((file) => formData.append('documents', file));
 
+      // 1. Blockchain Interaction
+      toast.info('Please confirm the transaction in your wallet...');
+      const txHash = await writeContractAsync({
+        address: CONTRACT_ADDRESS,
+        abi: LandLedgerABI,
+        functionName: 'registerLand',
+        args: [
+          form.surveyNumber,
+          `${form.address}, ${form.city}, ${form.state}`,
+          BigInt(form.area)
+        ],
+        maxFeePerGas: 500000000n // 0.5 Gwei to bypass Arbitrum gas spikes
+      });
+
+      toast.info('Transaction submitted! Registering on server...');
+      if (walletAddress) formData.append('walletAddress', walletAddress);
+      formData.append('txHash', txHash); // Save to MongoDB
+
+      // 2. Backend Interaction
       await createProperty(formData);
-      toast.success('Property registered successfully!');
+      toast.success('Property registered successfully on Arbitrum and MongoDB!');
       navigate('/seller');
     } catch (err) {
       setError(err.message || 'Failed to register property.');

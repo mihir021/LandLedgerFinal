@@ -14,6 +14,7 @@ import { getNotifications } from '../services/notificationService';
 export default function BuyerDashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [properties, setProperties] = useState([]);
   const [purchases, setPurchases] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -24,17 +25,18 @@ export default function BuyerDashboard() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
+      setError('');
       try {
         const [props, transfers, notifs] = await Promise.all([
-          getProperties({ verificationStatus: 'verified', limit: 6 }).catch(() => ({ properties: [] })),
+          getProperties({ verificationStatus: 'verified', limit: 6 }).catch(() => getProperties({ status: 'Verified', limit: 1000 }).catch(() => ({ properties: [] }))),
           getTransfers().catch(() => []),
           getNotifications().catch(() => []),
         ]);
         setProperties(props.properties || []);
         setPurchases(Array.isArray(transfers) ? transfers : []);
         setNotifications(Array.isArray(notifs) ? notifs : []);
-      } catch {
-        // Still render with empty data
+      } catch (err) {
+        setError(err.message || 'Failed to load dashboard data.');
       } finally {
         setLoading(false);
       }
@@ -45,11 +47,11 @@ export default function BuyerDashboard() {
   const stats = [
     { icon: Home,        label: 'Available Properties', value: properties.length,                    color: 'navy' },
     { icon: FileText,    label: 'My Purchases',         value: purchases.length,                     color: 'green' },
-    { icon: Clock,       label: 'Pending Requests',     value: purchases.filter(p => p.status === 'pending').length, color: 'amber' },
-    { icon: CheckCircle, label: 'Completed',            value: purchases.filter(p => p.status === 'completed').length, color: 'emerald' },
+    { icon: Clock,       label: 'Pending Requests',     value: purchases.filter(p => p.status === 'pending' || p.status === 'Initiated').length, color: 'amber' },
+    { icon: CheckCircle, label: 'Completed',            value: purchases.filter(p => p.status === 'completed' || p.status === 'Completed').length, color: 'emerald' },
   ];
 
-  const unreadNotifs = notifications.filter(n => !n.isRead).slice(0, 4);
+  const unreadNotifs = notifications.filter(n => !n.isRead && !n.read).slice(0, 4);
 
   return (
     <div className="space-y-8">
@@ -58,6 +60,12 @@ export default function BuyerDashboard() {
         <h1 className="font-serif text-3xl font-bold text-gray-900">Welcome back, {firstName} 👋</h1>
         <p className="text-gray-500 mt-1">Your property dashboard — everything in one place.</p>
       </div>
+
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 font-medium">
+          {error}
+        </div>
+      )}
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
@@ -145,24 +153,26 @@ export default function BuyerDashboard() {
           <p className="text-center text-sm text-gray-400 py-12">No verified properties available.</p>
         ) : (
           <div className="divide-y divide-gray-50">
-            {properties.slice(0, 5).map(prop => (
+            {properties.slice(0, 5).map(prop => {
+              const image = prop.documents?.[0]?.url || null;
+              return (
               <Link key={prop._id} to={`/property/${prop._id}`}
                 className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
                 <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-lg shrink-0 overflow-hidden">
-                  {prop.images?.[0] ? <img src={prop.images[0]} className="h-full w-full object-cover" alt="" /> : '🏠'}
+                  {image ? <img src={image.startsWith('http') ? image : `/${image.replace(/\\/g, '/')}`} className="h-full w-full object-cover" alt="" /> : '🏠'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-800 truncate">
-                    {prop.title || `${prop.landType} property`} — {prop.city}
+                    {prop.title || `${prop.landDetails?.landType || 'Unknown'} property`} — {prop.location?.city}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">{prop.address}, {prop.state}</p>
+                  <p className="text-xs text-gray-500 truncate">{prop.location?.district || prop.location?.surveyNumber}, {prop.location?.state}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-gray-900">₹{(prop.price / 100000).toFixed(1)}L</p>
-                  <StatusBadge status={prop.verificationStatus || 'verified'} />
+                  <p className="text-sm font-bold text-gray-900">₹{((prop.pricing?.priceINR || 0) / 100000).toFixed(1)}L</p>
+                  <StatusBadge status={prop.verification?.status || 'Verified'} />
                 </div>
               </Link>
-            ))}
+            )})}
           </div>
         )}
       </div>

@@ -12,13 +12,20 @@ import { getProperties } from '../services/propertyService';
 import { getTransfers } from '../services/transferService';
 import { getUsers, registerOfficer } from '../services/userService';
 import { getAuditLogs } from '../services/auditService';
-import { MOCK_SYSTEM_STATS } from '../data/mock';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
   const toast = useToast();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState(MOCK_SYSTEM_STATS);
+  const [error, setError] = useState('');
+  const [stats, setStats] = useState({
+    pendingKyc: 0,
+    pendingProperties: 0,
+    activeTransfers: 0,
+    completedTransfers: 0,
+    totalProperties: 0,
+    totalUsers: 0,
+  });
   const [pendingProperties, setPendingProperties] = useState([]);
   const [recentTransfers, setRecentTransfers] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
@@ -32,25 +39,30 @@ export default function AdminDashboard() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
+      setError('');
       try {
-        const [propRes, transfers, userRes, logs] = await Promise.all([
-          getProperties({ verificationStatus: 'pending', limit: 5 }).catch(() => ({ properties: [], pagination: { total: 0 } })),
+        const [propPendingRes, propTotalRes, transfers, userPendingRes, userTotalRes, logs] = await Promise.all([
+          getProperties({ verificationStatus: 'pending', limit: 5 }).catch(() => getProperties({ status: 'Pending', limit: 5 }).catch(() => ({ properties: [], pagination: { total: 0 } }))),
+          getProperties({ limit: 1 }).catch(() => ({ pagination: { total: 0 } })),
           getTransfers().catch(() => []),
-          getUsers({ status: 'pending', limit: 1 }).catch(() => ({ pagination: { total: 0 } })),
+          getUsers({ status: 'pending', limit: 1 }).catch(() => getUsers({ kycStatus: 'pending', limit: 1 }).catch(() => ({ pagination: { total: 0 } }))),
+          getUsers({ limit: 1 }).catch(() => ({ pagination: { total: 0 } })),
           getAuditLogs({ limit: 6 }).catch(() => ({ logs: [] })),
         ]);
-        setPendingProperties(propRes.properties || []);
+        
+        setPendingProperties(propPendingRes.properties || []);
         setRecentTransfers(Array.isArray(transfers) ? transfers.slice(0, 5) : []);
         setAuditLogs(logs.logs || []);
-        setStats(s => ({
-          ...s,
-          pendingKyc: userRes.pagination?.total || s.pendingKyc,
-          pendingProperties: propRes.pagination?.total || (propRes.properties?.length ?? s.pendingProperties),
-          activeTransfers: (Array.isArray(transfers) ? transfers.filter(t => t.status !== 'completed').length : s.activeTransfers),
-          completedTransfers: (Array.isArray(transfers) ? transfers.filter(t => t.status === 'completed').length : s.completedTransfers),
-        }));
-      } catch {
-        // fallback to mock stats
+        setStats({
+          pendingKyc: userPendingRes.pagination?.total || 0,
+          pendingProperties: propPendingRes.pagination?.total || propPendingRes.properties?.length || 0,
+          activeTransfers: Array.isArray(transfers) ? transfers.filter(t => t.status !== 'completed' && t.status !== 'Completed' && t.status !== 'rejected').length : 0,
+          completedTransfers: Array.isArray(transfers) ? transfers.filter(t => t.status === 'completed' || t.status === 'Completed').length : 0,
+          totalProperties: propTotalRes.pagination?.total || 0,
+          totalUsers: userTotalRes.pagination?.total || 0,
+        });
+      } catch (err) {
+        setError(err.message || 'Failed to load dashboard data. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -113,6 +125,12 @@ export default function AdminDashboard() {
         <p className="text-gray-500 mt-1">Welcome back, {firstName} — system-wide overview.</p>
       </div>
 
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 font-medium">
+          {error}
+        </div>
+      )}
+
       {/* Stat Cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         {cards.map((c, i) => (
@@ -143,11 +161,11 @@ export default function AdminDashboard() {
               {pendingProperties.map(p => (
                 <div key={p._id} className="flex items-center gap-3 px-5 py-3.5">
                   <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center text-base shrink-0 overflow-hidden">
-                    {p.images?.[0] ? <img src={p.images[0]} alt="" className="h-full w-full object-cover" /> : '🏠'}
+                    {p.documents?.[0]?.url ? <img src={p.documents[0].url.startsWith('http') ? p.documents[0].url : `/${p.documents[0].url.replace(/\\/g, '/')}`} alt="" className="h-full w-full object-cover" /> : '🏠'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{p.address}, {p.city}</p>
-                    <p className="text-xs text-gray-400">{p.owner?.fullName || 'Unknown owner'} · {p.landType}</p>
+                    <p className="text-sm font-medium text-gray-800 truncate">{p.location?.district || p.location?.surveyNumber}, {p.location?.city}</p>
+                    <p className="text-xs text-gray-400">{p.ownerId?.name || p.ownerId?.fullName || 'Unknown owner'} · {p.landDetails?.landType || 'Unknown'}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <StatusBadge status="pending" />

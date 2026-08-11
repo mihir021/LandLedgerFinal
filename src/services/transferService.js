@@ -48,8 +48,8 @@ export const buyerApprove = async (transferId) => {
  * @param {string} transferId
  * @returns {Object} Updated transfer document.
  */
-export const officerApprove = async (transferId) => {
-  const { data } = await api.post('/transfers/officer-approve', { transferId });
+export const officerApprove = async (transferId, txHash) => {
+  const { data } = await api.post('/transfers/officer-approve', { transferId, txHash });
   return data.data;
 };
 
