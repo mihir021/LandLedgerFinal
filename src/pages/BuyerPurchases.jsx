@@ -7,21 +7,22 @@ import { FileText, Clock, CheckCircle, XCircle, ExternalLink, Loader2, ArrowLeft
 import StatusBadge from '../components/StatusBadge';
 import LifecycleTracker from '../components/LifecycleTracker';
 import { getTransfers } from '../services/transferService';
-import { MOCK_PURCHASE_REQUESTS } from '../data/mock';
+
 
 export default function BuyerPurchases() {
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [expanded, setExpanded] = useState(null);
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true);
+      setError('');
       try {
         const data = await getTransfers();
-        setPurchases(Array.isArray(data) ? data : MOCK_PURCHASE_REQUESTS);
-      } catch {
-        setPurchases(MOCK_PURCHASE_REQUESTS);
+        setPurchases(Array.isArray(data) ? data : []);
+      } catch (err) {
+        setError(err.message || 'Failed to load purchase requests.');
       } finally {
         setLoading(false);
       }
@@ -51,6 +52,12 @@ export default function BuyerPurchases() {
           <p className="text-gray-500 text-sm mt-0.5">Track all your property purchase requests</p>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 font-medium animate-fade-in">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-20">

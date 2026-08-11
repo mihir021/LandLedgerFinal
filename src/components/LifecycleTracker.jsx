@@ -4,7 +4,14 @@
  * Each stage is color-coded by actor type.
  */
 import { Check, Lock } from 'lucide-react';
-import { LIFECYCLE_STAGES } from '../data/mock';
+export const LIFECYCLE_STAGES = [
+  { key: 'transfer_requested',label: 'Request Submitted',   actor:'buyer',    description: 'Buyer submitted transfer request' },
+  { key: 'seller_approved',   label: 'Seller Approved',     actor:'seller',   description: 'Seller accepted the request' },
+  { key: 'buyer_signed',      label: 'Buyer Signed',        actor:'buyer',    description: 'Buyer cryptographically signed transfer' },
+  { key: 'officer_approved',  label: 'Officer Approved',    actor:'officer',  description: 'Sub-registrar verified & approved' },
+  { key: 'chain_processing',  label: 'Blockchain Processing',actor:'chain',   description: 'Smart contract executing transfer' },
+  { key: 'completed',         label: 'Transfer Complete',   actor: 'chain',   description: 'Ownership updated on blockchain' },
+];
 
 const ACTOR_STYLES = {
   seller:  { dot: 'bg-blue-800 border-blue-800',    text: 'text-blue-800',    tag: 'actor-seller'  },

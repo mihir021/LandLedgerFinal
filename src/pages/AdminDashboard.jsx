@@ -11,13 +11,21 @@ import { useToast } from '../context/ToastContext';
 import { getProperties } from '../services/propertyService';
 import { getTransfers } from '../services/transferService';
 import { getUsers } from '../services/userService';
-import { MOCK_SYSTEM_STATS } from '../data/mock';
+
 
 export default function AdminDashboard() {
   const { user } = useAuth();
   const toast = useToast();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState(MOCK_SYSTEM_STATS);
+  const [error, setError] = useState('');
+  const [stats, setStats] = useState({
+    pendingKyc: 0,
+    pendingProperties: 0,
+    activeTransfers: 0,
+    completedTransfers: 0,
+    totalProperties: 0,
+    totalUsers: 0,
+  });
   const [pendingProperties, setPendingProperties] = useState([]);
   const [recentTransfers, setRecentTransfers] = useState([]);
 
@@ -27,23 +35,28 @@ export default function AdminDashboard() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
+      setError('');
       try {
-        const [propRes, transfers, userRes] = await Promise.all([
-          getProperties({ status: 'Pending', limit: 5 }).catch(() => ({ properties: [], pagination: { total: 0 } })),
-          getTransfers().catch(() => []),
-          getUsers({ status: 'pending', limit: 1 }).catch(() => ({ pagination: { total: 0 } })),
+        const [propPendingRes, propTotalRes, transfers, userPendingRes, userTotalRes] = await Promise.all([
+          getProperties({ status: 'Pending', limit: 5 }),
+          getProperties({ limit: 1 }),
+          getTransfers(),
+          getUsers({ kycStatus: 'pending', limit: 1 }),
+          getUsers({ limit: 1 })
         ]);
-        setPendingProperties(propRes.properties || []);
+        
+        setPendingProperties(propPendingRes.properties || []);
         setRecentTransfers(Array.isArray(transfers) ? transfers.slice(0, 5) : []);
-        setStats(s => ({
-          ...s,
-          pendingKyc: userRes.pagination?.total || s.pendingKyc,
-          pendingProperties: propRes.pagination?.total || (propRes.properties?.length ?? s.pendingProperties),
-          activeTransfers: (Array.isArray(transfers) ? transfers.filter(t => t.status !== 'completed').length : s.activeTransfers),
-          completedTransfers: (Array.isArray(transfers) ? transfers.filter(t => t.status === 'completed').length : s.completedTransfers),
-        }));
-      } catch {
-        // fallback to mock stats
+        setStats({
+          pendingKyc: userPendingRes.pagination?.total || 0,
+          pendingProperties: propPendingRes.pagination?.total || 0,
+          activeTransfers: Array.isArray(transfers) ? transfers.filter(t => t.status !== 'completed' && t.status !== 'rejected').length : 0,
+          completedTransfers: Array.isArray(transfers) ? transfers.filter(t => t.status === 'completed').length : 0,
+          totalProperties: propTotalRes.pagination?.total || 0,
+          totalUsers: userTotalRes.pagination?.total || 0,
+        });
+      } catch (err) {
+        setError(err.message || 'Failed to load dashboard data. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -67,6 +80,12 @@ export default function AdminDashboard() {
         <h1 className="font-serif text-3xl font-bold text-gray-900">Admin Dashboard</h1>
         <p className="text-gray-500 mt-1">Welcome back, {firstName} — system-wide overview.</p>
       </div>
+
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 font-medium">
+          {error}
+        </div>
+      )}
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
