@@ -42,7 +42,7 @@ export default function AdminDashboard() {
       setError('');
       try {
         const [propPendingRes, propTotalRes, transfers, userPendingRes, userTotalRes, logs] = await Promise.all([
-          getProperties({ verificationStatus: 'pending', limit: 5 }).catch(() => getProperties({ status: 'Pending', limit: 5 }).catch(() => ({ properties: [], pagination: { total: 0 } }))),
+          getProperties({ verificationStatus: 'pending', limit: 100 }).catch(() => ({ properties: [], pagination: { total: 0 } })),
           getProperties({ limit: 1 }).catch(() => ({ pagination: { total: 0 } })),
           getTransfers().catch(() => []),
           getUsers({ status: 'pending', limit: 1 }).catch(() => getUsers({ kycStatus: 'pending', limit: 1 }).catch(() => ({ pagination: { total: 0 } }))),
@@ -50,12 +50,16 @@ export default function AdminDashboard() {
           getAuditLogs({ limit: 6 }).catch(() => ({ logs: [] })),
         ]);
         
-        setPendingProperties(propPendingRes.properties || []);
+        const fetchedPendingProps = (propPendingRes.properties || []).filter(
+          p => (p.verification?.status || p.verificationStatus || 'Pending').toLowerCase() === 'pending'
+        );
+
+        setPendingProperties(fetchedPendingProps.slice(0, 5));
         setRecentTransfers(Array.isArray(transfers) ? transfers.slice(0, 5) : []);
         setAuditLogs(logs.logs || []);
         setStats({
           pendingKyc: userPendingRes.pagination?.total || 0,
-          pendingProperties: propPendingRes.pagination?.total || propPendingRes.properties?.length || 0,
+          pendingProperties: fetchedPendingProps.length,
           activeTransfers: Array.isArray(transfers) ? transfers.filter(t => t.status !== 'completed' && t.status !== 'Completed' && t.status !== 'rejected').length : 0,
           completedTransfers: Array.isArray(transfers) ? transfers.filter(t => t.status === 'completed' || t.status === 'Completed').length : 0,
           totalProperties: propTotalRes.pagination?.total || 0,
