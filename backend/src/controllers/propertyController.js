@@ -97,6 +97,8 @@ const createProperty = async (req, res, next) => {
       description,
       latitude,
       longitude,
+      txHash,
+      walletAddress
     } = req.body;
 
     // Collect uploaded file paths into documents array
@@ -113,27 +115,23 @@ const createProperty = async (req, res, next) => {
     }
 
     const property = await Property.create({
-      ownerId: req.user._id,
-      location: {
-        surveyNumber,
-        district,
-        state,
-        city,
-        latitude,
-        longitude,
-      },
-      landDetails: {
-        landType,
-        areaSqft: area,
-      },
-      pricing: {
-        priceINR: price,
-      },
-      verification: {
-        status: 'Pending',
-        remarks: description,
-      },
-      documents: documentsArray,
+      surveyNumber,
+      owner: req.user._id,
+      district,
+      state,
+      city,
+      address,
+      landType,
+      area,
+      price,
+      description,
+      latitude,
+      longitude,
+      images: req.files?.images ? req.files.images.map((f) => f.path) : [],
+      documents: req.files?.documents ? req.files.documents.map((f) => f.path) : [],
+      currentOwnerWallet: walletAddress || req.user.walletAddress || null,
+      blockchainTx: txHash || null,
+      blockchainPropertyId: txHash ? surveyNumber : null,
     });
 
     res.status(201).json({

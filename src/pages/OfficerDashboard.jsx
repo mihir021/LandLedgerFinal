@@ -15,6 +15,10 @@ import { getTransfers, officerApprove } from '../services/transferService';
 import { getUsers } from '../services/userService';
 import { getInquiries, updateInquiryStatus } from '../services/inquiryService';
 
+import { useWriteContract } from 'wagmi';
+import { CONTRACT_ADDRESS } from '../config/web3';
+import { LandLedgerABI } from '../config/LandLedgerABI.js';
+
 export default function OfficerDashboard() {
   const { user } = useAuth();
   const toast = useToast();
@@ -25,6 +29,8 @@ export default function OfficerDashboard() {
   const [pendingUsers, setPendingUsers] = useState(0);
   const [inquiries, setInquiries] = useState([]);
   const [actionLoading, setActionLoading] = useState(null);
+
+  const { writeContractAsync } = useWriteContract();
 
   // Inquiry reply state
   const [replyingId, setReplyingId] = useState(null);
@@ -64,11 +70,26 @@ export default function OfficerDashboard() {
   const handleVerifyProperty = async () => {
     setActionLoading(propModal.id);
     try {
+      if (propModal.status === 'verified') {
+        const prop = pendingProperties.find(p => p._id === propModal.id);
+        const parcelId = prop?.surveyNumber || prop?.propertyId || propModal.id;
+        
+        toast.info('Please confirm the verification transaction in your wallet...');
+        const txHash = await writeContractAsync({
+          address: CONTRACT_ADDRESS,
+          abi: LandLedgerABI,
+          functionName: 'verifyLand',
+          args: [parcelId],
+          maxFeePerGas: 500000000n
+        });
+        toast.info(`Verification submitted on-chain: ${txHash}. Syncing with database...`);
+      }
+
       await verifyProperty(propModal.id, propModal.status);
       toast.success(`Property ${propModal.status} successfully`);
       setPendingProperties(prev => prev.filter(p => p._id !== propModal.id));
     } catch (err) {
-      toast.error(err.message || 'Failed');
+      toast.error(err.message || 'Failed to verify property.');
     } finally {
       setActionLoading(null);
       setPropModal({ open: false, id: null, status: null, name: '' });
@@ -78,11 +99,25 @@ export default function OfficerDashboard() {
   const handleApproveTransfer = async () => {
     setActionLoading(transferModal.id);
     try {
+      const transfer = pendingTransfers.find(t => t._id === transferModal.id);
+      const parcelId = transfer?.property?.surveyNumber || transfer?.property?.propertyId || 'UNKNOWN';
+      const buyerWallet = transfer?.buyer?.walletAddress || '0x0000000000000000000000000000000000000001'; // Fallback for demo
+      
+      toast.info('Please confirm the transfer transaction in your wallet...');
+      const txHash = await writeContractAsync({
+        address: CONTRACT_ADDRESS,
+        abi: LandLedgerABI,
+        functionName: 'transferOwnership',
+        args: [parcelId, buyerWallet],
+        maxFeePerGas: 500000000n
+      });
+      toast.info(`Transfer submitted on-chain: ${txHash}. Syncing with database...`);
+
       await officerApprove(transferModal.id);
       toast.success('Transfer approved successfully');
       setPendingTransfers(prev => prev.filter(t => t._id !== transferModal.id));
     } catch (err) {
-      toast.error(err.message || 'Failed');
+      toast.error(err.message || 'Failed to approve transfer.');
     } finally {
       setActionLoading(null);
       setTransferModal({ open: false, id: null });

@@ -40,3 +40,9 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Rust & Stylus Smart Contracts
+smart_contracts/target/
+smart_contracts/.env
+smart_contracts/.env.*
+smart_contracts/Cargo.lock

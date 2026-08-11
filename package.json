@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@rainbow-me/rainbowkit": "^2.2.11",
+    "@tanstack/react-query": "^5.101.4",
     "axios": "^1.19.0",
     "framer-motion": "^13.0.0",
     "lucide-react": "^1.30.0",
@@ -17,7 +19,9 @@
     "react-dom": "^19.2.8",
     "react-icons": "^5.7.0",
     "react-router-dom": "^7.18.2",
-    "recharts": "^3.10.1"
+    "recharts": "^3.10.1",
+    "viem": "^2.55.13",
+    "wagmi": "^2.19.5"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
