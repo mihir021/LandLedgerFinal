@@ -9,6 +9,7 @@ import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
 import { getProperties } from '../services/propertyService';
 import { getTransfers } from '../services/transferService';
+import { formatPrice } from '../utils/helpers';
 
 export default function SellerDashboard() {
   const { user } = useAuth();
@@ -145,7 +146,7 @@ export default function SellerDashboard() {
                     <p className="text-xs text-gray-500 mt-0.5">{landTypeStr} · {Number(areaVal).toLocaleString()} sq ft</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-bold text-amber-700">₹{(Number(priceVal)/100000).toFixed(1)}L</p>
+                    <p className="text-sm font-bold text-amber-700">{formatPrice(Number(priceVal))}</p>
                     <StatusBadge status={p.verification?.status || p.verificationStatus || 'Verified'} />
                   </div>
                 </Link>
