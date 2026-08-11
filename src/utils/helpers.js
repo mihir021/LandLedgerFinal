@@ -17,6 +17,20 @@ export const formatCurrency = (amount) => {
 };
 
 /**
+ * Format a price smartly (Crores, Lakhs, or native formatting).
+ * @param {number} amount
+ * @returns {string}
+ */
+export const formatPrice = (amount) => {
+  if (amount == null) return '₹0';
+  const num = Number(amount);
+  if (isNaN(num)) return '₹0';
+  if (num >= 10000000) return `₹${(num / 10000000).toFixed(2)}Cr`;
+  if (num >= 100000)   return `₹${(num / 100000).toFixed(1)}L`;
+  return `₹${num.toLocaleString('en-IN')}`;
+};
+
+/**
  * Format a date string into a readable format.
  * @param {string} dateStr - ISO date string.
  * @returns {string} Formatted date.

@@ -9,6 +9,7 @@ import LifecycleTracker from '../components/LifecycleTracker';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { getTransfers, officerApprove } from '../services/transferService';
 import { useToast } from '../context/ToastContext';
+import { formatPrice } from '../utils/helpers';
 
 export default function AdminTransfers() {
   const toast = useToast();
@@ -59,7 +60,7 @@ export default function AdminTransfers() {
               {t.property?.propertyId || t.property?.location?.district || t.property?.location?.surveyNumber || 'Property'} — {t.buyer?.name || t.buyer?.fullName || 'Buyer'} ← {t.seller?.name || t.seller?.fullName || 'Seller'}
             </p>
             <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
-              {t.agreedPrice && <span>₹{(t.agreedPrice/100000).toFixed(1)}L</span>}
+              {t.agreedPrice && <span>{formatPrice(t.agreedPrice)}</span>}
               {t.createdAt && <span>· {new Date(t.createdAt).toLocaleDateString('en-IN')}</span>}
             </div>
           </div>

@@ -9,6 +9,7 @@ import LifecycleTracker from '../components/LifecycleTracker';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { getTransfers, buyerApprove } from '../services/transferService';
 import { useToast } from '../context/ToastContext';
+import { formatPrice } from '../utils/helpers';
 
 export default function BuyerPurchases() {
   const toast = useToast();
@@ -129,7 +130,7 @@ export default function BuyerPurchases() {
                     </div>
                     <div className="flex items-center gap-3 text-xs text-gray-500">
                       <span className="font-mono">{req._id?.slice(-8) || req.id}</span>
-                      {amount && <span>• ₹{(amount / 100000).toFixed(1)}L</span>}
+                      {amount && <span>• {formatPrice(amount)}</span>}
                       {req.createdAt && <span>• {new Date(req.createdAt).toLocaleDateString('en-IN')}</span>}
                     </div>
                   </div>

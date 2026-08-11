@@ -4,23 +4,24 @@
  * Fetches data from the backend API.
  */
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   FiMapPin, FiMaximize, FiTag, FiUser, FiCalendar,
   FiFileText, FiShield, FiArrowLeft, FiShoppingCart, FiCopy,
-  FiLoader, FiAlertCircle, FiClock, FiMessageSquare, FiX, FiFlag, FiMap,
+  FiLoader, FiAlertCircle, FiClock, FiMessageSquare, FiX, FiFlag, FiMap, FiShare2, FiHeart, FiCheckCircle
 } from 'react-icons/fi';
+import { ShieldCheck, Activity, Map as MapIcon, Key, FileText, ArrowRight, UserCheck, Phone, Mail, ChevronRight } from 'lucide-react';
 import { SiBlockchaindotcom } from 'react-icons/si';
 import { QRCodeSVG } from 'qrcode.react';
 import StatusBadge from '../components/StatusBadge';
 import PropertyMap from '../components/PropertyMap';
-import { getPropertyById, getPropertyHistory } from '../services/propertyService';
+import { getPropertyById, getPropertyHistory, getPropertyDetails } from '../services/propertyService';
 import { requestTransfer } from '../services/transferService';
 import { createInquiry } from '../services/inquiryService';
 import { createDispute } from '../services/disputeService';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { formatCurrency, formatDate } from '../utils/helpers';
+import { formatCurrency, formatPrice, formatDate } from '../utils/helpers';
 import { useReadContract } from 'wagmi';
 import { CONTRACT_ADDRESS } from '../config/web3';
 import { LandLedgerABI } from '../config/LandLedgerABI.js';
@@ -229,7 +230,8 @@ export default function PropertyDetails() {
     : documents.map(d => d.url).filter(Boolean);
   const hasRealImages = images.length > 0 && images[0] && !images[0].startsWith('#');
   const hasBlockchain = !!(property.blockchainTx || property.blockchain?.transactionHash || property.blockchain?.propertyIdOnChain);
-  const title = property.title || `${(property.landDetails?.landType || 'property').charAt(0).toUpperCase() + (property.landDetails?.landType || 'property').slice(1)} Land — ${property.location?.city || ''}`;
+  const propType = property.landDetails?.landType || property.landType || property.type || 'residential';
+  const title = property.title || `${propType.split(' ')[0]} Property — ${property.location?.city || 'Unknown'}`;
   const price = property.pricing?.priceINR || 0;
 
   const getImgUrl = (img) => {
@@ -481,7 +483,7 @@ export default function PropertyDetails() {
           {/* Price Card */}
           <div className="ll-card p-6 animate-fade-in-up delay-100">
             <p className="text-sm text-gray-500">Listed Price</p>
-            <p className="mt-1 text-3xl font-bold font-serif text-gray-900">{formatCurrency(price)}</p>
+            <p className="mt-1 text-3xl font-bold font-serif text-gray-900">{formatPrice(price)}</p>
 
             {/* Verification badge */}
             {status === 'Verified' && (

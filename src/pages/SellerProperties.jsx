@@ -11,6 +11,7 @@ import { getProperties, toggleListing } from '../services/propertyService';
 import { deepSearchProperty } from '../utils/searchFilters';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { formatPrice } from '../utils/helpers';
 
 export default function SellerProperties() {
   const { user } = useAuth();
@@ -151,7 +152,7 @@ export default function SellerProperties() {
                   </td>
                   <td className="px-5 py-4 hidden sm:table-cell capitalize text-gray-600">{p.landDetails?.landType || 'Unknown'}</td>
                   <td className="px-5 py-4 hidden md:table-cell">
-                    <span className="font-semibold text-gray-800">₹{((p.pricing?.priceINR || 0)/100000).toFixed(1)}L</span>
+                    <span className="font-semibold text-gray-800">{formatPrice(p.pricing?.priceINR || 0)}</span>
                   </td>
                   <td className="px-5 py-4"><StatusBadge status={status} /></td>
                   <td className="px-5 py-4">

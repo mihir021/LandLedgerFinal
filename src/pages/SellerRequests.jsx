@@ -8,6 +8,7 @@ import StatusBadge from '../components/StatusBadge';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { getTransfers, sellerApprove } from '../services/transferService';
 import { useToast } from '../context/ToastContext';
+import { formatPrice } from '../utils/helpers';
 
 
 export default function SellerRequests() {
@@ -92,7 +93,7 @@ export default function SellerRequests() {
                         <p className="text-sm font-semibold text-gray-800">{req.toUserId?.name || req.toUserId?.fullName || req.buyer?.name || req.buyer?.fullName || req.buyerName || 'Buyer'}</p>
                         <p className="text-xs text-gray-500">
                           {req.propertyId?.propertyId || req.propertyId?.location?.district || req.property?.location?.district || req.property?.location?.surveyNumber || req.propertyTitle || 'Property'}
-                          {(req.transferAmount || req.agreedPrice || req.amount) ? ` · ₹${((req.transferAmount || req.agreedPrice || req.amount)/100000).toFixed(1)}L` : ''}
+                          {(req.transferAmount || req.agreedPrice || req.amount) ? ` · ${formatPrice(req.transferAmount || req.agreedPrice || req.amount)}` : ''}
                         </p>
                         <p className="text-xs text-gray-400 mt-0.5">{req.createdAt && `Submitted ${new Date(req.createdAt).toLocaleDateString('en-IN')}`}</p>
                       </div>
@@ -161,7 +162,7 @@ export default function SellerRequests() {
         details={selectedReq ? {
           'Buyer': selectedReq.toUserId?.name || selectedReq.toUserId?.fullName || selectedReq.buyer?.name || selectedReq.buyer?.fullName || selectedReq.buyerName || '—',
           'Property': (selectedReq.propertyId?.propertyId || selectedReq.propertyId?.location?.district || selectedReq.propertyId?.location?.surveyNumber || selectedReq.property?.location?.district || selectedReq.property?.location?.surveyNumber || selectedReq.propertyTitle || '—').slice(0, 40),
-          'Amount': selectedReq.transferAmount || selectedReq.agreedPrice || selectedReq.amount ? `₹${((selectedReq.transferAmount || selectedReq.agreedPrice || selectedReq.amount)/100000).toFixed(1)}L` : '—',
+          'Amount': selectedReq.transferAmount || selectedReq.agreedPrice || selectedReq.amount ? formatPrice(selectedReq.transferAmount || selectedReq.agreedPrice || selectedReq.amount) : '—',
         } : undefined}
       />
     </div>

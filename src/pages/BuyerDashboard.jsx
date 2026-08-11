@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { getProperties } from '../services/propertyService';
 import { getTransfers } from '../services/transferService';
 import { getNotifications } from '../services/notificationService';
+import { formatPrice } from '../utils/helpers';
 
 export default function BuyerDashboard() {
   const { user } = useAuth();
@@ -168,7 +169,7 @@ export default function BuyerDashboard() {
                   <p className="text-xs text-gray-500 truncate">{prop.location?.district || prop.location?.surveyNumber}, {prop.location?.state}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-gray-900">₹{((prop.pricing?.priceINR || 0) / 100000).toFixed(1)}L</p>
+                  <p className="text-sm font-bold text-gray-900">{formatPrice(prop.pricing?.priceINR || 0)}</p>
                   <StatusBadge status={prop.verification?.status || 'Verified'} />
                 </div>
               </Link>
