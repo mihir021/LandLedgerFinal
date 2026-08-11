@@ -135,7 +135,6 @@ export default function BuyerWallet() {
           </div>
         )}
       </div>
-      </div>
 
       {/* Info note */}
       <div className="ll-card p-4 bg-amber-50 border-amber-200 flex gap-3 animate-fade-in-up delay-300">

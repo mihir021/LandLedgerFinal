@@ -7,7 +7,6 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Bell, Check, Trash2, Loader2, BellOff } from 'lucide-react';
 import { getNotifications, markAsRead, markAllAsRead, deleteNotification } from '../services/notificationService';
 import { useToast } from '../context/ToastContext';
-import { MOCK_NOTIFICATIONS } from '../data/mock';
 
 const TYPE_STYLES = {
   transfer: 'bg-blue-50 text-blue-700 border-blue-100',
@@ -29,7 +28,7 @@ export default function NotificationsPage({ backTo = '/buyer', role: _role = 'bu
         const data = await getNotifications();
         setNotifications(Array.isArray(data) ? data : []);
       } catch {
-        setNotifications(MOCK_NOTIFICATIONS);
+        setNotifications([]);
       } finally {
         setLoading(false);
       }
