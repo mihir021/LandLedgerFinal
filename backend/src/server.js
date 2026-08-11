@@ -8,7 +8,7 @@ import app from './app.js';
 import connectDB from './config/database.js';
 import { logger } from './utils/logger.js';
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.argv[2] || process.env.PORT || 5001;
 
 // Connect to MongoDB, then start the server
 const startServer = async () => {

@@ -331,7 +331,6 @@ const getTransfers = async (req, res, next) => {
       .populate('fromUserId', 'name email')
       .populate('toUserId', 'name email')
       .sort({ createdAt: -1 });
-      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,

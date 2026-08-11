@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Search, SlidersHorizontal, X, MapPin, Loader2 } from 'lucide-react';
 import PropertyCard from '../components/PropertyCard';
 import { getProperties } from '../services/propertyService';
+import { filterProperties } from '../utils/searchFilters';
 
 const TYPES = ['all', 'residential', 'commercial', 'agricultural', 'industrial', 'mixed'];
 const STATES = ['All States', 'Karnataka', 'Maharashtra', 'Gujarat', 'Tamil Nadu', 'Delhi', 'Rajasthan'];
@@ -26,9 +27,7 @@ export default function PropertySearch() {
     const load = async () => {
       setError('');
       try {
-        const params = {};
-        if (type !== 'all') params.landType = type;
-        if (status !== 'all') params.status = status === 'verified' ? 'Verified' : 'Pending';
+        const params = { limit: 2000 };
         const res = await getProperties(params);
         setProperties(res.properties || []);
       } catch (err) {
@@ -38,25 +37,9 @@ export default function PropertySearch() {
       }
     };
     load();
-  }, [type, status]);
+  }, []);
 
-  const filtered = properties.filter(p => {
-    const q = search.toLowerCase();
-    const matchSearch = !q ||
-      (p.location?.city || '').toLowerCase().includes(q) ||
-      (p.location?.district || '').toLowerCase().includes(q) ||
-      (p.title || '').toLowerCase().includes(q) ||
-      (p.location?.state || '').toLowerCase().includes(q) ||
-      (p.location?.surveyNumber || '').toLowerCase().includes(q);
-
-    const matchState = state === 'All States' || (p.location?.state || '').toLowerCase() === state.toLowerCase();
-
-    const price = p.pricing?.priceINR || 0;
-    const matchMin = !minPrice || price >= Number(minPrice) * 100000;
-    const matchMax = !maxPrice || price <= Number(maxPrice) * 100000;
-
-    return matchSearch && matchState && matchMin && matchMax;
-  });
+  const filtered = filterProperties(properties, { search, type, state, minPrice, maxPrice, status });
 
   const clearFilters = () => {
     setSearch(''); setType('all'); setState('All States');

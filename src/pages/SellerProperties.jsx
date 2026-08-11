@@ -3,11 +3,12 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Home, FilePlus, ExternalLink, Loader2, ArrowLeft, Power } from 'lucide-react';
+import { Home, FilePlus, ExternalLink, Loader2, ArrowLeft, Power, Search } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import VerificationBadge from '../components/VerificationBadge';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { getProperties, toggleListing } from '../services/propertyService';
+import { deepSearchProperty } from '../utils/searchFilters';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
@@ -19,6 +20,7 @@ export default function SellerProperties() {
   const [actionLoading, setActionLoading] = useState(false);
   const [toggleModal, setToggleModal] = useState(null);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     load();
@@ -53,6 +55,8 @@ export default function SellerProperties() {
     }
   };
 
+  const filtered = properties.filter(p => deepSearchProperty(p, search));
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between animate-fade-in">
@@ -74,6 +78,20 @@ export default function SellerProperties() {
       {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 font-medium animate-fade-in">
           {error}
+        </div>
+      )}
+
+      {/* Search Bar */}
+      {!loading && properties.length > 0 && (
+        <div className="relative max-w-md animate-fade-in">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search properties by ID, address, type..."
+            className="ll-input pl-9"
+          />
         </div>
       )}
 
@@ -100,7 +118,7 @@ export default function SellerProperties() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {properties.map((p, i) => {
+              {filtered.map((p, i) => {
                 const status = p.verification?.status || 'Pending';
                 const image = p.documents?.[0]?.url || null;
                 const getImgUrl = (img) => {

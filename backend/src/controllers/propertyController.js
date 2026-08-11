@@ -20,7 +20,7 @@ const getProperties = async (req, res, next) => {
       listed,
       owner,
       page = 1,
-      limit = 100,
+      limit = 2000,
     } = req.query;
 
     // Build dynamic filter using nested fields

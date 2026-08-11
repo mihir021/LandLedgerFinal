@@ -8,6 +8,7 @@ import StatusBadge from '../components/StatusBadge';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { getProperties, verifyProperty } from '../services/propertyService';
 import { useToast } from '../context/ToastContext';
+import { deepSearchProperty } from '../utils/searchFilters';
 
 export default function AdminProperties() {
   const toast = useToast();
@@ -26,10 +27,7 @@ export default function AdminProperties() {
       .finally(() => setLoading(false));
   }, [filter]);
 
-  const filtered = properties.filter(p => {
-    const q = search.toLowerCase();
-    return !q || (p.address || '').toLowerCase().includes(q) || (p.city || '').toLowerCase().includes(q) || (p.propertyId || '').toLowerCase().includes(q);
-  });
+  const filtered = properties.filter(p => deepSearchProperty(p, search));
 
   const handleAction = async () => {
     setActionLoading(true);

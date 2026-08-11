@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, ShieldCheck, ArrowLeftRight, MessageSquare, Check, X, Loader2, Send, ArrowRight, Scale } from 'lucide-react';
+import { Users, ShieldCheck, ArrowLeftRight, MessageSquare, Check, X, Loader2, Send, ArrowRight, Scale, Search } from 'lucide-react';
 import DashboardCard from '../components/DashboardCard';
 import StatusBadge from '../components/StatusBadge';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -15,6 +15,7 @@ import { getTransfers, officerApprove } from '../services/transferService';
 import { getUsers } from '../services/userService';
 import { getInquiries, updateInquiryStatus } from '../services/inquiryService';
 import { getDisputes, updateDispute } from '../services/disputeService';
+import { deepSearchProperty } from '../utils/searchFilters';
 
 import { useWriteContract } from 'wagmi';
 import { CONTRACT_ADDRESS } from '../config/web3';
@@ -28,6 +29,7 @@ export default function OfficerDashboard() {
   const [pendingProperties, setPendingProperties] = useState([]);
   const [pendingTransfers, setPendingTransfers] = useState([]);
   const [pendingUsers, setPendingUsers] = useState(0);
+  const [searchProp, setSearchProp] = useState('');
   const [inquiries, setInquiries] = useState([]);
   const [disputes, setDisputes] = useState([]);
   const [actionLoading, setActionLoading] = useState(null);
@@ -202,13 +204,31 @@ export default function OfficerDashboard() {
                 <span className="rounded-full bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5">{pendingProperties.length}</span>
               )}
             </div>
+            {/* Search Bar for Pending Properties */}
+            {pendingProperties.length > 0 && (
+              <div className="px-5 py-3 border-b border-gray-50">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchProp}
+                    onChange={(e) => setSearchProp(e.target.value)}
+                    placeholder="Search properties by ID, address, type..."
+                    className="ll-input pl-9 text-sm py-2"
+                  />
+                </div>
+              </div>
+            )}
+
             {pendingProperties.length === 0 ? (
               <p className="text-center text-sm text-gray-400 py-10 flex items-center justify-center gap-2">
                 <Check className="h-4 w-4 text-green-500" /> All properties reviewed!
               </p>
+            ) : pendingProperties.filter(p => deepSearchProperty(p, searchProp)).length === 0 ? (
+              <p className="text-center text-sm text-gray-400 py-10">No properties match your search.</p>
             ) : (
               <div className="divide-y divide-gray-50">
-                {pendingProperties.map(p => {
+                {pendingProperties.filter(p => deepSearchProperty(p, searchProp)).map(p => {
                   const image = p.documents?.[0]?.url;
                   return (
                   <div key={p._id} className="flex items-center gap-4 px-5 py-4">

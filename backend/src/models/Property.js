@@ -89,7 +89,7 @@ const propertySchema = new mongoose.Schema(
 );
 
 // Indexes
-propertySchema.index({ propertyId: 1 }, { unique: true });
+
 propertySchema.index({ 'location.state': 1, 'location.city': 1 });
 propertySchema.index({ 'verification.status': 1 });
 propertySchema.index({ ownerId: 1 });
