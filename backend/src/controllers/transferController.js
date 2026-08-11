@@ -31,10 +31,11 @@ const requestTransfer = async (req, res, next) => {
     if (!property) {
       return next(new ApiError(404, 'Property not found'));
     }
-    if (property.verification.status !== 'Verified') {
+    if ((property.verification?.status || property.verificationStatus)?.toLowerCase() !== 'verified') {
       return next(new ApiError(400, 'Property must be verified before transfer'));
     }
-    if (property.ownerId.toString() !== sellerId) {
+    const propertyOwnerId = property.ownerId || property.owner;
+    if (!propertyOwnerId || propertyOwnerId.toString() !== sellerId) {
       return next(new ApiError(400, 'Seller does not own this property'));
     }
 
@@ -68,6 +69,7 @@ const requestTransfer = async (req, res, next) => {
     // Notify the seller
     await Notification.create({
       receiver: sellerId,
+      userId: sellerId,
       title: 'New Transfer Request',
       message: `A buyer has requested to purchase property ${property.propertyId}.`,
       type: 'Transfer Update',
@@ -121,6 +123,7 @@ const sellerApprove = async (req, res, next) => {
     // Notify buyer
     await Notification.create({
       receiver: transfer.toUserId,
+      userId: transfer.toUserId,
       title: 'Seller Approved Transfer',
       message: 'The seller has approved the property transfer.',
       type: 'Transfer Update',
@@ -174,6 +177,7 @@ const buyerApprove = async (req, res, next) => {
 
     // Notify seller and the officers who need to perform the next review.
     await Notification.create({
+      receiver: transfer.fromUserId,
       userId: transfer.fromUserId,
       title: 'Buyer Approved Transfer',
       message: 'The buyer has signed and approved the property transfer.',
@@ -184,6 +188,7 @@ const buyerApprove = async (req, res, next) => {
     const reviewers = await User.find({ role: { $in: ['officer', 'registrar', 'admin'] }, kycStatus: { $ne: 'suspended' } }).select('_id');
     if (reviewers.length) {
       await Notification.insertMany(reviewers.map(({ _id }) => ({
+        receiver: _id,
         userId: _id,
         title: 'Transfer Ready for Review',
         message: 'A buyer has signed a property transfer and it is ready for officer approval.',
@@ -249,8 +254,8 @@ const officerApprove = async (req, res, next) => {
     // Notify both parties
     const msg = 'Government officer has approved the property transfer.';
     await Notification.insertMany([
-      { receiver: transfer.fromUserId, title: 'Officer Approved', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
-      { receiver: transfer.toUserId, title: 'Officer Approved', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+      { receiver: transfer.fromUserId, userId: transfer.fromUserId, title: 'Officer Approved', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+      { receiver: transfer.toUserId, userId: transfer.toUserId, title: 'Officer Approved', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
     ]);
 
     await logAudit({
@@ -313,8 +318,8 @@ const completeTransfer = async (req, res, next) => {
     // Notify both parties
     const msg = 'Property transfer has been completed successfully.';
     await Notification.insertMany([
-      { receiver: transfer.fromUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
-      { receiver: transfer.toUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+      { receiver: transfer.fromUserId, userId: transfer.fromUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+      { receiver: transfer.toUserId, userId: transfer.toUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
     ]);
 
     await logAudit({
@@ -337,18 +342,25 @@ const completeTransfer = async (req, res, next) => {
 
 // =====================================================
 // @desc    Get all transfers (admin/officer: all, others: own)
-// @route   GET /api/transfers
+// @route   GET /api/transfers?view=buyer|seller
 // @access  Private
 // =====================================================
 const getTransfers = async (req, res, next) => {
   try {
+    const { view } = req.query;
+
     let filter = {};
 
-    // Non-admin/officer users only see their own transfers
-    if (!['admin', 'officer', 'registrar'].includes(req.user.role)) {
-      filter = {
-        $or: [{ fromUserId: req.user._id }, { toUserId: req.user._id }],
-      };
+    // Non-admin/officer users only see transfers for the selected side.
+    // 'both' accounts pick a side via the `view` query param (matches the
+    // active Buyer/Seller mode chosen in the UI).
+    const isStaff = ['admin', 'officer', 'registrar'].includes(req.user.role);
+    if (!isStaff) {
+      if (view === 'seller') {
+        filter.fromUserId = req.user._id; // transfers where I am the seller
+      } else {
+        filter.toUserId = req.user._id; // transfers where I am the buyer
+      }
     }
 
     const transfers = await Transfer.find(filter)
@@ -357,10 +369,20 @@ const getTransfers = async (req, res, next) => {
       .populate('toUserId', 'name email walletAddress')
       .sort({ createdAt: -1 });
 
+    // Expose friendly aliases so the existing UI (which reads t.buyer,
+    // t.seller, t.property) keeps working regardless of role.
+    const data = transfers.map((t) => {
+      const doc = t.toObject();
+      doc.buyer = doc.toUserId;
+      doc.seller = doc.fromUserId;
+      doc.property = doc.propertyId;
+      return doc;
+    });
+
     res.status(200).json({
       success: true,
       message: 'Transfers retrieved',
-      data: transfers,
+      data,
     });
   } catch (error) {
     next(error);

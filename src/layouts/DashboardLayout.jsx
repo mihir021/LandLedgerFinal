@@ -103,8 +103,20 @@ export const NAV_BY_ROLE = {
   ]
 };
 
+/**
+ * Pick the correct sidebar nav for an account.
+ * 'both' accounts follow the active Buyer/Seller mode.
+ */
+export function navItemsForRole(user, mode) {
+  if (!user) return NAV_BY_ROLE.buyer;
+  if (user.role === 'both') {
+    return NAV_BY_ROLE[mode === 'seller' ? 'seller' : 'buyer'];
+  }
+  return NAV_BY_ROLE[user.role] || NAV_BY_ROLE.buyer;
+}
+
 export default function DashboardLayout() {
-  const { initializing, user } = useAuth();
+  const { initializing, user, mode } = useAuth();
 
   if (initializing) {
     return (
@@ -114,8 +126,7 @@ export default function DashboardLayout() {
     );
   }
 
-  const role = user?.role || 'buyer';
-  const navItems = NAV_BY_ROLE[role] || NAV_BY_ROLE.buyer;
+  const navItems = navItemsForRole(user, mode);
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--color-surface-1)' }}>

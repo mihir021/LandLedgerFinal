@@ -29,7 +29,7 @@ export default function BuyerWallet() {
       setLoading(true);
       setError('');
       try {
-        const rawTransfers = await getTransfers();
+        const rawTransfers = await getTransfers({ view: 'buyer' });
         const transferList = Array.isArray(rawTransfers) ? rawTransfers : [];
         setTransfers(transferList);
         

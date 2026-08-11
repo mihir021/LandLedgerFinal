@@ -21,7 +21,7 @@ export default function SellerRequests() {
 
   useEffect(() => {
     setError('');
-    getTransfers()
+    getTransfers({ view: 'seller' })
       .then(data => setRequests(Array.isArray(data) ? data : []))
       .catch(err => setError(err.message || 'Failed to load purchase requests.'))
       .finally(() => setLoading(false));

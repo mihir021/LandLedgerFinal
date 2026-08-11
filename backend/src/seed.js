@@ -38,7 +38,7 @@ const seedUsers = [
     email: 'seller@landledger.com',
     password: 'Seller@123',
     phone: '9999999993',
-    role: 'seller',
+    role: 'both',
     status: 'verified',
     walletAddress: '0x4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e',
   },
@@ -47,7 +47,7 @@ const seedUsers = [
     email: 'buyer@landledger.com',
     password: 'Buyer@123',
     phone: '9999999994',
-    role: 'buyer',
+    role: 'both',
     status: 'verified',
     walletAddress: '0x8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c',
   },
@@ -76,15 +76,28 @@ const seed = async () => {
     const createdUsers = {};
     for (const userData of seedUsers) {
       const u = await User.create(userData);
-      createdUsers[u.role] = u;
+      createdUsers[u.email] = u;
       logger.info(`Created user: ${u.email} (${u.role})`);
     }
+    // Convenience lookups keyed by role label
+    const byRole = {
+      admin: createdUsers['admin@landledger.com'],
+      officer: createdUsers['officer@landledger.com'],
+      seller: createdUsers['seller@landledger.com'],
+      buyer: createdUsers['buyer@landledger.com'],
+    };
+    const C = {
+      admin: byRole.admin,
+      officer: byRole.officer,
+      seller: byRole.seller,
+      buyer: byRole.buyer,
+    };
 
     // Insert sample properties
     const propertiesData = [
       {
         surveyNumber: 'SRV-1024-A',
-        owner: createdUsers.seller._id,
+        owner: C.seller._id,
         district: 'Bengaluru Urban',
         state: 'Karnataka',
         city: 'Bengaluru',
@@ -102,7 +115,7 @@ const seed = async () => {
       },
       {
         surveyNumber: 'SRV-8840-B',
-        owner: createdUsers.seller._id,
+        owner: C.seller._id,
         district: 'Pune',
         state: 'Maharashtra',
         city: 'Pune',
@@ -120,7 +133,7 @@ const seed = async () => {
       },
       {
         surveyNumber: 'SRV-3312-C',
-        owner: createdUsers.seller._id,
+        owner: C.seller._id,
         district: 'Gandhinagar',
         state: 'Gujarat',
         city: 'Gandhinagar',
@@ -146,20 +159,20 @@ const seed = async () => {
     const sampleInquiries = [
       {
         property: createdProps[0]._id,
-        user: createdUsers.buyer._id,
-        name: createdUsers.buyer.fullName,
-        email: createdUsers.buyer.email,
-        phone: createdUsers.buyer.phone,
+        user: C.buyer._id,
+        name: C.buyer.name,
+        email: C.buyer.email,
+        phone: C.buyer.phone,
         subject: 'Title Deed Verification Request',
         message: 'Hello, I am interested in purchasing this HSR Layout plot. Could you confirm if the survey records match municipal revenue logs?',
         status: 'pending',
       },
       {
         property: createdProps[1]._id,
-        user: createdUsers.buyer._id,
-        name: createdUsers.buyer.fullName,
-        email: createdUsers.buyer.email,
-        phone: createdUsers.buyer.phone,
+        user: C.buyer._id,
+        name: C.buyer.name,
+        email: C.buyer.email,
+        phone: C.buyer.phone,
         subject: 'Commercial Zoning Inquiry',
         message: 'Is the Hinjawadi land approved for multi-story office building construction?',
         status: 'in-progress',
@@ -184,7 +197,7 @@ const seed = async () => {
     // Insert a sample dispute
     await Dispute.create({
       property: createdProps[1]._id,
-      raiser: createdUsers.buyer._id,
+      raiser: C.buyer._id,
       subject: 'Boundary measurement discrepancy',
       description:
         'The recorded boundary in the survey record appears to differ from the physical fencing on site.',
@@ -195,17 +208,17 @@ const seed = async () => {
     // Insert sample audit logs
     await AuditLog.insertMany([
       {
-        user: createdUsers.admin._id,
-        userEmail: createdUsers.admin.email,
+        user: C.admin._id,
+        userEmail: C.admin.email,
         action: 'user.verify',
         targetType: 'User',
-        targetId: createdUsers.buyer._id,
-        details: { email: createdUsers.buyer.email, role: 'buyer' },
+        targetId: C.buyer._id,
+        details: { email: C.buyer.email, role: 'buyer' },
         ip: '127.0.0.1',
       },
       {
-        user: createdUsers.officer._id,
-        userEmail: createdUsers.officer.email,
+        user: C.officer._id,
+        userEmail: C.officer.email,
         action: 'property.verify',
         targetType: 'Property',
         targetId: createdProps[0]._id,
@@ -213,12 +226,12 @@ const seed = async () => {
         ip: '127.0.0.1',
       },
       {
-        user: createdUsers.admin._id,
-        userEmail: createdUsers.admin.email,
+        user: C.admin._id,
+        userEmail: C.admin.email,
         action: 'officer.create',
         targetType: 'User',
-        targetId: createdUsers.officer._id,
-        details: { email: createdUsers.officer.email, jurisdiction: 'Bengaluru Urban' },
+        targetId: C.officer._id,
+        details: { email: C.officer.email, jurisdiction: 'Bengaluru Urban' },
         ip: '127.0.0.1',
       },
     ]);

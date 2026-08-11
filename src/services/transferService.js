@@ -5,11 +5,16 @@
 import api from './api';
 
 /**
- * Get all transfers scoped to the current user's role.
+ * Get all transfers scoped to the current user's role/mode.
+ * @param {{ view?: 'buyer' | 'seller' }} [opts] - 'both' accounts pick which
+ *        side of their transfers to see (matches the active Buyer/Seller mode).
  * @returns {Array} Transfer documents.
  */
-export const getTransfers = async () => {
-  const { data } = await api.get('/transfers');
+export const getTransfers = async (opts = {}) => {
+  const params = new URLSearchParams();
+  if (opts.view) params.set('view', opts.view);
+  const qs = params.toString();
+  const { data } = await api.get(`/transfers${qs ? `?${qs}` : ''}`);
   return data.data;
 };
 

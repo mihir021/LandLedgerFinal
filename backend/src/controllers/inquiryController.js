@@ -76,8 +76,8 @@ export const getInquiries = async (req, res, next) => {
         { user: req.user._id },
         { email: req.user.email },
       ];
-    } else if (req.user && req.user.role === 'seller') {
-      // Sellers can see inquiries for properties they own
+    } else if (req.user && ['seller', 'both'].includes(req.user.role)) {
+      // Sellers (including 'both' accounts) can see inquiries for properties they own
       const sellerProperties = await Property.find({ owner: req.user._id }).select('_id');
       const propIds = sellerProperties.map((p) => p._id);
       filter.property = { $in: propIds };
