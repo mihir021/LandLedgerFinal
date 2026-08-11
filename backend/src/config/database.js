@@ -7,6 +7,9 @@ import { logger } from '../utils/logger.js';
  */
 const connectDB = async () => {
   try {
+    if (mongoose.connection.readyState >= 1) {
+      return;
+    }
     const dbUri = process.env.MONGODB_URI || process.env.MONGO_URI || process.env.DB;
     if (!dbUri) {
       throw new Error('Database URI (MONGODB_URI, MONGO_URI, or DB) is not defined in environment variables.');
@@ -15,7 +18,6 @@ const connectDB = async () => {
     logger.info(`MongoDB connected: ${conn.connection.host}`);
   } catch (error) {
     logger.error(`MongoDB connection error: ${error.message}`);
-    process.exit(1);
   }
 };
 
