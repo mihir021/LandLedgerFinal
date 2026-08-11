@@ -35,7 +35,7 @@ const propertySchema = new mongoose.Schema(
     landDetails: {
       landType: {
         type: String,
-        enum: ['Agricultural Land', 'Residential Plot', 'Commercial Land', 'Industrial Land'],
+        enum: ['Agricultural Land', 'Residential Plot', 'Commercial Land', 'Industrial Land', 'Agricultural', 'Residential', 'Commercial', 'Industrial', 'Mixed', 'Land'],
       },
       landUseZone: String,
       areaSqft: Number,
@@ -82,6 +82,8 @@ const propertySchema = new mongoose.Schema(
         uploadedAt: Date,
       },
     ],
+
+    images: [String],
   },
   {
     timestamps: true,

@@ -120,7 +120,7 @@ export default function SellerProperties() {
             <tbody className="divide-y divide-gray-50">
               {filtered.map((p, i) => {
                 const status = p.verification?.status || 'Pending';
-                const image = p.documents?.[0]?.url || null;
+                const image = (p.images && p.images.length > 0) ? p.images[0] : (p.documents?.[0]?.url || null);
                 const getImgUrl = (img) => {
                   if (!img) return null;
                   if (img.startsWith('http')) return img;

@@ -87,7 +87,7 @@ export default function AdminProperties() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filtered.map((p, i) => {
-                const image = p.documents?.[0]?.url;
+                const image = (p.images && p.images.length > 0) ? p.images[0] : (p.documents?.[0]?.url || null);
                 return (
                 <tr key={p._id} className="hover:bg-gray-50 transition-colors animate-fade-in-up" style={{ animationDelay: `${i * 40}ms`, opacity: 0 }}>
                   <td className="px-5 py-4">

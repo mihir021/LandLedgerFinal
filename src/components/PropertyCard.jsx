@@ -46,15 +46,19 @@ export default function PropertyCard({ property, delay = 0 }) {
   };
   const propTypeKey = getPropTypeKey(propType);
 
-  let imgSrc = null;
-  const images = property.documents?.length > 0 ? property.documents.map(d => d.url) : (property.images || []);
-  if (images[0]) {
-    if (images[0].startsWith('http')) {
-      imgSrc = images[0];
-    } else if (images[0].startsWith('uploads/') || images[0].startsWith('uploads\\')) {
-      imgSrc = `/${images[0].replace(/\\/g, '/')}`;
-    } else if (!images[0].startsWith('#')) {
-      imgSrc = `/uploads/images/${images[0].replace(/\\/g, '/')}`;
+  // Prioritize property.images array, fallback to documents or high-res default
+  const rawImages = (property.images && property.images.length > 0)
+    ? property.images
+    : (property.documents?.map(d => d.url).filter(Boolean) || []);
+
+  let imgSrc = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=80';
+  if (rawImages[0]) {
+    if (rawImages[0].startsWith('http')) {
+      imgSrc = rawImages[0];
+    } else if (rawImages[0].startsWith('uploads/') || rawImages[0].startsWith('uploads\\')) {
+      imgSrc = `/${rawImages[0].replace(/\\/g, '/')}`;
+    } else if (!rawImages[0].startsWith('#')) {
+      imgSrc = `/uploads/images/${rawImages[0].replace(/\\/g, '/')}`;
     }
   }
 
@@ -65,14 +69,16 @@ export default function PropertyCard({ property, delay = 0 }) {
       style={{ animationDelay: `${delay}ms`, opacity: 0 }}
     >
       {/* Thumbnail */}
-      <div className="relative h-44 overflow-hidden bg-gradient-to-br from-blue-100 to-indigo-100">
-        {imgSrc ? (
-          <img src={imgSrc} alt={propTitle} className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <div className="text-5xl">🏡</div>
-          </div>
-        )}
+      <div className="relative h-44 overflow-hidden bg-gray-100">
+        <img
+          src={imgSrc}
+          alt={propTitle}
+          className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=80';
+          }}
+        />
         {/* Type badge overlay */}
         <div className="absolute top-2 left-2">
           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${TYPE_COLORS[propTypeKey]}`}>

@@ -223,8 +223,10 @@ export default function PropertyDetails() {
   const status = property.verificationStatus || property.verification?.status || 'pending';
   const ownerName = typeof property.owner === 'object' ? (property.owner?.fullName || property.owner?.name) : (property.ownerId && typeof property.ownerId === 'object' ? (property.ownerId.name || property.ownerId.fullName) : (property.owner || 'Unknown'));
   const documents = property.documents || [];
-  // Assuming images were mixed into documents array based on my controller change
-  const images = documents.map(d => d.url).filter(Boolean);
+  // Prioritize property.images, fallback to documents
+  const images = (property.images && property.images.length > 0)
+    ? property.images
+    : documents.map(d => d.url).filter(Boolean);
   const hasRealImages = images.length > 0 && images[0] && !images[0].startsWith('#');
   const hasBlockchain = !!(property.blockchain?.transactionHash || property.blockchain?.propertyIdOnChain);
   const title = property.title || `${(property.landDetails?.landType || 'property').charAt(0).toUpperCase() + (property.landDetails?.landType || 'property').slice(1)} Land — ${property.location?.city || ''}`;

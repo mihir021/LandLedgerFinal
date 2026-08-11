@@ -5,7 +5,7 @@
  */
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, User, LayoutDashboard, ChevronDown, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Menu, X, LogOut, User, LayoutDashboard, ChevronDown, ArrowRight, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { useAuth, ROLE_ROUTES } from '../context/AuthContext';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
@@ -58,17 +58,21 @@ export default function Navbar() {
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
 
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 shrink-0 group" onClick={() => setMobileOpen(false)}>
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/30 group-hover:border-amber-500/60 transition-colors">
-            <svg className="h-5 w-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-              <polyline points="9 22 9 12 15 12 15 22"/>
-            </svg>
+        {/* Premium Institutional Logo */}
+        <Link to="/" className="flex items-center gap-3 shrink-0 group" onClick={() => setMobileOpen(false)}>
+          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-[#0A1628] border border-amber-500/40 shadow-sm group-hover:border-amber-400 group-hover:shadow-[0_0_15px_rgba(212,175,55,0.25)] transition-all duration-300 group-hover:scale-105">
+            <ShieldCheck className="h-5 w-5 text-amber-400 transition-transform duration-300 group-hover:scale-110" />
+            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+            </span>
           </div>
-          <div>
-            <span className="text-lg font-bold text-gray-900 font-serif tracking-tight">Land</span>
-            <span className="text-lg font-bold text-amber-600 font-serif tracking-tight">Ledger</span>
+          <div className="flex flex-col">
+            <div className="flex items-center">
+              <span className="text-xl font-extrabold text-[#0A1628] font-serif tracking-tight">Land</span>
+              <span className="text-xl font-extrabold text-amber-600 font-serif tracking-tight">Ledger</span>
+            </div>
+            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest leading-none">Govt. Registry</span>
           </div>
         </Link>
 

@@ -121,21 +121,63 @@ const createProperty = async (req, res, next) => {
       );
     }
 
+    const imagePaths = req.files?.images ? req.files.images.map((f) => f.path) : [];
+    const docObjects = req.files?.documents
+      ? req.files.documents.map((f) => ({ type: 'Other', url: f.path }))
+      : [];
+
+    const MAP_LAND_TYPE = {
+      agricultural: 'Agricultural Land',
+      residential: 'Residential Plot',
+      commercial: 'Commercial Land',
+      industrial: 'Industrial Land',
+      mixed: 'Residential Plot',
+    };
+
+    const enumLandType = MAP_LAND_TYPE[landType?.toLowerCase()] || 'Residential Plot';
+
     const property = await Property.create({
+      propertyId: `LAND-REG-${surveyNumber}`,
       surveyNumber,
       owner: req.user._id,
+      ownerId: req.user._id,
+
+      // Top-level fields
       district,
       state,
       city,
       address,
       landType,
-      area,
-      price,
+      area: Number(area),
+      price: Number(price),
       description,
       latitude,
       longitude,
-      images: req.files?.images ? req.files.images.map((f) => f.path) : [],
-      documents: req.files?.documents ? req.files.documents.map((f) => f.path) : [],
+
+      // Nested schema fields for consistency with seeded data
+      location: {
+        state,
+        district,
+        city,
+        surveyNumber,
+        latitude: latitude ? Number(latitude) : undefined,
+        longitude: longitude ? Number(longitude) : undefined,
+      },
+      landDetails: {
+        landType: enumLandType,
+        areaSqft: Number(area),
+      },
+      pricing: {
+        priceINR: Number(price),
+        pricePerSqft: Number(area) > 0 ? Math.round(Number(price) / Number(area)) : 0,
+      },
+      verification: {
+        status: 'Pending',
+      },
+      isListed: true,
+
+      images: imagePaths,
+      documents: docObjects,
       currentOwnerWallet: walletAddress || req.user.walletAddress || null,
       blockchainTx: txHash || null,
       blockchainPropertyId: txHash ? surveyNumber : null,

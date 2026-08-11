@@ -15,6 +15,9 @@ import Login from '../pages/Login';
 import Register from '../pages/Register';
 import PropertySearch from '../pages/PropertySearch';
 import PropertyDetails from '../pages/PropertyDetails';
+import PrivacyPolicy from '../pages/PrivacyPolicy';
+import TermsOfService from '../pages/TermsOfService';
+import ContactSupport from '../pages/ContactSupport';
 import NotFound from '../pages/NotFound';
 
 // Buyer Pages
@@ -52,6 +55,9 @@ const router = createBrowserRouter([
       { path: 'register',       element: <Register /> },
       { path: 'search',         element: <PropertySearch /> },
       { path: 'property/:id',   element: <PropertyDetails /> },
+      { path: 'privacy',        element: <PrivacyPolicy /> },
+      { path: 'terms',          element: <TermsOfService /> },
+      { path: 'support',        element: <ContactSupport /> },
     ],
   },
   {
