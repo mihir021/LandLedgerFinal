@@ -21,7 +21,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -32,10 +32,10 @@ export default function Login() {
       setEmail(location.state.email);
     }
     // If already authenticated, redirect to dashboard
-    if (isAuthenticated) {
-      navigate('/');
+    if (isAuthenticated && user) {
+      navigate(ROLE_ROUTES[user.role?.toLowerCase()] || '/');
     }
-  }, [location.state, isAuthenticated, navigate]);
+  }, [location.state, isAuthenticated, navigate, user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -44,7 +44,7 @@ export default function Login() {
     try {
       const data = await login(email, password);
       toast.success(`Welcome back, ${data.fullName || data.name || 'User'}!`);
-      navigate(ROLE_ROUTES[data.role] || '/');
+      navigate(ROLE_ROUTES[data.role?.toLowerCase()] || '/');
     } catch (err) {
       setError(err.message || 'Invalid email or password.');
     } finally {
