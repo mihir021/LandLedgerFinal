@@ -60,27 +60,37 @@ export default function SellerProperties() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {properties.map((p, i) => (
+              {properties.map((p, i) => {
+                const status = p.verification?.status || 'Pending';
+                const image = p.documents?.[0]?.url || null;
+                const getImgUrl = (img) => {
+                  if (!img) return null;
+                  if (img.startsWith('http')) return img;
+                  if (img.startsWith('uploads/') || img.startsWith('uploads\\')) return `/${img.replace(/\\/g, '/')}`;
+                  return `/uploads/images/${img.replace(/\\/g, '/')}`;
+                };
+
+                return (
                 <tr key={p._id} className="hover:bg-gray-50 transition-colors animate-fade-in-up" style={{ animationDelay: `${i * 50}ms`, opacity: 0 }}>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center overflow-hidden shrink-0">
-                        {p.images?.[0] ? <img src={p.images[0]} alt="" className="h-full w-full object-cover" /> : '🏠'}
+                        {image ? <img src={getImgUrl(image)} alt="" className="h-full w-full object-cover" /> : '🏠'}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-gray-800 truncate max-w-[180px]">{p.address}, {p.city}</p>
+                        <p className="font-medium text-gray-800 truncate max-w-[180px]">{p.location?.district || p.location?.surveyNumber}, {p.location?.city}</p>
                         <p className="text-xs text-gray-400 font-mono">{p.propertyId || p._id?.slice(-8)}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-4 hidden sm:table-cell capitalize text-gray-600">{p.landType}</td>
+                  <td className="px-5 py-4 hidden sm:table-cell capitalize text-gray-600">{p.landDetails?.landType || 'Unknown'}</td>
                   <td className="px-5 py-4 hidden md:table-cell">
-                    <span className="font-semibold text-gray-800">₹{(p.price/100000).toFixed(1)}L</span>
+                    <span className="font-semibold text-gray-800">₹{((p.pricing?.priceINR || 0)/100000).toFixed(1)}L</span>
                   </td>
-                  <td className="px-5 py-4"><StatusBadge status={p.status || 'pending_verification'} /></td>
+                  <td className="px-5 py-4"><StatusBadge status={status} /></td>
                   <td className="px-5 py-4">
                     <VerificationBadge
-                      status={p.status === 'verified' || p.status === 'listed' || p.status === 'under_transfer' || p.status === 'transferred' ? 'verified' : p.status === 'rejected' ? 'rejected' : 'pending'}
+                      status={status === 'Verified' || status === 'listed' || status === 'under_transfer' || status === 'transferred' ? 'verified' : status === 'Rejected' ? 'rejected' : 'pending'}
                       showLabel={false}
                     />
                   </td>
@@ -90,7 +100,8 @@ export default function SellerProperties() {
                     </Link>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

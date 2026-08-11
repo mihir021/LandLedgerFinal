@@ -29,7 +29,7 @@ export default function AdminDashboard() {
       setLoading(true);
       try {
         const [propRes, transfers, userRes] = await Promise.all([
-          getProperties({ status: 'pending_verification', limit: 5 }).catch(() => ({ properties: [], pagination: { total: 0 } })),
+          getProperties({ status: 'Pending', limit: 5 }).catch(() => ({ properties: [], pagination: { total: 0 } })),
           getTransfers().catch(() => []),
           getUsers({ status: 'pending', limit: 1 }).catch(() => ({ pagination: { total: 0 } })),
         ]);
@@ -98,11 +98,11 @@ export default function AdminDashboard() {
               {pendingProperties.map(p => (
                 <div key={p._id} className="flex items-center gap-3 px-5 py-3.5">
                   <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center text-base shrink-0 overflow-hidden">
-                    {p.images?.[0] ? <img src={p.images[0]} alt="" className="h-full w-full object-cover" /> : '🏠'}
+                    {p.documents?.[0]?.url ? <img src={p.documents[0].url.startsWith('http') ? p.documents[0].url : `/${p.documents[0].url.replace(/\\/g, '/')}`} alt="" className="h-full w-full object-cover" /> : '🏠'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{p.address}, {p.city}</p>
-                    <p className="text-xs text-gray-400">{p.owner?.fullName || 'Unknown owner'} · {p.landType}</p>
+                    <p className="text-sm font-medium text-gray-800 truncate">{p.location?.district || p.location?.surveyNumber}, {p.location?.city}</p>
+                    <p className="text-xs text-gray-400">{p.ownerId?.name || p.ownerId?.fullName || 'Unknown owner'} · {p.landDetails?.landType || 'Unknown'}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <StatusBadge status="pending" />

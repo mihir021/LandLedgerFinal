@@ -28,7 +28,7 @@ export default function PropertySearch() {
       try {
         const params = {};
         if (type !== 'all') params.landType = type;
-        if (status !== 'all') params.status = status;
+        if (status !== 'all') params.status = status === 'verified' ? 'Verified' : 'Pending';
         const res = await getProperties(params);
         setProperties(res.properties || []);
       } catch {
@@ -43,15 +43,15 @@ export default function PropertySearch() {
   const filtered = properties.filter(p => {
     const q = search.toLowerCase();
     const matchSearch = !q ||
-      (p.city || '').toLowerCase().includes(q) ||
-      (p.address || '').toLowerCase().includes(q) ||
+      (p.location?.city || '').toLowerCase().includes(q) ||
+      (p.location?.district || '').toLowerCase().includes(q) ||
       (p.title || '').toLowerCase().includes(q) ||
-      (p.state || '').toLowerCase().includes(q) ||
-      (p.district || '').toLowerCase().includes(q);
+      (p.location?.state || '').toLowerCase().includes(q) ||
+      (p.location?.surveyNumber || '').toLowerCase().includes(q);
 
-    const matchState = state === 'All States' || (p.state || '').toLowerCase() === state.toLowerCase();
+    const matchState = state === 'All States' || (p.location?.state || '').toLowerCase() === state.toLowerCase();
 
-    const price = p.price || 0;
+    const price = p.pricing?.priceINR || 0;
     const matchMin = !minPrice || price >= Number(minPrice) * 100000;
     const matchMax = !maxPrice || price <= Number(maxPrice) * 100000;
 
