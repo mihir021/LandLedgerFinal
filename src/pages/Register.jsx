@@ -3,7 +3,7 @@
  */
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, Eye, EyeOff, AlertCircle, Home, ShoppingBag, ArrowRight } from 'lucide-react';
+import { UserPlus, Eye, EyeOff, AlertCircle, Home, ShoppingBag, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 

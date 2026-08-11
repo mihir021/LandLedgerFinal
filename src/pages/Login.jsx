@@ -3,7 +3,7 @@
  */
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogIn, Eye, EyeOff, AlertCircle, ShieldCheck } from 'lucide-react';
+import { LogIn, Eye, EyeOff, AlertCircle, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useAuth, ROLE_ROUTES } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
