@@ -50,7 +50,7 @@ export default function SellerDashboard() {
   }, [user]);
 
   const listed = properties.filter(p => (p.verificationStatus === 'verified' && p.isListed) || p.verification?.status === 'Verified' || p.verification?.status === 'listed' || p.isListed !== false);
-  const pending = requests.filter(r => r.status === 'pending');
+  const pending = requests.filter(r => r.status === 'pending' || r.status === 'Initiated');
 
   const stats = [
     { icon: Home,          label: 'My Properties',     value: properties.length, color: 'navy'   },
@@ -169,11 +169,11 @@ export default function SellerDashboard() {
             {pending.slice(0,3).map(r => (
               <div key={r._id} className="flex items-center gap-4 px-5 py-4">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-800 shrink-0">
-                  {(r.buyer?.fullName || 'B').charAt(0)}
+                  {(r.toUserId?.name || r.toUserId?.fullName || r.buyer?.fullName || 'B').charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800">{r.buyer?.fullName || 'Buyer'}</p>
-                  <p className="text-xs text-gray-500 truncate">{r.property?.address || 'Property'}</p>
+                  <p className="text-sm font-semibold text-gray-800">{r.toUserId?.name || r.toUserId?.fullName || r.buyer?.fullName || 'Buyer'}</p>
+                  <p className="text-xs text-gray-500 truncate">{r.propertyId?.propertyId || r.property?.address || 'Property'}</p>
                 </div>
                 <Link to="/seller/requests" className="btn-primary text-xs py-1.5 px-3">Review</Link>
               </div>

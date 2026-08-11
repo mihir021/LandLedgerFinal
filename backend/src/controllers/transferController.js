@@ -65,7 +65,7 @@ const requestTransfer = async (req, res, next) => {
 
     // Notify the seller
     await Notification.create({
-      userId: sellerId,
+      receiver: sellerId,
       title: 'New Transfer Request',
       message: `A buyer has requested to purchase property ${property.propertyId}.`,
       type: 'Transfer Update',
@@ -117,7 +117,7 @@ const sellerApprove = async (req, res, next) => {
 
     // Notify buyer
     await Notification.create({
-      userId: transfer.toUserId,
+      receiver: transfer.toUserId,
       title: 'Seller Approved Transfer',
       message: 'The seller has approved the property transfer.',
       type: 'Transfer Update',
@@ -242,8 +242,8 @@ const officerApprove = async (req, res, next) => {
     // Notify both parties
     const msg = 'Government officer has approved the property transfer.';
     await Notification.insertMany([
-      { userId: transfer.fromUserId, title: 'Officer Approved', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
-      { userId: transfer.toUserId, title: 'Officer Approved', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+      { receiver: transfer.fromUserId, title: 'Officer Approved', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+      { receiver: transfer.toUserId, title: 'Officer Approved', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
     ]);
 
     await logAudit({
@@ -306,8 +306,8 @@ const completeTransfer = async (req, res, next) => {
     // Notify both parties
     const msg = 'Property transfer has been completed successfully.';
     await Notification.insertMany([
-      { userId: transfer.fromUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
-      { userId: transfer.toUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+      { receiver: transfer.fromUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+      { receiver: transfer.toUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
     ]);
 
     await logAudit({

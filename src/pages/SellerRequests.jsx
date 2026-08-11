@@ -50,8 +50,8 @@ export default function SellerRequests() {
     }
   };
 
-  const pending  = requests.filter(r => r.status === 'pending');
-  const others   = requests.filter(r => r.status !== 'pending');
+  const pending  = requests.filter(r => r.status === 'pending' || r.status === 'Initiated');
+  const others   = requests.filter(r => r.status !== 'pending' && r.status !== 'Initiated');
 
   const selectedReq = requests.find(r => r._id === modal.id || r.id === modal.id);
 
@@ -86,20 +86,20 @@ export default function SellerRequests() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3 flex-1 min-w-0">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-800 shrink-0">
-                        {(req.buyer?.name || req.buyer?.fullName || req.buyerName || 'B').charAt(0)}
+                        {(req.toUserId?.name || req.toUserId?.fullName || req.buyer?.name || req.buyer?.fullName || req.buyerName || 'B').charAt(0)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-gray-800">{req.buyer?.name || req.buyer?.fullName || req.buyerName || 'Buyer'}</p>
+                        <p className="text-sm font-semibold text-gray-800">{req.toUserId?.name || req.toUserId?.fullName || req.buyer?.name || req.buyer?.fullName || req.buyerName || 'Buyer'}</p>
                         <p className="text-xs text-gray-500">
-                          {req.property?.location?.district || req.property?.location?.surveyNumber || req.propertyTitle || 'Property'}
-                          {(req.agreedPrice || req.amount) && ` · ₹${((req.agreedPrice || req.amount)/100000).toFixed(1)}L`}
+                          {req.propertyId?.propertyId || req.propertyId?.location?.district || req.property?.location?.district || req.property?.location?.surveyNumber || req.propertyTitle || 'Property'}
+                          {(req.transferAmount || req.agreedPrice || req.amount) ? ` · ₹${((req.transferAmount || req.agreedPrice || req.amount)/100000).toFixed(1)}L` : ''}
                         </p>
                         <p className="text-xs text-gray-400 mt-0.5">{req.createdAt && `Submitted ${new Date(req.createdAt).toLocaleDateString('en-IN')}`}</p>
                       </div>
                     </div>
                     <div className="flex gap-2 shrink-0">
-                      {req.property?._id && (
-                        <Link to={`/property/${req.property._id}`} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-blue-700" title="View Property">
+                      {req.propertyId?._id && (
+                        <Link to={`/property/${req.propertyId._id}`} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-blue-700" title="View Property">
                           <ExternalLink className="h-4 w-4" />
                         </Link>
                       )}
@@ -126,11 +126,11 @@ export default function SellerRequests() {
                 {others.map((req, i) => (
                   <div key={req._id || req.id || i} className="flex items-center gap-4 px-5 py-4">
                     <div className="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600 shrink-0">
-                      {(req.buyer?.name || req.buyer?.fullName || req.buyerName || 'B').charAt(0)}
+                      {(req.toUserId?.name || req.toUserId?.fullName || req.buyer?.name || req.buyer?.fullName || req.buyerName || 'B').charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-700">{req.buyer?.name || req.buyer?.fullName || req.buyerName}</p>
-                      <p className="text-xs text-gray-400 truncate">{req.property?.location?.district || req.property?.location?.surveyNumber || req.propertyTitle}</p>
+                      <p className="text-sm font-medium text-gray-700">{req.toUserId?.name || req.toUserId?.fullName || req.buyer?.name || req.buyer?.fullName || req.buyerName}</p>
+                      <p className="text-xs text-gray-400 truncate">{req.propertyId?.propertyId || req.propertyId?.location?.district || req.property?.location?.district || req.property?.location?.surveyNumber || req.propertyTitle}</p>
                     </div>
                     <StatusBadge status={req.status} />
                   </div>
@@ -159,9 +159,9 @@ export default function SellerRequests() {
           ? 'By accepting, you agree to initiate the transfer process. The buyer will be notified and a blockchain transaction will be prepared.'
           : 'This will reject the purchase request. The buyer will be notified and no transfer will proceed.'}
         details={selectedReq ? {
-          'Buyer': selectedReq.buyer?.name || selectedReq.buyer?.fullName || selectedReq.buyerName || '—',
-          'Property': (selectedReq.property?.location?.district || selectedReq.property?.location?.surveyNumber || selectedReq.propertyTitle || '—').slice(0, 40),
-          'Amount': selectedReq.agreedPrice || selectedReq.amount ? `₹${((selectedReq.agreedPrice || selectedReq.amount)/100000).toFixed(1)}L` : '—',
+          'Buyer': selectedReq.toUserId?.name || selectedReq.toUserId?.fullName || selectedReq.buyer?.name || selectedReq.buyer?.fullName || selectedReq.buyerName || '—',
+          'Property': (selectedReq.propertyId?.propertyId || selectedReq.propertyId?.location?.district || selectedReq.propertyId?.location?.surveyNumber || selectedReq.property?.location?.district || selectedReq.property?.location?.surveyNumber || selectedReq.propertyTitle || '—').slice(0, 40),
+          'Amount': selectedReq.transferAmount || selectedReq.agreedPrice || selectedReq.amount ? `₹${((selectedReq.transferAmount || selectedReq.agreedPrice || selectedReq.amount)/100000).toFixed(1)}L` : '—',
         } : undefined}
       />
     </div>

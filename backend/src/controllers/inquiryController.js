@@ -1,5 +1,6 @@
 import Inquiry from '../models/Inquiry.js';
 import Property from '../models/Property.js';
+import Notification from '../models/Notification.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -149,6 +150,17 @@ export const updateInquiryStatus = async (req, res, next) => {
     const updated = await Inquiry.findById(inquiry._id)
       .populate('property', 'propertyId surveyNumber city state price')
       .populate('user', 'fullName email');
+
+    if (updated.user) {
+      await Notification.create({
+        receiver: updated.user._id,
+        title: 'Inquiry Updated',
+        message: `Your inquiry regarding property ${updated.property ? updated.property.propertyId : 'unknown'} has been updated to ${updated.status}. Response: ${response || 'None'}`,
+        type: 'info',
+        relatedEntityType: 'Inquiry',
+        relatedEntityId: updated._id,
+      });
+    }
 
     logger.info(`Inquiry [ID: ${inquiry._id}] status updated to ${inquiry.status}`);
 

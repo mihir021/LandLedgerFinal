@@ -2,12 +2,14 @@ import mongoose from 'mongoose';
 
 const inquirySchema = new mongoose.Schema(
   {
-    propertyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Property' },
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    property: { type: mongoose.Schema.Types.ObjectId, ref: 'Property' },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    name: String,
+    email: String,
+    phone: String,
+    subject: String,
     message: String,
-    contactPhone: String,
-    contactEmail: String,
-    status: { type: String, enum: ['Open', 'Responded', 'Closed'], default: 'Open' },
+    status: { type: String, enum: ['Pending', 'Open', 'Responded', 'Closed'], default: 'Pending' },
   },
   {
     timestamps: true,
@@ -15,8 +17,8 @@ const inquirySchema = new mongoose.Schema(
 );
 
 // Indexes
-inquirySchema.index({ propertyId: 1 });
-inquirySchema.index({ userId: 1 });
+inquirySchema.index({ property: 1 });
+inquirySchema.index({ user: 1 });
 inquirySchema.index({ status: 1 });
 
 const Inquiry = mongoose.model('Inquiry', inquirySchema);

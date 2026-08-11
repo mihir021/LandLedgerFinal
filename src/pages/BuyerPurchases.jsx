@@ -36,16 +36,20 @@ export default function BuyerPurchases() {
 
   const statusToLifecycle = (status) => {
     const map = {
-      pending: 'transfer_requested',
-      seller_approved: 'seller_approved',
-      sellerApproved: 'seller_approved',
-      buyer_signed: 'buyer_signed',
-      buyerApproved: 'buyer_signed',
-      officer_approved: 'officer_approved',
-      officerApproved: 'officer_approved',
+      pending: 'seller_approved',
+      Initiated: 'seller_approved',
+      seller_approved: 'buyer_signed',
+      sellerApproved: 'buyer_signed',
+      'Pending Verification': 'buyer_signed',
+      buyer_signed: 'officer_approved',
+      buyerApproved: 'officer_approved',
+      officer_approved: 'chain_processing',
+      officerApproved: 'chain_processing',
+      Approved: 'chain_processing',
       completed: 'completed',
+      Completed: 'completed',
     };
-    return map[status] || 'transfer_requested';
+    return map[status] || 'seller_approved';
   };
 
   const handleBuyerSign = async () => {
@@ -154,24 +158,24 @@ export default function BuyerPurchases() {
                     {(status === 'sellerApproved' || status === 'Pending Verification') && (
                       <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
                         <div className="flex items-start gap-3">
-                          <PenLine className="h-5 w-5 text-blue-700 shrink-0 mt-0.5" />
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-blue-900">Seller has approved — your signature is required</p>
-                            <p className="text-xs text-blue-700 mt-0.5">
-                              Review the terms and sign this transfer. The government officer will review it after you sign.
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-700 shrink-0">
+                            <PenLine className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h5 className="text-sm font-bold text-blue-900">Your signature is required</h5>
+                            <p className="text-xs text-blue-700 mt-1">
+                              The seller has approved this transfer. You must now cryptographically sign the agreement to proceed to officer verification.
                             </p>
+                            <button
+                              onClick={() => setSignModal({ open: true, transferId: req._id || req.id, propTitle })}
+                              className="mt-3 btn-primary text-xs py-1.5 px-3"
+                            >
+                              Sign Transfer Agreement
+                            </button>
                           </div>
                         </div>
-                        <button
-                          onClick={() => setSignModal({ transferId: req._id || req.id, propertyTitle: propTitle })}
-                          className="mt-3 w-full btn-primary text-sm py-2.5"
-                        >
-                          <PenLine className="h-4 w-4" /> Sign & Approve Transfer
-                        </button>
                       </div>
-                    )}
-
-                    {/* Timeline */}
+                    )}{/* Timeline */}
                     {req.timeline && req.timeline.length > 0 && (
                       <div className="mt-5">
                         <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Activity Log</h4>

@@ -439,9 +439,10 @@ export default function OfficerDashboard() {
                       <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
                         <div className="flex gap-3 flex-wrap">
                           <select value={replyStatus} onChange={e => setReplyStatus(e.target.value)} className="ll-select w-auto text-xs">
-                            <option value="in-progress">In Progress</option>
-                            <option value="resolved">Resolved</option>
-                            <option value="closed">Closed</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Open">Open</option>
+                            <option value="Responded">Responded</option>
+                            <option value="Closed">Closed</option>
                           </select>
                         </div>
                         <textarea
@@ -466,7 +467,7 @@ export default function OfficerDashboard() {
                     ) : (
                       <div className="flex justify-end">
                         <button
-                          onClick={() => { setReplyingId(inq._id); setReplyText(inq.response || ''); setReplyStatus(inq.status || 'resolved'); }}
+                          onClick={() => { setReplyingId(inq._id); setReplyText(inq.response || ''); setReplyStatus(inq.status || 'Responded'); }}
                           className="flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline"
                         >
                           <MessageSquare className="h-3.5 w-3.5" />

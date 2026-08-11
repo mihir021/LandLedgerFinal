@@ -86,7 +86,7 @@ export default function AdminTransfers() {
           <div className="border-t border-gray-100 p-4 bg-gray-50 animate-fade-in">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Transfer Progress</p>
             <LifecycleTracker
-              currentStage={t.status === 'completed' ? 'completed' : t.officerApproved ? 'officer_approved' : t.sellerApproved ? 'seller_approved' : 'transfer_requested'}
+              currentStage={t.status === 'Completed' || t.status === 'completed' ? 'completed' : t.status === 'Approved' || t.officerApproved ? 'chain_processing' : t.status === 'buyerApproved' || t.buyerApproved ? 'officer_approved' : t.status === 'Pending Verification' || t.sellerApproved ? 'buyer_signed' : 'seller_approved'}
               compact
             />
           </div>
