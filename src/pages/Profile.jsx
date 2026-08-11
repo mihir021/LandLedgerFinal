@@ -25,7 +25,7 @@ export default function Profile() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold font-serif text-gray-900">{user.fullName || 'User'}</h2>
-              <StatusBadge status={user.verificationStatus || 'verified'} size="sm" />
+              <StatusBadge status={user.status || 'verified'} size="sm" />
             </div>
             <p className="text-sm font-medium text-blue-900 capitalize mt-0.5">{user.role} Account</p>
           </div>

@@ -1,8 +1,8 @@
 /**
  * Login Page — light theme form with navy accents
  */
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { LogIn, Eye, EyeOff, AlertCircle, ShieldCheck } from 'lucide-react';
 import { useAuth, ROLE_ROUTES } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -21,9 +21,21 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    // If arriving from register, optionally pre-fill email
+    if (location.state?.email) {
+      setEmail(location.state.email);
+    }
+    // If already authenticated, redirect to dashboard
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [location.state, isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

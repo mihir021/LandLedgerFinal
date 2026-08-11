@@ -28,7 +28,7 @@ export default function PropertySearch() {
       try {
         const params = {};
         if (type !== 'all') params.landType = type;
-        if (status !== 'all') params.verificationStatus = status;
+        if (status !== 'all') params.status = status;
         const res = await getProperties(params);
         setProperties(res.properties || []);
       } catch {

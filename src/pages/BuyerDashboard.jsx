@@ -27,7 +27,7 @@ export default function BuyerDashboard() {
       setLoading(true);
       try {
         const [props, transfers] = await Promise.all([
-          getProperties({ verificationStatus: 'verified', limit: 6 }).catch(() => ({ properties: [] })),
+          getProperties({ status: 'verified', limit: 6 }).catch(() => ({ properties: [] })),
           getTransfers().catch(() => []),
         ]);
         setProperties(props.properties || []);
@@ -157,7 +157,7 @@ export default function BuyerDashboard() {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-gray-900">₹{(prop.price / 100000).toFixed(1)}L</p>
-                  <StatusBadge status={prop.verificationStatus || 'verified'} />
+                  <StatusBadge status={prop.status || 'verified'} />
                 </div>
               </Link>
             ))}

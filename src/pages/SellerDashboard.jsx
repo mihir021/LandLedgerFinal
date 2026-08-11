@@ -37,7 +37,7 @@ export default function SellerDashboard() {
     load();
   }, []);
 
-  const listed = properties.filter(p => p.verificationStatus === 'verified' || p.verificationStatus === 'listed');
+  const listed = properties.filter(p => p.status === 'verified' || p.status === 'listed');
   const pending = requests.filter(r => r.status === 'pending');
 
   const stats = [
@@ -107,7 +107,7 @@ export default function SellerDashboard() {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-gray-900">₹{(p.price/100000).toFixed(1)}L</p>
-                  <StatusBadge status={p.verificationStatus || 'pending'} />
+                  <StatusBadge status={p.status || 'pending_verification'} />
                 </div>
               </Link>
             ))}

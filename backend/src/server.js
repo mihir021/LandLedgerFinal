@@ -1,6 +1,9 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+import dns from 'dns';
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+
 import app from './app.js';
 import connectDB from './config/database.js';
 import { logger } from './utils/logger.js';

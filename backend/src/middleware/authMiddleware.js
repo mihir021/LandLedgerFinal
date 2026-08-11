@@ -27,7 +27,7 @@ const protect = async (req, _res, next) => {
     }
 
     // 3. Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'landledger_secure_jwt_fallback_key');
 
     // 4. Attach user (exclude password)
     const user = await User.findById(decoded.id);
@@ -57,7 +57,7 @@ const optionalProtect = async (req, _res, next) => {
     }
 
     if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'landledger_secure_jwt_fallback_key');
       const user = await User.findById(decoded.id);
       if (user) req.user = user;
     }

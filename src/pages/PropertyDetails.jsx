@@ -155,7 +155,7 @@ export default function PropertyDetails() {
   }
 
   // Normalize data
-  const status = property.verificationStatus || 'pending';
+  const status = property.status || 'pending_verification';
   const ownerName = typeof property.owner === 'object' ? property.owner.fullName : (property.owner || 'Unknown');
   const ownerId = typeof property.owner === 'object' ? property.owner._id : property.owner;
   const images = property.images || [];

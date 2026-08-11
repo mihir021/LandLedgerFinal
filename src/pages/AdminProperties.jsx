@@ -20,7 +20,7 @@ export default function AdminProperties() {
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    const params = filter !== 'all' ? { verificationStatus: filter, limit: 50 } : { limit: 50 };
+    const params = filter !== 'all' ? { status: filter, limit: 50 } : { limit: 50 };
     getProperties(params)
       .then(res => setProperties(res.properties || []))
       .catch(() => setProperties([]))
@@ -107,13 +107,13 @@ export default function AdminProperties() {
                     <p className="capitalize text-gray-600">{p.landType}</p>
                     <p className="text-xs text-gray-400">{p.area?.toLocaleString()} sq ft</p>
                   </td>
-                  <td className="px-5 py-4"><StatusBadge status={p.verificationStatus || 'pending'} /></td>
+                  <td className="px-5 py-4"><StatusBadge status={p.status || 'pending_verification'} /></td>
                   <td className="px-5 py-4">
                     <div className="flex gap-2">
                       <Link to={`/property/${p._id}`} className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-700" title="View Property">
                         <ExternalLink className="h-4 w-4" />
                       </Link>
-                      {(p.verificationStatus === 'pending' || !p.verificationStatus) && (
+                      {(p.status === 'pending_verification' || !p.status) && (
                         <>
                           <button onClick={() => setModal({ open: true, id: p._id, action: 'approve', propName: `${p.address}, ${p.city}` })}
                             className="flex items-center gap-1 rounded-lg bg-green-50 border border-green-200 px-2.5 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100 transition-colors">

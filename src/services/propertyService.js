@@ -6,7 +6,7 @@ import api from './api';
 
 /**
  * Get all properties with optional filters and pagination.
- * @param {Object} params - { state, city, landType, verificationStatus, page, limit, owner }
+ * @param {Object} params - { state, city, landType, status, page, limit, owner }
  * @returns {{ properties, pagination }}
  */
 export const getProperties = async (params = {}) => {
@@ -61,10 +61,10 @@ export const deleteProperty = async (id) => {
 /**
  * Verify or reject a property (officer/admin).
  * @param {string} id
- * @param {'verified'|'rejected'} verificationStatus
+ * @param {'verified'|'rejected'} status
  * @returns {Object} Updated property document.
  */
-export const verifyProperty = async (id, verificationStatus) => {
-  const { data } = await api.put(`/properties/${id}/verify`, { verificationStatus });
+export const verifyProperty = async (id, status) => {
+  const { data } = await api.put(`/properties/${id}/verify`, { status });
   return data.data;
 };

@@ -20,13 +20,15 @@ const transferSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
-        'pending',
-        'sellerApproved',
-        'buyerApproved',
-        'officerApproved',
+        'requested',
+        'seller_approved',
+        'buyer_signed',
+        'officer_approved',
+        'ownership_updated',
         'completed',
+        'rejected'
       ],
-      default: 'pending',
+      default: 'requested',
     },
     sellerApproved: {
       type: Boolean,

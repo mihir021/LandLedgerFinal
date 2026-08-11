@@ -18,7 +18,7 @@ const requestTransfer = async (req, res, next) => {
     if (!property) {
       return next(new ApiError(404, 'Property not found'));
     }
-    if (property.verificationStatus !== 'verified') {
+    if (property.status !== 'verified') {
       return next(new ApiError(400, 'Property must be verified before transfer'));
     }
     if (property.owner.toString() !== sellerId) {
@@ -79,7 +79,7 @@ const sellerApprove = async (req, res, next) => {
     }
 
     transfer.sellerApproved = true;
-    transfer.status = 'sellerApproved';
+    transfer.status = 'seller_approved';
     await transfer.save();
 
     // Notify buyer
@@ -122,7 +122,7 @@ const officerApprove = async (req, res, next) => {
     }
 
     transfer.officerApproved = true;
-    transfer.status = 'officerApproved';
+    transfer.status = 'officer_approved';
     await transfer.save();
 
     // Notify both parties
@@ -172,6 +172,7 @@ const completeTransfer = async (req, res, next) => {
     // After successful on-chain transfer, update:
     //   property.currentOwnerWallet = <buyer wallet>;
     //   transfer.transactionHash = <tx hash>;
+    property.status = 'transferred';
     await property.save();
 
     transfer.buyerApproved = true;

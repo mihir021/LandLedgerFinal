@@ -25,13 +25,13 @@ export default function PropertyCard({ property, delay = 0 }) {
   const {
     _id, id, propertyId, title, address, city, state,
     landType, type, price, area,
-    verificationStatus, status,
+    status,
     images = [],
   } = property;
 
   const propId = _id || id;
   const propType = landType || type || 'residential';
-  const propStatus = verificationStatus || status || 'draft';
+  const propStatus = status || 'draft';
   const propTitle = title || `${propType.charAt(0).toUpperCase() + propType.slice(1)} Property — ${city}`;
   let imgSrc = null;
   if (images[0]) {

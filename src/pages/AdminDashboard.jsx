@@ -29,7 +29,7 @@ export default function AdminDashboard() {
       setLoading(true);
       try {
         const [propRes, transfers, userRes] = await Promise.all([
-          getProperties({ verificationStatus: 'pending', limit: 5 }).catch(() => ({ properties: [], pagination: { total: 0 } })),
+          getProperties({ status: 'pending_verification', limit: 5 }).catch(() => ({ properties: [], pagination: { total: 0 } })),
           getTransfers().catch(() => []),
           getUsers({ status: 'pending', limit: 1 }).catch(() => ({ pagination: { total: 0 } })),
         ]);
