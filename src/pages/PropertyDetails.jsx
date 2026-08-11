@@ -15,7 +15,7 @@ import { SiBlockchaindotcom } from 'react-icons/si';
 import { QRCodeSVG } from 'qrcode.react';
 import StatusBadge from '../components/StatusBadge';
 import PropertyMap from '../components/PropertyMap';
-import { getPropertyById, getPropertyHistory, getPropertyDetails } from '../services/propertyService';
+import { getPropertyById, getPropertyHistory } from '../services/propertyService';
 import { requestTransfer } from '../services/transferService';
 import { createInquiry } from '../services/inquiryService';
 import { createDispute } from '../services/disputeService';
@@ -418,7 +418,16 @@ export default function PropertyDetails() {
             {/* QR Code Certificate */}
             <div className="mt-5 flex items-center gap-4 rounded-xl bg-gray-50 border border-gray-200 p-4">
               <QRCodeSVG
-                value={`landledger://property/${property._id}?survey=${property.surveyNumber || ''}`}
+                value={(() => {
+                  const tx = property.blockchainTx || property.blockchain?.transactionHash;
+                  if (tx) {
+                    const net = property.blockchain?.chainNetwork?.toLowerCase() || 'sepolia';
+                    return net.includes('polygon') 
+                      ? `https://amoy.polygonscan.com/tx/${tx}` 
+                      : `https://sepolia.etherscan.io/tx/${tx}`;
+                  }
+                  return window.location.href;
+                })()}
                 size={88}
                 fgColor="#0f172a"
               />
