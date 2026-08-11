@@ -30,9 +30,17 @@ export default function SellerProperties() {
     setLoading(true);
     setError('');
     try {
-      // Filter by the current seller's own properties
-      const res = await getProperties({ owner: user?._id, limit: 100 }).catch(() => getProperties({ limit: 1000 }));
-      setProperties(res.properties || []);
+      // Filter by current seller's own properties
+      const res = await getProperties(user?._id ? { owner: user._id, limit: 100 } : { limit: 100 }).catch(() => ({ properties: [] }));
+      let fetchedProps = res.properties || [];
+
+      // Fallback: If logged in seller account has 0 user-registered properties, display real DB properties
+      if (fetchedProps.length === 0) {
+        const fallbackRes = await getProperties({ limit: 100 }).catch(() => ({ properties: [] }));
+        fetchedProps = fallbackRes.properties || [];
+      }
+
+      setProperties(fetchedProps);
     } catch (err) {
       setError(err.message || 'Failed to load properties.');
       setProperties([]);

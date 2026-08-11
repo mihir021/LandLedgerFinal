@@ -31,7 +31,13 @@ const getProperties = async (req, res, next) => {
     if (landType) filter.landType = landType;
     if (verificationStatus || status) filter.verificationStatus = verificationStatus || status;
     if (listed !== undefined) filter.isListed = listed === 'true';
-    if (owner) filter.owner = owner;
+    if (owner) {
+      filter.$or = [
+        { owner: owner },
+        { ownerId: owner },
+        { currentOwnerWallet: owner },
+      ];
+    }
 
     const skip = (Number(page) - 1) * Number(limit);
     const total = await Property.countDocuments(filter);

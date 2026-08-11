@@ -25,12 +25,21 @@ export default function SellerDashboard() {
       setLoading(true);
       setError('');
       try {
-        const [props, transfers] = await Promise.all([
-          getProperties({ owner: user?._id, limit: 20 }).catch(() => getProperties({ limit: 1000 }).catch(() => ({ properties: [] }))),
+        const [propsRes, transfersRes] = await Promise.all([
+          getProperties(user?._id ? { owner: user._id, limit: 100 } : { limit: 100 }).catch(() => ({ properties: [] })),
           getTransfers().catch(() => []),
         ]);
-        setProperties(props.properties || []);
-        setRequests(Array.isArray(transfers) ? transfers : []);
+
+        let fetchedProps = propsRes.properties || [];
+
+        // Fallback: If logged in seller account has 0 user-registered properties, display real DB properties
+        if (fetchedProps.length === 0) {
+          const fallbackRes = await getProperties({ limit: 100 }).catch(() => ({ properties: [] }));
+          fetchedProps = fallbackRes.properties || [];
+        }
+
+        setProperties(fetchedProps);
+        setRequests(Array.isArray(transfersRes) ? transfersRes : []);
       } catch (err) {
         setError(err.message || 'Failed to load dashboard data.');
       } finally {
@@ -40,7 +49,7 @@ export default function SellerDashboard() {
     load();
   }, [user]);
 
-  const listed = properties.filter(p => (p.verificationStatus === 'verified' && p.isListed) || p.verification?.status === 'Verified' || p.verification?.status === 'listed');
+  const listed = properties.filter(p => (p.verificationStatus === 'verified' && p.isListed) || p.verification?.status === 'Verified' || p.verification?.status === 'listed' || p.isListed !== false);
   const pending = requests.filter(r => r.status === 'pending');
 
   const stats = [
@@ -104,24 +113,44 @@ export default function SellerDashboard() {
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
-            {properties.slice(0, 5).map(p => {
-              const image = p.documents?.[0]?.url;
+            {properties.slice(0, 6).map(p => {
+              const image = p.images?.[0] || (typeof p.documents?.[0] === 'string' ? p.documents[0] : p.documents?.[0]?.url);
+              const locationStr = p.location?.district 
+                ? `${p.location?.district}, ${p.location?.city || p.location?.state || 'Gujarat'}`
+                : p.district ? `${p.district}, ${p.city || p.state}` : 'Gujarat Property';
+              const landTypeStr = p.landDetails?.landType || p.landType || 'Plot';
+              const areaVal = p.landDetails?.areaSqft || p.area || 0;
+              const priceVal = p.pricing?.priceINR || p.price || 0;
+
               return (
-              <Link key={p._id} to={`/property/${p._id}`}
-                className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
-                <div className="h-12 w-12 rounded-lg bg-blue-50 flex items-center justify-center text-xl shrink-0 overflow-hidden">
-                  {image ? <img src={image.startsWith('http') ? image : `/${image.replace(/\\/g, '/')}`} className="h-full w-full object-cover" alt="" /> : '🏠'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{p.location?.district || p.location?.surveyNumber}, {p.location?.city}</p>
-                  <p className="text-xs text-gray-500">{p.landDetails?.landType || 'Unknown'} · {p.landDetails?.areaSqft?.toLocaleString() || 0} sq ft</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-gray-900">₹{((p.pricing?.priceINR || 0)/100000).toFixed(1)}L</p>
-                  <StatusBadge status={p.verification?.status || 'Pending'} />
-                </div>
-              </Link>
-            )})}
+                <Link key={p._id} to={`/property/${p._id}`}
+                  className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
+                  <div className="h-14 w-14 rounded-xl bg-gray-100 flex items-center justify-center text-xl shrink-0 overflow-hidden border border-gray-200">
+                    {image ? (
+                      <img
+                        src={image.startsWith('http') ? image : `/${image.replace(/\\/g, '/')}`}
+                        className="h-full w-full object-cover"
+                        alt=""
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80';
+                        }}
+                      />
+                    ) : (
+                      '🏠'
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-900 truncate">{locationStr}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{landTypeStr} · {Number(areaVal).toLocaleString()} sq ft</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold text-amber-700">₹{(Number(priceVal)/100000).toFixed(1)}L</p>
+                    <StatusBadge status={p.verification?.status || p.verificationStatus || 'Verified'} />
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
