@@ -68,9 +68,9 @@ export default function BuyerPurchases() {
           {purchases.map((req, i) => {
             const isExpanded = expanded === (req._id || req.id);
             const propId = req.property?._id || req.property || req.propertyId;
-            const propTitle = req.property?.title || req.property?.address || req.propertyTitle || 'Property';
+            const propTitle = req.property?.title || req.property?.location?.district || req.property?.location?.surveyNumber || req.propertyTitle || 'Property';
             const status = req.status || 'pending';
-            const amount = req.agreedPrice || req.property?.price || req.amount;
+            const amount = req.agreedPrice || req.property?.pricing?.priceINR || req.amount;
             const lifecycleStage = statusToLifecycle(status);
 
             return (

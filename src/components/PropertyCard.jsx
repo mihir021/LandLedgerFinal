@@ -3,7 +3,7 @@
  * Shows thumbnail, address, type badge, price, lifecycle pill, and verification.
  */
 import { Link } from 'react-router-dom';
-import { MapPin, Maximize, Tag, ArrowRight } from 'lucide-react';
+import { MapPin, ArrowRight } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import VerificationBadge from './VerificationBadge';
 
@@ -16,24 +16,38 @@ const TYPE_COLORS = {
 };
 
 function formatINR(amount) {
+  if (amount == null) return '₹0';
   if (amount >= 10000000) return `₹${(amount / 10000000).toFixed(1)}Cr`;
   if (amount >= 100000)   return `₹${(amount / 100000).toFixed(1)}L`;
   return `₹${amount.toLocaleString('en-IN')}`;
 }
 
 export default function PropertyCard({ property, delay = 0 }) {
-  const {
-    _id, id, propertyId, title, address, city, state,
-    landType, type, price, area,
-    status,
-    images = [],
-  } = property;
+  const propId = property._id || property.id;
+  const propertyId = property.propertyId;
+  const propType = property.landDetails?.landType || property.landType || property.type || 'residential';
+  const propTitle = property.title || `${propType.split(' ')[0]} Property — ${property.location?.city || 'Unknown'}`;
+  
+  const address = property.location?.district || property.location?.surveyNumber || property.address || 'Unknown Address';
+  const city = property.location?.city || property.city || 'Unknown City';
+  const state = property.location?.state || property.state || 'Unknown State';
+  const price = property.pricing?.priceINR || property.price || 0;
+  const area = property.landDetails?.areaSqft || property.area || 0;
+  const propStatus = property.verification?.status || property.status || 'Pending';
 
-  const propId = _id || id;
-  const propType = landType || type || 'residential';
-  const propStatus = status || 'draft';
-  const propTitle = title || `${propType.charAt(0).toUpperCase() + propType.slice(1)} Property — ${city}`;
+  const getPropTypeKey = (typeStr) => {
+    const lower = typeStr.toLowerCase();
+    if (lower.includes('residential')) return 'residential';
+    if (lower.includes('commercial')) return 'commercial';
+    if (lower.includes('agricultural')) return 'agricultural';
+    if (lower.includes('industrial')) return 'industrial';
+    if (lower.includes('mixed')) return 'mixed';
+    return 'residential';
+  };
+  const propTypeKey = getPropTypeKey(propType);
+
   let imgSrc = null;
+  const images = property.documents?.length > 0 ? property.documents.map(d => d.url) : (property.images || []);
   if (images[0]) {
     if (images[0].startsWith('http')) {
       imgSrc = images[0];
@@ -61,7 +75,7 @@ export default function PropertyCard({ property, delay = 0 }) {
         )}
         {/* Type badge overlay */}
         <div className="absolute top-2 left-2">
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${TYPE_COLORS[propType] || TYPE_COLORS.residential}`}>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${TYPE_COLORS[propTypeKey]}`}>
             {propType}
           </span>
         </div>
@@ -100,7 +114,7 @@ export default function PropertyCard({ property, delay = 0 }) {
         </div>
 
         <div className="flex items-center justify-between">
-          <VerificationBadge status={propStatus === 'verified' || propStatus === 'listed' || propStatus === 'completed' ? 'verified' : propStatus === 'rejected' ? 'rejected' : 'pending'} size="sm" showLabel={false} />
+          <VerificationBadge status={propStatus === 'Verified' || propStatus === 'verified' || propStatus === 'listed' || propStatus === 'completed' ? 'verified' : propStatus === 'Rejected' || propStatus === 'rejected' ? 'rejected' : 'pending'} size="sm" showLabel={false} />
           <span className="flex items-center gap-1 text-xs font-semibold text-blue-800 hover:text-blue-900">
             View Details <ArrowRight className="h-3 w-3" />
           </span>

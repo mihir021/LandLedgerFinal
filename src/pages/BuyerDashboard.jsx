@@ -27,7 +27,7 @@ export default function BuyerDashboard() {
       setLoading(true);
       try {
         const [props, transfers] = await Promise.all([
-          getProperties({ status: 'verified', limit: 6 }).catch(() => ({ properties: [] })),
+          getProperties({ status: 'Verified', limit: 6 }).catch(() => ({ properties: [] })),
           getTransfers().catch(() => []),
         ]);
         setProperties(props.properties || []);
@@ -143,24 +143,26 @@ export default function BuyerDashboard() {
           <p className="text-center text-sm text-gray-400 py-12">No verified properties available.</p>
         ) : (
           <div className="divide-y divide-gray-50">
-            {properties.slice(0, 5).map(prop => (
+            {properties.slice(0, 5).map(prop => {
+              const image = prop.documents?.[0]?.url || null;
+              return (
               <Link key={prop._id} to={`/property/${prop._id}`}
                 className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
                 <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-lg shrink-0 overflow-hidden">
-                  {prop.images?.[0] ? <img src={prop.images[0]} className="h-full w-full object-cover" alt="" /> : '🏠'}
+                  {image ? <img src={image.startsWith('http') ? image : `/${image.replace(/\\/g, '/')}`} className="h-full w-full object-cover" alt="" /> : '🏠'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-800 truncate">
-                    {prop.title || `${prop.landType} property`} — {prop.city}
+                    {prop.title || `${prop.landDetails?.landType || 'Unknown'} property`} — {prop.location?.city}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">{prop.address}, {prop.state}</p>
+                  <p className="text-xs text-gray-500 truncate">{prop.location?.district || prop.location?.surveyNumber}, {prop.location?.state}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-gray-900">₹{(prop.price / 100000).toFixed(1)}L</p>
-                  <StatusBadge status={prop.status || 'verified'} />
+                  <p className="text-sm font-bold text-gray-900">₹{((prop.pricing?.priceINR || 0) / 100000).toFixed(1)}L</p>
+                  <StatusBadge status={prop.verification?.status || 'Verified'} />
                 </div>
               </Link>
-            ))}
+            )})}
           </div>
         )}
       </div>

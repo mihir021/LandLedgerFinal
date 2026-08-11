@@ -12,7 +12,7 @@ const getUsers = async (req, res, next) => {
 
     const filter = {};
     if (role) filter.role = role;
-    if (status) filter.status = status;
+    if (status) filter.kycStatus = status;
 
     const skip = (Number(page) - 1) * Number(limit);
     const total = await User.countDocuments(filter);
@@ -81,10 +81,22 @@ const updateUser = async (req, res, next) => {
 
     // Never allow password update through this route
     delete req.body.password;
+    delete req.body.passwordHash;
 
-    // Handle profile image upload
+    // Backward compatibility for fullName and aadhaarNumber
+    if (req.body.fullName) {
+      req.body.name = req.body.fullName;
+      delete req.body.fullName;
+    }
+    if (req.body.aadhaarNumber) {
+      req.body.govtId = { type: 'Aadhaar', numberHash: req.body.aadhaarNumber };
+      delete req.body.aadhaarNumber;
+    }
+
+    // Handle profile image upload (not in new schema, but we can leave it as sparse or ignore)
+    // Actually the new schema removed profileImage, so let's delete it to prevent validation error
     if (req.file) {
-      req.body.profileImage = req.file.path;
+      // req.body.profileImage = req.file.path; // Removed in new schema
     }
 
     const user = await User.findByIdAndUpdate(req.params.id, req.body, {
@@ -119,7 +131,7 @@ const verifyUser = async (req, res, next) => {
 
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { status },
+      { kycStatus: status },
       { new: true, runValidators: true }
     );
 

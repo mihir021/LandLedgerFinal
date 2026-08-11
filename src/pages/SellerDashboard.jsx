@@ -37,7 +37,7 @@ export default function SellerDashboard() {
     load();
   }, []);
 
-  const listed = properties.filter(p => p.status === 'verified' || p.status === 'listed');
+  const listed = properties.filter(p => p.verification?.status === 'Verified' || p.verification?.status === 'listed');
   const pending = requests.filter(r => r.status === 'pending');
 
   const stats = [
@@ -95,22 +95,24 @@ export default function SellerDashboard() {
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
-            {properties.slice(0, 5).map(p => (
+            {properties.slice(0, 5).map(p => {
+              const image = p.documents?.[0]?.url;
+              return (
               <Link key={p._id} to={`/property/${p._id}`}
                 className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
                 <div className="h-12 w-12 rounded-lg bg-blue-50 flex items-center justify-center text-xl shrink-0 overflow-hidden">
-                  {p.images?.[0] ? <img src={p.images[0]} className="h-full w-full object-cover" alt="" /> : '🏠'}
+                  {image ? <img src={image.startsWith('http') ? image : `/${image.replace(/\\/g, '/')}`} className="h-full w-full object-cover" alt="" /> : '🏠'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{p.address}, {p.city}</p>
-                  <p className="text-xs text-gray-500">{p.landType} · {p.area?.toLocaleString()} sq ft</p>
+                  <p className="text-sm font-semibold text-gray-800 truncate">{p.location?.district || p.location?.surveyNumber}, {p.location?.city}</p>
+                  <p className="text-xs text-gray-500">{p.landDetails?.landType || 'Unknown'} · {p.landDetails?.areaSqft?.toLocaleString() || 0} sq ft</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-gray-900">₹{(p.price/100000).toFixed(1)}L</p>
-                  <StatusBadge status={p.status || 'pending_verification'} />
+                  <p className="text-sm font-bold text-gray-900">₹{((p.pricing?.priceINR || 0)/100000).toFixed(1)}L</p>
+                  <StatusBadge status={p.verification?.status || 'Pending'} />
                 </div>
               </Link>
-            ))}
+            )})}
           </div>
         )}
       </div>

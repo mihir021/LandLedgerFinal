@@ -45,7 +45,7 @@ export default function OfficerDashboard() {
     setLoading(true);
     try {
       const [propRes, transfers, userRes, inqData] = await Promise.all([
-        getProperties({ status: 'pending_verification', limit: 20 }).catch(() => ({ properties: [] })),
+        getProperties({ status: 'Pending', limit: 20 }).catch(() => ({ properties: [] })),
         getTransfers().catch(() => []),
         getUsers({ status: 'pending', limit: 1 }).catch(() => ({ pagination: { total: 0 } })),
         getInquiries().catch(() => []),
@@ -145,25 +145,27 @@ export default function OfficerDashboard() {
               </p>
             ) : (
               <div className="divide-y divide-gray-50">
-                {pendingProperties.map(p => (
+                {pendingProperties.map(p => {
+                  const image = p.documents?.[0]?.url;
+                  return (
                   <div key={p._id} className="flex items-center gap-4 px-5 py-4">
                     <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-lg overflow-hidden shrink-0">
-                      {p.images?.[0] ? <img src={p.images[0]} alt="" className="h-full w-full object-cover" /> : '🏠'}
+                      {image ? <img src={image.startsWith('http') ? image : `/${image.replace(/\\/g, '/')}`} alt="" className="h-full w-full object-cover" /> : '🏠'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800">{p.propertyId} — {p.address}, {p.city}</p>
-                      <p className="text-xs text-gray-500">Owner: {p.owner?.fullName || '—'} · {p.landType}</p>
+                      <p className="text-sm font-semibold text-gray-800">{p.propertyId || p._id?.slice(-8)} — {p.location?.district || p.location?.surveyNumber}, {p.location?.city}</p>
+                      <p className="text-xs text-gray-500">Owner: {p.ownerId?.name || p.ownerId?.fullName || '—'} · {p.landDetails?.landType || 'Unknown'}</p>
                     </div>
                     <div className="flex gap-2 shrink-0">
                       <button
-                        onClick={() => setPropModal({ open: true, id: p._id, status: 'verified', name: `${p.address}, ${p.city}` })}
+                        onClick={() => setPropModal({ open: true, id: p._id, status: 'Verified', name: `${p.location?.district || p.location?.surveyNumber}, ${p.location?.city}` })}
                         disabled={actionLoading === p._id}
                         className="flex items-center gap-1 rounded-lg bg-green-50 border border-green-200 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100 disabled:opacity-50"
                       >
                         <Check className="h-3 w-3" /> Approve
                       </button>
                       <button
-                        onClick={() => setPropModal({ open: true, id: p._id, status: 'rejected', name: `${p.address}, ${p.city}` })}
+                        onClick={() => setPropModal({ open: true, id: p._id, status: 'Rejected', name: `${p.location?.district || p.location?.surveyNumber}, ${p.location?.city}` })}
                         disabled={actionLoading === p._id}
                         className="flex items-center gap-1 rounded-lg bg-red-50 border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
                       >
@@ -171,7 +173,7 @@ export default function OfficerDashboard() {
                       </button>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             )}
           </div>
