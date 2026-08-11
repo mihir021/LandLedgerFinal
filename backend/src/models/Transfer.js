@@ -9,8 +9,62 @@ const transferSchema = new mongoose.Schema(
     transferAmount: Number,
     status: {
       type: String,
-      enum: ['Initiated', 'Pending Verification', 'Approved', 'Rejected', 'Completed'],
-      default: 'Initiated',
+      enum: [
+        'pending',
+        'sellerApproved',
+        'buyerApproved',
+        'officerApproved',
+        'completed',
+        'Initiated',
+        'Pending Verification',
+        'Approved',
+        'Rejected',
+      ],
+      default: 'pending',
+    },
+    sellerApproved: {
+      type: Boolean,
+      default: false,
+    },
+    buyerApproved: {
+      type: Boolean,
+      default: false,
+    },
+    officerApproved: {
+      type: Boolean,
+      default: false,
+    },
+
+    timeline: [
+      {
+        stage: {
+          type: String,
+          trim: true,
+        },
+        actor: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        actorName: {
+          type: String,
+          trim: true,
+        },
+        note: {
+          type: String,
+          trim: true,
+          default: '',
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+
+    // ----- Blockchain integration field -----
+    transactionHash: {
+      type: String,
+      default: null,
     },
     documents: [{ type: String, url: String }],
     blockchainTxHash: String,

@@ -36,6 +36,10 @@ const protect = async (req, _res, next) => {
       return next(new ApiError(401, 'User belonging to this token no longer exists'));
     }
 
+    if (user.status === 'suspended') {
+      return next(new ApiError(403, 'Account suspended — contact the administrator'));
+    }
+
     req.user = user;
     next();
   } catch (error) {

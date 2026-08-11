@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import ApiError from '../utils/ApiError.js';
+import logAudit from '../utils/auditLogger.js';
 
 // =====================================================
 // @desc    Get all users (admin only)
@@ -148,6 +149,89 @@ const verifyUser = async (req, res, next) => {
 };
 
 // =====================================================
+// @desc    Suspend / reinstate a user (admin only)
+// @route   PUT /api/users/:id/suspend
+// @access  Private (admin)
+// =====================================================
+const suspendUser = async (req, res, next) => {
+  try {
+    const { suspend } = req.body;
+
+    if (typeof suspend !== 'boolean') {
+      return next(new ApiError(400, 'suspend must be a boolean'));
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) return next(new ApiError(404, 'User not found'));
+
+    if (user.role === 'admin') {
+      return next(new ApiError(400, 'Cannot suspend an administrator account'));
+    }
+
+    user.status = suspend ? 'suspended' : 'pending';
+    await user.save();
+
+    await logAudit({
+      req,
+      action: suspend ? 'user.suspend' : 'user.reinstate',
+      targetType: 'User',
+      targetId: user._id,
+      details: { email: user.email, role: user.role },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: suspend ? 'User suspended' : 'User reinstated',
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// =====================================================
+// @desc    Register a government officer (admin only)
+// @route   POST /api/users/officer
+// @access  Private (admin)
+// =====================================================
+const registerOfficer = async (req, res, next) => {
+  try {
+    const { fullName, email, password, phone, jurisdiction } = req.body;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return next(new ApiError(409, 'Email is already registered'));
+    }
+
+    const officer = await User.create({
+      fullName,
+      email,
+      password,
+      phone,
+      role: 'officer',
+      status: 'verified',
+      jurisdiction: jurisdiction || null,
+    });
+
+    await logAudit({
+      req,
+      action: 'officer.create',
+      targetType: 'User',
+      targetId: officer._id,
+      details: { email: officer.email, jurisdiction: officer.jurisdiction },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Government officer registered successfully',
+      data: officer,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// =====================================================
 // @desc    Delete a user (admin only)
 // @route   DELETE /api/users/:id
 // @access  Private (admin)
@@ -167,4 +251,12 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
-export { getUsers, getUserById, updateUser, verifyUser, deleteUser };
+export {
+  getUsers,
+  getUserById,
+  updateUser,
+  verifyUser,
+  suspendUser,
+  registerOfficer,
+  deleteUser,
+};

@@ -1,5 +1,7 @@
 import Property from '../models/Property.js';
+import Transfer from '../models/Transfer.js';
 import ApiError from '../utils/ApiError.js';
+import logAudit from '../utils/auditLogger.js';
 
 // =====================================================
 // @desc    Get all properties (with optional filters)
@@ -13,18 +15,23 @@ const getProperties = async (req, res, next) => {
       district,
       city,
       landType,
+      verificationStatus,
       status,
+      listed,
+      owner,
       page = 1,
       limit = 100,
     } = req.query;
 
     // Build dynamic filter using nested fields
     const filter = {};
-    if (state) filter['location.state'] = new RegExp(state, 'i');
-    if (district) filter['location.district'] = new RegExp(district, 'i');
-    if (city) filter['location.city'] = new RegExp(city, 'i');
-    if (landType) filter['landDetails.landType'] = new RegExp(landType, 'i');
-    if (status) filter['verification.status'] = status;
+    if (state) filter.$or = [{ state: new RegExp(state, 'i') }, { 'location.state': new RegExp(state, 'i') }];
+    if (district) filter.district = district;
+    if (city) filter.city = city;
+    if (landType) filter.landType = landType;
+    if (verificationStatus || status) filter.verificationStatus = verificationStatus || status;
+    if (listed !== undefined) filter.isListed = listed === 'true';
+    if (owner) filter.owner = owner;
 
     const skip = (Number(page) - 1) * Number(limit);
     const total = await Property.countDocuments(filter);
@@ -224,6 +231,7 @@ const deleteProperty = async (req, res, next) => {
 // @route   PUT /api/properties/:id/verify
 // @access  Private (officer, admin)
 // =====================================================
+
 const verifyProperty = async (req, res, next) => {
   try {
     const { status, txHash } = req.body;
@@ -261,6 +269,117 @@ const verifyProperty = async (req, res, next) => {
   }
 };
 
+// =====================================================
+// @desc    Toggle property listing on/off (seller — owner only)
+// @route   PUT /api/properties/:id/listing
+// @access  Private (seller, admin)
+// =====================================================
+const toggleListing = async (req, res, next) => {
+  try {
+    const { isListed } = req.body;
+
+    if (typeof isListed !== 'boolean') {
+      return next(new ApiError(400, 'isListed must be a boolean'));
+    }
+
+    const property = await Property.findById(req.params.id);
+    if (!property) return next(new ApiError(404, 'Property not found'));
+
+    if (
+      property.owner.toString() !== req.user._id.toString() &&
+      req.user.role !== 'admin'
+    ) {
+      return next(new ApiError(403, 'Not authorized to update this property'));
+    }
+
+    if (isListed && property.verificationStatus !== 'verified') {
+      return next(
+        new ApiError(400, 'Only verified properties can be listed for sale')
+      );
+    }
+
+    property.isListed = isListed;
+    await property.save();
+
+    await logAudit({
+      req,
+      action: isListed ? 'property.list' : 'property.unlist',
+      targetType: 'Property',
+      targetId: property._id,
+      details: { propertyId: property.propertyId },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: isListed ? 'Property listed for sale' : 'Property unlisted',
+      data: property,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// =====================================================
+// @desc    Get property history / title chain
+// @route   GET /api/properties/:id/history
+// @access  Public
+// =====================================================
+const getPropertyHistory = async (req, res, next) => {
+  try {
+    const property = await Property.findById(req.params.id)
+      .populate('owner', 'fullName email')
+      .select('propertyId surveyNumber owner verificationStatus createdAt blockchainTx');
+
+    if (!property) return next(new ApiError(404, 'Property not found'));
+
+    // All transfers tied to this property, newest first
+    const transfers = await Transfer.find({ property: req.params.id })
+      .populate('seller', 'fullName email')
+      .populate('buyer', 'fullName email')
+      .sort({ createdAt: 1 });
+
+    // Build a title-chain timeline: registration -> verification -> transfers
+    const history = [
+      {
+        stage: 'Property Registered',
+        label: 'Registered',
+        actor: property.owner?.fullName || 'System',
+        timestamp: property.createdAt,
+        details: `Property ${property.propertyId} registered in the land registry.`,
+        transactionHash: property.blockchainTx,
+      },
+      {
+        stage: 'Property Verified',
+        label: 'Verified',
+        actor: 'Government Officer',
+        timestamp: property.updatedAt,
+        details:
+          property.verificationStatus === 'verified'
+            ? 'Property documents verified by the government officer.'
+            : `Current verification status: ${property.verificationStatus}.`,
+        transactionHash: null,
+      },
+      ...transfers.map((t) => ({
+        stage: 'Ownership Transferred',
+        label: 'Transfer',
+        actor: t.seller?.fullName || 'Unknown',
+        timestamp: t.createdAt,
+        details: `Ownership transferred from ${t.seller?.fullName || 'seller'} to ${t.buyer?.fullName || 'buyer'}. Status: ${t.status}.`,
+        transactionHash: t.transactionHash,
+        status: t.status,
+      })),
+    ];
+
+    res.status(200).json({
+      success: true,
+      message: 'Property history retrieved',
+      data: history,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export {
   getProperties,
   getPropertyById,
@@ -268,4 +387,6 @@ export {
   updateProperty,
   deleteProperty,
   verifyProperty,
+  toggleListing,
+  getPropertyHistory,
 };

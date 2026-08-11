@@ -145,6 +145,88 @@ const validateTransferAction = [
 ];
 
 // =====================================================
+// Dispute validations
+// =====================================================
+
+const validateCreateDispute = [
+  body('property')
+    .notEmpty()
+    .withMessage('Property ID is required')
+    .isMongoId()
+    .withMessage('Invalid property ID'),
+  body('subject')
+    .trim()
+    .notEmpty()
+    .withMessage('Dispute subject is required')
+    .isLength({ max: 150 })
+    .withMessage('Subject cannot exceed 150 characters'),
+  body('description')
+    .trim()
+    .notEmpty()
+    .withMessage('Dispute description is required'),
+  handleValidationErrors,
+];
+
+const validateUpdateDispute = [
+  body('status')
+    .notEmpty()
+    .withMessage('Status is required')
+    .isIn(['in-progress', 'resolved', 'rejected', 'closed'])
+    .withMessage('Invalid dispute status'),
+  body('resolution').optional().trim(),
+  handleValidationErrors,
+];
+
+// =====================================================
+// User validations
+// =====================================================
+
+const validateSuspendUser = [
+  body('suspend')
+    .notEmpty()
+    .withMessage('suspend is required')
+    .isBoolean()
+    .withMessage('suspend must be a boolean'),
+  handleValidationErrors,
+];
+
+const validateRegisterOfficer = [
+  body('fullName')
+    .trim()
+    .notEmpty()
+    .withMessage('Full name is required')
+    .isLength({ max: 100 })
+    .withMessage('Full name cannot exceed 100 characters'),
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Please provide a valid email'),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters'),
+  body('phone').optional().trim(),
+  body('jurisdiction').optional().trim(),
+  handleValidationErrors,
+];
+
+// =====================================================
+// Setting validations
+// =====================================================
+
+const validateUpdateSettings = [
+  body('settings')
+    .notEmpty()
+    .withMessage('Settings object is required')
+    .isObject()
+    .withMessage('Settings must be an object'),
+  handleValidationErrors,
+];
+
+// =====================================================
 // ID param validation
 // =====================================================
 
@@ -160,5 +242,10 @@ export {
   validateUpdateProperty,
   validateTransferRequest,
   validateTransferAction,
+  validateCreateDispute,
+  validateUpdateDispute,
+  validateSuspendUser,
+  validateRegisterOfficer,
+  validateUpdateSettings,
   validateMongoId,
 };

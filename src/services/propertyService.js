@@ -68,3 +68,24 @@ export const verifyProperty = async (id, status, txHash) => {
   const { data } = await api.put(`/properties/${id}/verify`, { status, txHash });
   return data.data;
 };
+
+/**
+ * Toggle a property listing on/off (seller — owner only).
+ * @param {string} id
+ * @param {boolean} isListed
+ * @returns {Object} Updated property document.
+ */
+export const toggleListing = async (id, isListed) => {
+  const { data } = await api.put(`/properties/${id}/listing`, { isListed });
+  return data.data;
+};
+
+/**
+ * Get property history / title chain.
+ * @param {string} id
+ * @returns {Array} Timeline entries.
+ */
+export const getPropertyHistory = async (id) => {
+  const { data } = await api.get(`/properties/${id}/history`);
+  return data.data;
+};

@@ -3,17 +3,21 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Clock, CheckCircle, XCircle, ExternalLink, Loader2, ArrowLeft } from 'lucide-react';
+import { FileText, CheckCircle, ExternalLink, Loader2, ArrowLeft, PenLine } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import LifecycleTracker from '../components/LifecycleTracker';
-import { getTransfers } from '../services/transferService';
-
+import ConfirmationModal from '../components/ConfirmationModal';
+import { getTransfers, buyerApprove } from '../services/transferService';
+import { useToast } from '../context/ToastContext';
 
 export default function BuyerPurchases() {
+  const toast = useToast();
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [signModal, setSignModal] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -34,11 +38,28 @@ export default function BuyerPurchases() {
     const map = {
       pending: 'transfer_requested',
       seller_approved: 'seller_approved',
+      sellerApproved: 'seller_approved',
       buyer_signed: 'buyer_signed',
+      buyerApproved: 'buyer_signed',
       officer_approved: 'officer_approved',
+      officerApproved: 'officer_approved',
       completed: 'completed',
     };
     return map[status] || 'transfer_requested';
+  };
+
+  const handleBuyerSign = async () => {
+    setActionLoading(true);
+    try {
+      const updated = await buyerApprove(signModal.transferId);
+      setPurchases(prev => prev.map(p => (p._id === signModal.transferId || p.id === signModal.transferId) ? updated : p));
+      toast.success('You have signed and approved the transfer');
+    } catch (err) {
+      toast.error(err.message || 'Failed to sign transfer');
+    } finally {
+      setActionLoading(false);
+      setSignModal(null);
+    }
   };
 
   return (
@@ -124,6 +145,27 @@ export default function BuyerPurchases() {
                     <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Transfer Progress</h4>
                     <LifecycleTracker currentStage={lifecycleStage} compact />
 
+                    {/* Buyer sign CTA */}
+                    {status === 'sellerApproved' && (
+                      <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                        <div className="flex items-start gap-3">
+                          <PenLine className="h-5 w-5 text-blue-700 shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-blue-900">Seller has approved — your signature is required</p>
+                            <p className="text-xs text-blue-700 mt-0.5">
+                              Review the terms and sign this transfer. The government officer will review it after you sign.
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setSignModal({ transferId: req._id || req.id, propertyTitle: propTitle })}
+                          className="mt-3 w-full btn-primary text-sm py-2.5"
+                        >
+                          <PenLine className="h-4 w-4" /> Sign & Approve Transfer
+                        </button>
+                      </div>
+                    )}
+
                     {/* Timeline */}
                     {req.timeline && req.timeline.length > 0 && (
                       <div className="mt-5">
@@ -146,6 +188,19 @@ export default function BuyerPurchases() {
           })}
         </div>
       )}
+
+      {/* Sign transfer confirmation */}
+      <ConfirmationModal
+        isOpen={!!signModal}
+        onClose={() => setSignModal(null)}
+        onConfirm={handleBuyerSign}
+        loading={actionLoading}
+        variant="approve"
+        title="Sign & Approve Transfer"
+        message="By signing, you confirm the agreed price and terms for this property transfer. Your digital signature will be recorded in the immutable title chain."
+        details={signModal ? { 'Property': signModal.propertyTitle, 'Action': 'Digitally Sign Transfer' } : undefined}
+        confirmLabel="Sign & Approve"
+      />
     </div>
   );
 }

@@ -36,6 +36,27 @@ export const verifyUser = async (id, status) => {
 };
 
 /**
+ * Suspend or reinstate a user (admin only).
+ * @param {string} id
+ * @param {boolean} suspend
+ * @returns {Object} Updated user document.
+ */
+export const suspendUser = async (id, suspend) => {
+  const { data } = await api.put(`/users/${id}/suspend`, { suspend });
+  return data.data;
+};
+
+/**
+ * Register a new government officer (admin only).
+ * @param {Object} payload - { fullName, email, password, phone, jurisdiction }
+ * @returns {Object} Created officer document.
+ */
+export const registerOfficer = async (payload) => {
+  const { data } = await api.post('/users/officer', payload);
+  return data.data;
+};
+
+/**
  * Delete a user (admin only).
  * @param {string} id
  */

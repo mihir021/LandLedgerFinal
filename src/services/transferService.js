@@ -34,6 +34,16 @@ export const sellerApprove = async (transferId) => {
 };
 
 /**
+ * Buyer signs / approves a transfer.
+ * @param {string} transferId
+ * @returns {Object} Updated transfer document.
+ */
+export const buyerApprove = async (transferId) => {
+  const { data } = await api.post('/transfers/buyer-approve', { transferId });
+  return data.data;
+};
+
+/**
  * Officer approves a transfer.
  * @param {string} transferId
  * @returns {Object} Updated transfer document.

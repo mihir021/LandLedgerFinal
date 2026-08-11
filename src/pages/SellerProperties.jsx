@@ -1,25 +1,57 @@
 /**
- * SellerProperties — list of all properties owned by seller
+ * SellerProperties — list of all properties owned by seller, with list/unlist toggle
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Home, FilePlus, ExternalLink, Loader2, ArrowLeft } from 'lucide-react';
+import { Home, FilePlus, ExternalLink, Loader2, ArrowLeft, Power } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import VerificationBadge from '../components/VerificationBadge';
-import { getProperties } from '../services/propertyService';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { getProperties, toggleListing } from '../services/propertyService';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 export default function SellerProperties() {
+  const { user } = useAuth();
+  const toast = useToast();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [toggleModal, setToggleModal] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    load();
+  }, [user]);
+
+  const load = async () => {
+    setLoading(true);
     setError('');
-    getProperties({ limit: 1000 })
-      .then(res => setProperties(res.properties || []))
-      .catch(err => setError(err.message || 'Failed to load properties.'))
-      .finally(() => setLoading(false));
-  }, []);
+    try {
+      // Filter by the current seller's own properties
+      const res = await getProperties({ owner: user?._id, limit: 100 }).catch(() => getProperties({ limit: 1000 }));
+      setProperties(res.properties || []);
+    } catch (err) {
+      setError(err.message || 'Failed to load properties.');
+      setProperties([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleListing = async () => {
+    setActionLoading(true);
+    try {
+      const updated = await toggleListing(toggleModal.id, toggleModal.isListed);
+      setProperties(prev => prev.map(p => p._id === updated._id ? updated : p));
+      toast.success(toggleModal.isListed ? 'Property listed for sale' : 'Property unlisted');
+    } catch (err) {
+      toast.error(err.message || 'Failed to update listing');
+    } finally {
+      setActionLoading(false);
+      setToggleModal(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -62,8 +94,8 @@ export default function SellerProperties() {
                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Property</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">Type</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Price</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Verification</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Listing</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
@@ -103,9 +135,28 @@ export default function SellerProperties() {
                     />
                   </td>
                   <td className="px-5 py-4">
-                    <Link to={`/property/${p._id}`} className="flex items-center gap-1 text-xs text-blue-700 hover:underline font-medium">
-                      View <ExternalLink className="h-3 w-3" />
-                    </Link>
+                    <StatusBadge status={p.isListed ? 'listed' : p.verificationStatus === 'pending' ? 'pending_verify' : 'draft'} />
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center justify-end gap-2">
+                      {p.verificationStatus === 'verified' && (
+                        <button
+                          onClick={() => setToggleModal({ id: p._id, isListed: !p.isListed, name: `${p.address}, ${p.city}` })}
+                          disabled={actionLoading}
+                          className={`flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                            p.isListed
+                              ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                              : 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
+                          } disabled:opacity-50`}
+                        >
+                          <Power className="h-3 w-3" />
+                          {p.isListed ? 'Unlist' : 'List'}
+                        </button>
+                      )}
+                      <Link to={`/property/${p._id}`} className="flex items-center gap-1 text-xs text-blue-700 hover:underline font-medium">
+                        View <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    </div>
                   </td>
                 </tr>
                 );
@@ -114,6 +165,20 @@ export default function SellerProperties() {
           </table>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={!!toggleModal}
+        onClose={() => setToggleModal(null)}
+        onConfirm={handleToggleListing}
+        loading={actionLoading}
+        variant={toggleModal?.isListed ? 'approve' : 'warning'}
+        title={toggleModal?.isListed ? 'List Property for Sale' : 'Unlist Property'}
+        message={toggleModal?.isListed
+          ? 'This property will appear on the public marketplace where buyers can submit purchase requests.'
+          : 'This property will be removed from the marketplace and buyers will no longer be able to request it.'}
+        details={toggleModal ? { 'Property': toggleModal.name } : undefined}
+        confirmLabel={toggleModal?.isListed ? 'List Property' : 'Unlist Property'}
+      />
     </div>
   );
 }

@@ -23,6 +23,14 @@ const propertySchema = new mongoose.Schema(
       latitude: Number,
       longitude: Number,
     },
+    isListed: {
+      type: Boolean,
+      default: false,
+    },
+    isDraft: {
+      type: Boolean,
+      default: false,
+    },
 
     landDetails: {
       landType: {

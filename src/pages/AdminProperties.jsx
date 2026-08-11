@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, XCircle, Loader2, Search, ExternalLink } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
-import VerificationBadge from '../components/VerificationBadge';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { getProperties, verifyProperty } from '../services/propertyService';
 import { useToast } from '../context/ToastContext';

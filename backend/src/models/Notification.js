@@ -2,13 +2,32 @@ import mongoose from 'mongoose';
 
 const notificationSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    type: { type: String, enum: ['Transfer Update', 'Verification Update', 'Inquiry', 'System'] },
-    title: String,
-    message: String,
-    relatedEntityType: { type: String, enum: ['Property', 'Transfer', 'Inquiry'] },
+    receiver: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    title: {
+      type: String,
+      trim: true,
+    },
+    message: {
+      type: String,
+      trim: true,
+    },
+    type: {
+      type: String,
+      default: 'info',
+    },
+    relatedEntityType: { type: String },
     relatedEntityId: mongoose.Schema.Types.ObjectId,
-    isRead: { type: Boolean, default: false },
+    isRead: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

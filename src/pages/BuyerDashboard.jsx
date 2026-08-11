@@ -3,18 +3,16 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, FileText, Home, Bell, ArrowRight, ShieldCheck, Clock, CheckCircle } from 'lucide-react';
+import { Search, FileText, Home, ArrowRight, ShieldCheck, Clock, CheckCircle } from 'lucide-react';
 import DashboardCard from '../components/DashboardCard';
 import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
-import { useToast } from '../context/ToastContext';
 import { getProperties } from '../services/propertyService';
 import { getTransfers } from '../services/transferService';
 import { getNotifications } from '../services/notificationService';
 
 export default function BuyerDashboard() {
   const { user } = useAuth();
-  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [properties, setProperties] = useState([]);
@@ -30,7 +28,7 @@ export default function BuyerDashboard() {
       setError('');
       try {
         const [props, transfers, notifs] = await Promise.all([
-          getProperties({ status: 'Verified', limit: 1000 }).catch(() => ({ properties: [] })),
+          getProperties({ verificationStatus: 'verified', limit: 6 }).catch(() => getProperties({ status: 'Verified', limit: 1000 }).catch(() => ({ properties: [] }))),
           getTransfers().catch(() => []),
           getNotifications().catch(() => []),
         ]);
@@ -49,11 +47,11 @@ export default function BuyerDashboard() {
   const stats = [
     { icon: Home,        label: 'Available Properties', value: properties.length,                    color: 'navy' },
     { icon: FileText,    label: 'My Purchases',         value: purchases.length,                     color: 'green' },
-    { icon: Clock,       label: 'Pending Requests',     value: purchases.filter(p => p.status === 'pending').length, color: 'amber' },
-    { icon: CheckCircle, label: 'Completed',            value: purchases.filter(p => p.status === 'completed').length, color: 'emerald' },
+    { icon: Clock,       label: 'Pending Requests',     value: purchases.filter(p => p.status === 'pending' || p.status === 'Initiated').length, color: 'amber' },
+    { icon: CheckCircle, label: 'Completed',            value: purchases.filter(p => p.status === 'completed' || p.status === 'Completed').length, color: 'emerald' },
   ];
 
-  const unreadNotifs = notifications.filter(n => !n.read).slice(0, 4);
+  const unreadNotifs = notifications.filter(n => !n.isRead && !n.read).slice(0, 4);
 
   return (
     <div className="space-y-8">
@@ -125,9 +123,10 @@ export default function BuyerDashboard() {
               <p className="text-sm text-gray-400 py-6 text-center">No new notifications</p>
             ) : (
               unreadNotifs.map(n => (
-                <div key={n.id} className={`flex gap-3 rounded-lg p-3 border ${n.read ? 'bg-white border-gray-100' : 'bg-blue-50 border-blue-100'}`}>
-                  <div className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${n.read ? 'bg-gray-300' : 'bg-blue-600'}`} />
+                <div key={n._id || n.id} className={`flex gap-3 rounded-lg p-3 border ${n.isRead || n.read ? 'bg-white border-gray-100' : 'bg-blue-50 border-blue-100'}`}>
+                  <div className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${n.isRead || n.read ? 'bg-gray-300' : 'bg-blue-600'}`} />
                   <div>
+                    {n.title && <p className="text-sm font-semibold text-gray-800">{n.title}</p>}
                     <p className="text-sm text-gray-700">{n.message}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{new Date(n.createdAt).toLocaleDateString('en-IN')}</p>
                   </div>

@@ -21,6 +21,7 @@ import NotFound from '../pages/NotFound';
 import BuyerDashboard from '../pages/BuyerDashboard';
 import BuyerPurchases from '../pages/BuyerPurchases';
 import BuyerWallet from '../pages/BuyerWallet';
+import NotificationsPage from '../pages/NotificationsPage';
 
 // Seller Pages
 import SellerDashboard from '../pages/SellerDashboard';
@@ -81,7 +82,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'buyer/notifications',
-        element: <ProtectedRoute allowedRoles={['buyer']}><BuyerDashboard /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['buyer']}><NotificationsPage backTo="/buyer" role="buyer" /></ProtectedRoute>,
       },
 
       // Seller
@@ -99,7 +100,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'seller/notifications',
-        element: <ProtectedRoute allowedRoles={['seller']}><SellerDashboard /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['seller']}><NotificationsPage backTo="/seller" role="seller" /></ProtectedRoute>,
       },
       {
         path: 'register-property',

@@ -6,6 +6,8 @@ import {
   updateProperty,
   deleteProperty,
   verifyProperty,
+  toggleListing,
+  getPropertyHistory,
 } from '../controllers/propertyController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { authorize } from '../middleware/roleMiddleware.js';
@@ -20,6 +22,7 @@ const router = Router();
 
 // Public — anyone can browse properties
 router.get('/', getProperties);
+router.get('/:id/history', validateMongoId, getPropertyHistory);
 router.get('/:id', validateMongoId, getPropertyById);
 
 // Seller creates, updates, deletes
@@ -39,6 +42,15 @@ router.put(
   uploadPropertyFiles,
   validateUpdateProperty,
   updateProperty
+);
+
+// Seller toggles listing on/off
+router.put(
+  '/:id/listing',
+  protect,
+  authorize('seller', 'admin'),
+  validateMongoId,
+  toggleListing
 );
 
 router.delete(
