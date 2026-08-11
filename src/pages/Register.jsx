@@ -1,10 +1,10 @@
 /**
  * Register Page — role selection (Buyer / Seller) + form fields
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserPlus, Eye, EyeOff, AlertCircle, Home, ShoppingBag, ArrowRight } from 'lucide-react';
-import { useAuth, ROLE_ROUTES } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
 const ROLE_OPTIONS = [
@@ -33,9 +33,16 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { register } = useAuth();
+  const { register, isAuthenticated } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  
+  // If already authenticated, redirect to dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
 
   const set = (field) => (e) => setForm(f => ({ ...f, [field]: e.target.value }));
 
@@ -49,8 +56,8 @@ export default function Register() {
     setLoading(true);
     try {
       const data = await register({ ...form, role });
-      toast.success('Account created successfully!');
-      navigate(ROLE_ROUTES[data.role] || '/');
+      toast.success('Registration successful! Please sign in with your credentials.');
+      navigate('/login', { state: { email: form.email, registered: true } });
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.');
     } finally {

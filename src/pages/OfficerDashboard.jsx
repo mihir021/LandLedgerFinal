@@ -45,7 +45,7 @@ export default function OfficerDashboard() {
     setLoading(true);
     try {
       const [propRes, transfers, userRes, inqData] = await Promise.all([
-        getProperties({ verificationStatus: 'pending', limit: 20 }).catch(() => ({ properties: [] })),
+        getProperties({ status: 'pending_verification', limit: 20 }).catch(() => ({ properties: [] })),
         getTransfers().catch(() => []),
         getUsers({ status: 'pending', limit: 1 }).catch(() => ({ pagination: { total: 0 } })),
         getInquiries().catch(() => []),

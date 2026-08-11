@@ -77,10 +77,10 @@ export default function SellerProperties() {
                   <td className="px-5 py-4 hidden md:table-cell">
                     <span className="font-semibold text-gray-800">₹{(p.price/100000).toFixed(1)}L</span>
                   </td>
-                  <td className="px-5 py-4"><StatusBadge status={p.verificationStatus || 'pending'} /></td>
+                  <td className="px-5 py-4"><StatusBadge status={p.status || 'pending_verification'} /></td>
                   <td className="px-5 py-4">
                     <VerificationBadge
-                      status={p.verificationStatus === 'verified' ? 'verified' : p.verificationStatus === 'rejected' ? 'rejected' : 'pending'}
+                      status={p.status === 'verified' || p.status === 'listed' || p.status === 'under_transfer' || p.status === 'transferred' ? 'verified' : p.status === 'rejected' ? 'rejected' : 'pending'}
                       showLabel={false}
                     />
                   </td>

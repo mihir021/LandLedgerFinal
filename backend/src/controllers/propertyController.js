@@ -13,7 +13,7 @@ const getProperties = async (req, res, next) => {
       district,
       city,
       landType,
-      verificationStatus,
+      status,
       page = 1,
       limit = 10,
     } = req.query;
@@ -24,7 +24,7 @@ const getProperties = async (req, res, next) => {
     if (district) filter.district = district;
     if (city) filter.city = city;
     if (landType) filter.landType = landType;
-    if (verificationStatus) filter.verificationStatus = verificationStatus;
+    if (status) filter.status = status;
 
     const skip = (Number(page) - 1) * Number(limit);
     const total = await Property.countDocuments(filter);
@@ -238,17 +238,17 @@ const deleteProperty = async (req, res, next) => {
 // =====================================================
 const verifyProperty = async (req, res, next) => {
   try {
-    const { verificationStatus } = req.body;
+    const { status } = req.body;
 
-    if (!['verified', 'rejected'].includes(verificationStatus)) {
+    if (!['verified', 'rejected'].includes(status)) {
       return next(
-        new ApiError(400, 'Verification status must be "verified" or "rejected"')
+        new ApiError(400, 'Status must be "verified" or "rejected"')
       );
     }
 
     const property = await Property.findByIdAndUpdate(
       req.params.id,
-      { verificationStatus },
+      { status },
       { new: true, runValidators: true }
     );
 
@@ -256,11 +256,11 @@ const verifyProperty = async (req, res, next) => {
       return next(new ApiError(404, 'Property not found'));
     }
 
-    // TODO: Call Stylus Smart Contract Here — update verification status on-chain
+    // TODO: Call Stylus Smart Contract Here — update status on-chain
 
     res.status(200).json({
       success: true,
-      message: `Property ${verificationStatus}`,
+      message: `Property ${status}`,
       data: property,
     });
   } catch (error) {

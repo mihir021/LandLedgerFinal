@@ -75,10 +75,10 @@ const propertySchema = new mongoose.Schema(
         type: String, // file paths
       },
     ],
-    verificationStatus: {
+    status: {
       type: String,
-      enum: ['pending', 'verified', 'rejected'],
-      default: 'pending',
+      enum: ['draft', 'pending_verification', 'verified', 'listed', 'under_transfer', 'transferred'],
+      default: 'pending_verification',
     },
 
     // ----- Blockchain integration fields -----
@@ -103,7 +103,7 @@ const propertySchema = new mongoose.Schema(
 
 // Index for common query patterns
 propertySchema.index({ owner: 1 });
-propertySchema.index({ verificationStatus: 1 });
+propertySchema.index({ status: 1 });
 propertySchema.index({ state: 1, district: 1 });
 
 const Property = mongoose.model('Property', propertySchema);
