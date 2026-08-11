@@ -8,19 +8,21 @@ import StatusBadge from '../components/StatusBadge';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { getTransfers, sellerApprove } from '../services/transferService';
 import { useToast } from '../context/ToastContext';
-import { MOCK_PURCHASE_REQUESTS } from '../data/mock';
+
 
 export default function SellerRequests() {
   const toast = useToast();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [modal, setModal] = useState({ open: false, id: null, action: null });
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
+    setError('');
     getTransfers()
-      .then(data => setRequests(Array.isArray(data) ? data : MOCK_PURCHASE_REQUESTS))
-      .catch(() => setRequests(MOCK_PURCHASE_REQUESTS))
+      .then(data => setRequests(Array.isArray(data) ? data : []))
+      .catch(err => setError(err.message || 'Failed to load purchase requests.'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -64,6 +66,12 @@ export default function SellerRequests() {
           <p className="text-gray-500 text-sm mt-0.5">{pending.length} request{pending.length !== 1 ? 's' : ''} awaiting your decision</p>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 font-medium animate-fade-in">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 text-blue-800 animate-spin" /></div>

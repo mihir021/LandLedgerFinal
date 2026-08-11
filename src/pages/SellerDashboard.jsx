@@ -13,6 +13,7 @@ import { getTransfers } from '../services/transferService';
 export default function SellerDashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [properties, setProperties] = useState([]);
   const [requests, setRequests] = useState([]);
 
@@ -22,14 +23,16 @@ export default function SellerDashboard() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
+      setError('');
       try {
         const [props, transfers] = await Promise.all([
-          getProperties({ limit: 20 }).catch(() => ({ properties: [] })),
+          getProperties({ limit: 1000 }).catch(() => ({ properties: [] })),
           getTransfers().catch(() => []),
         ]);
         setProperties(props.properties || []);
         setRequests(Array.isArray(transfers) ? transfers : []);
-      } catch {
+      } catch (err) {
+        setError(err.message || 'Failed to load dashboard data.');
       } finally {
         setLoading(false);
       }
@@ -53,6 +56,12 @@ export default function SellerDashboard() {
         <h1 className="font-serif text-3xl font-bold text-gray-900">Seller Dashboard</h1>
         <p className="text-gray-500 mt-1">Welcome back, {firstName} — manage your properties and listings.</p>
       </div>
+
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 font-medium">
+          {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {stats.map((s, i) => <DashboardCard key={s.label} {...s} delay={i * 80} />)}

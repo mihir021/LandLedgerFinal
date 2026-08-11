@@ -11,11 +11,13 @@ import { getProperties } from '../services/propertyService';
 export default function SellerProperties() {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    getProperties({ limit: 50 })
+    setError('');
+    getProperties({ limit: 1000 })
       .then(res => setProperties(res.properties || []))
-      .catch(() => setProperties([]))
+      .catch(err => setError(err.message || 'Failed to load properties.'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -36,6 +38,12 @@ export default function SellerProperties() {
           Register New
         </Link>
       </div>
+
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 font-medium animate-fade-in">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 text-blue-800 animate-spin" /></div>

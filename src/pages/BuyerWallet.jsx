@@ -4,8 +4,9 @@
 import { ArrowLeft, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import WalletConnectButton from '../components/WalletConnectButton';
-import { MOCK_WALLET_TRANSACTIONS } from '../data/mock';
-
+import { useEffect, useState } from 'react';
+import { getTransfers } from '../services/transferService';
+import { Loader2 } from 'lucide-react';
 function formatINR(amount) {
   const abs = Math.abs(amount);
   if (abs >= 10000000) return `₹${(abs / 10000000).toFixed(2)} Cr`;
@@ -26,7 +27,24 @@ const TX_COLORS = {
 };
 
 export default function BuyerWallet() {
-  const balance = MOCK_WALLET_TRANSACTIONS.reduce((sum, t) => sum + t.amount, 0);
+  const [transfers, setTransfers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getTransfers()
+      .then(data => setTransfers(Array.isArray(data) ? data : []))
+      .catch(err => setError(err.message || 'Failed to load wallet transactions.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const totalInvested = transfers
+    .filter(t => t.status === 'completed')
+    .reduce((sum, t) => sum + (t.agreedPrice || t.property?.pricing?.priceINR || 0), 0);
+  
+  // Assume mock starting balance of 5 Cr for demonstration if no investments
+  const INITIAL_BALANCE = 50000000;
+  const balance = INITIAL_BALANCE - totalInvested;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -40,8 +58,20 @@ export default function BuyerWallet() {
         </div>
       </div>
 
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 font-medium animate-fade-in">
+          {error}
+        </div>
+      )}
+
       {/* Wallet connect + balance */}
-      <div className="ll-card p-6 animate-fade-in-up" style={{ background: 'linear-gradient(135deg, #0A1628 0%, #1E3A5F 100%)' }}>
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-8 w-8 text-blue-800 animate-spin" />
+        </div>
+      ) : (
+      <>
+        <div className="ll-card p-6 animate-fade-in-up" style={{ background: 'linear-gradient(135deg, #0A1628 0%, #1E3A5F 100%)' }}>
         <div className="flex items-start justify-between mb-6">
           <div>
             <p className="text-sm text-white/60 mb-1">Total Balance</p>
@@ -53,9 +83,9 @@ export default function BuyerWallet() {
 
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: 'Total Invested', value: formatINR(16500000), sub: 'in properties' },
-            { label: 'Fees Paid',      value: formatINR(15000),    sub: 'registration fees' },
-            { label: 'Transactions',   value: '3',                 sub: 'total tx' },
+            { label: 'Total Invested', value: formatINR(totalInvested), sub: 'in properties' },
+            { label: 'Fees Paid',      value: formatINR(totalInvested * 0.05), sub: '5% registration fees' },
+            { label: 'Transactions',   value: transfers.length.toString(), sub: 'total tx' },
           ].map(s => (
             <div key={s.label} className="rounded-xl bg-white/10 border border-white/15 px-3 py-3">
               <p className="text-xs text-white/60">{s.label}</p>
@@ -72,26 +102,31 @@ export default function BuyerWallet() {
           <h2 className="font-serif text-lg font-semibold text-gray-900">Transaction History</h2>
         </div>
         <div className="divide-y divide-gray-50">
-          {MOCK_WALLET_TRANSACTIONS.map((tx, i) => {
-            const Icon = TX_ICONS[tx.type] || Minus;
-            const colorClass = TX_COLORS[tx.type] || TX_COLORS.fee;
-            const isNeg = tx.amount < 0;
-            return (
-              <div key={tx.id} className="flex items-center gap-4 px-5 py-4">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full shrink-0 ${colorClass}`}>
-                  <Icon className="h-5 w-5" />
+          {transfers.length === 0 ? (
+            <p className="text-center text-sm text-gray-400 py-10">No transactions found.</p>
+          ) : (
+            transfers.map((tx, i) => {
+              const Icon = TX_ICONS.purchase;
+              const colorClass = TX_COLORS.purchase;
+              const amount = tx.agreedPrice || tx.property?.pricing?.priceINR || 0;
+              const propTitle = tx.property?.title || tx.property?.location?.district || tx.property?.location?.surveyNumber || 'Property Transfer';
+              return (
+                <div key={tx._id || i} className="flex items-center gap-4 px-5 py-4">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full shrink-0 ${colorClass}`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-800">Purchase Request: {propTitle}</p>
+                    <p className="mono-data text-xs truncate mt-0.5">{tx._id || tx.id}</p>
+                    <p className="text-xs text-gray-400">{new Date(tx.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                  </div>
+                  <p className={`text-base font-bold shrink-0 text-red-600`}>
+                    −{formatINR(amount)}
+                  </p>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800">{tx.description}</p>
-                  <p className="mono-data text-xs truncate mt-0.5">{tx.txHash}</p>
-                  <p className="text-xs text-gray-400">{new Date(tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                </div>
-                <p className={`text-base font-bold shrink-0 ${isNeg ? 'text-red-600' : 'text-green-700'}`}>
-                  {isNeg ? '−' : '+'}{formatINR(tx.amount)}
-                </p>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
 
@@ -103,6 +138,8 @@ export default function BuyerWallet() {
           <p className="text-xs text-amber-700 mt-0.5">All transactions on LandLedger are secured by multi-signature smart contracts. No funds move without your explicit cryptographic signature and government officer approval.</p>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

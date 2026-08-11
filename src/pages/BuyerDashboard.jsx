@@ -10,14 +10,16 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getProperties } from '../services/propertyService';
 import { getTransfers } from '../services/transferService';
-import { MOCK_NOTIFICATIONS } from '../data/mock';
+import { getNotifications } from '../services/notificationService';
 
 export default function BuyerDashboard() {
   const { user } = useAuth();
   const toast = useToast();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [properties, setProperties] = useState([]);
   const [purchases, setPurchases] = useState([]);
+  const [notifications, setNotifications] = useState([]);
 
   const displayName = user?.fullName || user?.name || 'Buyer';
   const firstName = displayName.split(' ')[0];
@@ -25,15 +27,18 @@ export default function BuyerDashboard() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
+      setError('');
       try {
-        const [props, transfers] = await Promise.all([
-          getProperties({ status: 'Verified', limit: 6 }).catch(() => ({ properties: [] })),
+        const [props, transfers, notifs] = await Promise.all([
+          getProperties({ status: 'Verified', limit: 1000 }).catch(() => ({ properties: [] })),
           getTransfers().catch(() => []),
+          getNotifications().catch(() => []),
         ]);
         setProperties(props.properties || []);
         setPurchases(Array.isArray(transfers) ? transfers : []);
-      } catch {
-        // Still render with empty data
+        setNotifications(Array.isArray(notifs) ? notifs : []);
+      } catch (err) {
+        setError(err.message || 'Failed to load dashboard data.');
       } finally {
         setLoading(false);
       }
@@ -48,7 +53,7 @@ export default function BuyerDashboard() {
     { icon: CheckCircle, label: 'Completed',            value: purchases.filter(p => p.status === 'completed').length, color: 'emerald' },
   ];
 
-  const unreadNotifs = MOCK_NOTIFICATIONS.filter(n => !n.read).slice(0, 4);
+  const unreadNotifs = notifications.filter(n => !n.read).slice(0, 4);
 
   return (
     <div className="space-y-8">
@@ -57,6 +62,12 @@ export default function BuyerDashboard() {
         <h1 className="font-serif text-3xl font-bold text-gray-900">Welcome back, {firstName} 👋</h1>
         <p className="text-gray-500 mt-1">Your property dashboard — everything in one place.</p>
       </div>
+
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 font-medium">
+          {error}
+        </div>
+      )}
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">

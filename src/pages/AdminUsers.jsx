@@ -8,21 +8,23 @@ import StatusBadge from '../components/StatusBadge';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { getUsers } from '../services/userService';
 import { useToast } from '../context/ToastContext';
-import { MOCK_USERS } from '../data/mock';
+
 
 export default function AdminUsers() {
   const toast = useToast();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [modal, setModal] = useState({ open: false, userId: null, action: null, userName: '' });
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    getUsers({ limit: 100 })
-      .then(res => setUsers(res.users || res || MOCK_USERS))
-      .catch(() => setUsers(MOCK_USERS))
+    setError('');
+    getUsers({ limit: 1000 })
+      .then(res => setUsers(res.users || res || []))
+      .catch(err => setError(err.message || 'Failed to load users.'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -70,6 +72,12 @@ export default function AdminUsers() {
           <span className="font-semibold text-amber-800">{pendingCount} Pending</span>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 font-medium">
+          {error}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="ll-card p-4 flex flex-wrap gap-3 animate-fade-in-up">

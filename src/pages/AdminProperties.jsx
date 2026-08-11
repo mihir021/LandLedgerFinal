@@ -20,7 +20,7 @@ export default function AdminProperties() {
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    const params = filter !== 'all' ? { status: filter.charAt(0).toUpperCase() + filter.slice(1), limit: 50 } : { limit: 50 };
+    const params = filter !== 'all' ? { status: filter.charAt(0).toUpperCase() + filter.slice(1), limit: 1000 } : { limit: 1000 };
     getProperties(params)
       .then(res => setProperties(res.properties || []))
       .catch(() => setProperties([]))
