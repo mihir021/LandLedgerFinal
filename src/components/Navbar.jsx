@@ -5,9 +5,10 @@
  */
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, User, LayoutDashboard, ChevronDown, ArrowRight, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { Menu, X, LogOut, User, LayoutDashboard, ChevronDown, ArrowRight, ArrowLeft, ShieldCheck, Bell } from 'lucide-react';
 import { useAuth, ROLE_ROUTES } from '../context/AuthContext';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useNotifications } from '../context/NotificationContext';
 
 const ROLE_LABELS = {
   buyer: 'Buyer',
@@ -21,6 +22,7 @@ export default function Navbar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -102,6 +104,20 @@ export default function Navbar() {
           ) : (
             <div className="flex items-center gap-3">
               <ConnectButton />
+              {(user?.role === 'buyer' || user?.role === 'seller') && (
+                <Link
+                  to={`/${user.role}/notifications`}
+                  className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-blue-800 transition-colors"
+                  title="Notifications"
+                >
+                  <Bell className="h-4 w-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center font-bold">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </Link>
+              )}
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(o => !o)}

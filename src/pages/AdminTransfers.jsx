@@ -25,8 +25,8 @@ export default function AdminTransfers() {
       .finally(() => setLoading(false));
   }, []);
 
-  const pending  = transfers.filter(t => t.sellerApproved && !t.officerApproved && t.status !== 'completed');
-  const active   = transfers.filter(t => !t.sellerApproved && t.status !== 'completed');
+  const pending  = transfers.filter(t => t.sellerApproved && t.buyerApproved && !t.officerApproved && t.status !== 'completed');
+  const active   = transfers.filter(t => (!t.sellerApproved || !t.buyerApproved) && t.status !== 'completed');
   const completed= transfers.filter(t => t.status === 'completed');
 
   const handleApprove = async () => {

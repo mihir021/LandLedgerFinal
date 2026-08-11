@@ -91,7 +91,7 @@ export default function PropertyDetails() {
     fetchHistory();
   }, [id]);
 
-  const parcelId = property?.location?.surveyNumber || property?.surveyNumber;
+  const parcelId = property?.blockchain?.parcelId || property?.blockchainPropertyId || property?.location?.surveyNumber || property?.surveyNumber;
   const { data: onChainData, isLoading: onChainLoading } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: LandLedgerABI,
@@ -767,4 +767,3 @@ function FiHash(props) {
     </svg>
   );
 }
-

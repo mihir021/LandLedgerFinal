@@ -95,8 +95,13 @@ export default function BuyerPurchases() {
         <div className="space-y-4">
           {purchases.map((req, i) => {
             const isExpanded = expanded === (req._id || req.id);
-            const propId = req.property?._id || req.property || req.propertyId;
-            const propTitle = req.property?.title || req.property?.location?.district || req.property?.location?.surveyNumber || req.propertyTitle || 'Property';
+            // API responses populate `propertyId`; older records may use
+            // `property`. Always extract its MongoDB id before creating a URL.
+            const property = (req.propertyId && typeof req.propertyId === 'object')
+              ? req.propertyId
+              : (req.property && typeof req.property === 'object' ? req.property : null);
+            const propId = property?._id || (typeof req.propertyId === 'string' ? req.propertyId : null) || (typeof req.property === 'string' ? req.property : null);
+            const propTitle = property?.title || property?.location?.district || property?.location?.surveyNumber || req.propertyTitle || 'Property';
             const status = req.status || 'pending';
             const amount = req.agreedPrice || req.property?.pricing?.priceINR || req.amount;
             const lifecycleStage = statusToLifecycle(status);
@@ -146,7 +151,7 @@ export default function BuyerPurchases() {
                     <LifecycleTracker currentStage={lifecycleStage} compact />
 
                     {/* Buyer sign CTA */}
-                    {status === 'sellerApproved' && (
+                    {(status === 'sellerApproved' || status === 'Pending Verification') && (
                       <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
                         <div className="flex items-start gap-3">
                           <PenLine className="h-5 w-5 text-blue-700 shrink-0 mt-0.5" />

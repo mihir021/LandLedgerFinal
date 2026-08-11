@@ -8,7 +8,8 @@ import ApiError from '../utils/ApiError.js';
 // =====================================================
 const getNotifications = async (req, res, next) => {
   try {
-    const notifications = await Notification.find({ receiver: req.user._id })
+    const ownerFilter = { $or: [{ userId: req.user._id }, { receiver: req.user._id }] };
+    const notifications = await Notification.find(ownerFilter)
       .sort({ createdAt: -1 })
       .limit(50);
 
@@ -30,7 +31,7 @@ const getNotifications = async (req, res, next) => {
 const markAsRead = async (req, res, next) => {
   try {
     const notification = await Notification.findOneAndUpdate(
-      { _id: req.params.id, receiver: req.user._id },
+      { _id: req.params.id, $or: [{ userId: req.user._id }, { receiver: req.user._id }] },
       { isRead: true },
       { new: true }
     );
@@ -57,7 +58,7 @@ const markAsRead = async (req, res, next) => {
 const markAllAsRead = async (req, res, next) => {
   try {
     await Notification.updateMany(
-      { receiver: req.user._id, isRead: false },
+      { $or: [{ userId: req.user._id }, { receiver: req.user._id }], isRead: false },
       { isRead: true }
     );
 
@@ -80,7 +81,7 @@ const deleteNotification = async (req, res, next) => {
   try {
     const notification = await Notification.findOneAndDelete({
       _id: req.params.id,
-      receiver: req.user._id,
+      $or: [{ userId: req.user._id }, { receiver: req.user._id }],
     });
 
     if (!notification) {

@@ -1,6 +1,7 @@
 import Transfer from '../models/Transfer.js';
 import Property from '../models/Property.js';
 import Notification from '../models/Notification.js';
+import User from '../models/User.js';
 import ApiError from '../utils/ApiError.js';
 import logAudit from '../utils/auditLogger.js';
 
@@ -110,7 +111,7 @@ const sellerApprove = async (req, res, next) => {
     }
 
     transfer.sellerApproved = true;
-    transfer.status = 'Pending Verification';
+    transfer.status = 'sellerApproved';
     pushTimeline(transfer, 'Seller Approved', req.user, 'Seller agreed to the transfer');
     await transfer.save();
 
@@ -152,7 +153,7 @@ const buyerApprove = async (req, res, next) => {
     const transfer = await Transfer.findById(transferId);
     if (!transfer) return next(new ApiError(404, 'Transfer not found'));
 
-    if (transfer.buyer.toString() !== req.user._id.toString()) {
+    if (transfer.toUserId.toString() !== req.user._id.toString()) {
       return next(new ApiError(403, 'Only the property buyer can approve'));
     }
     if (!transfer.sellerApproved) {
@@ -167,13 +168,26 @@ const buyerApprove = async (req, res, next) => {
     pushTimeline(transfer, 'Buyer Signed', req.user, 'Buyer signed and approved the transfer');
     await transfer.save();
 
-    // Notify seller
+    // Notify seller and the officers who need to perform the next review.
     await Notification.create({
-      receiver: transfer.seller,
+      userId: transfer.fromUserId,
       title: 'Buyer Approved Transfer',
       message: 'The buyer has signed and approved the property transfer.',
-      type: 'transfer',
+      type: 'Transfer Update',
+      relatedEntityType: 'Transfer',
+      relatedEntityId: transfer._id,
     });
+    const reviewers = await User.find({ role: { $in: ['officer', 'registrar', 'admin'] }, kycStatus: { $ne: 'suspended' } }).select('_id');
+    if (reviewers.length) {
+      await Notification.insertMany(reviewers.map(({ _id }) => ({
+        userId: _id,
+        title: 'Transfer Ready for Review',
+        message: 'A buyer has signed a property transfer and it is ready for officer approval.',
+        type: 'Transfer Update',
+        relatedEntityType: 'Transfer',
+        relatedEntityId: transfer._id,
+      })));
+    }
 
     await logAudit({
       req,
@@ -207,9 +221,12 @@ const officerApprove = async (req, res, next) => {
     if (!transfer.sellerApproved && transfer.status === 'Initiated') {
       return next(new ApiError(400, 'Seller must approve before the officer'));
     }
+    if (!transfer.buyerApproved) {
+      return next(new ApiError(400, 'Buyer must sign before the officer can approve the transfer'));
+    }
 
     transfer.officerApproved = true;
-    transfer.status = 'Approved';
+    transfer.status = 'officerApproved';
     pushTimeline(transfer, 'Officer Approved', req.user, 'Government officer approved the transfer');
     await transfer.save();
     
@@ -258,7 +275,7 @@ const completeTransfer = async (req, res, next) => {
     const transfer = await Transfer.findById(transferId).populate('propertyId');
     if (!transfer) return next(new ApiError(404, 'Transfer not found'));
 
-    if (transfer.status !== 'Approved' && !transfer.officerApproved) {
+    if (transfer.status !== 'Approved' && transfer.status !== 'officerApproved' && !transfer.officerApproved) {
       return next(
         new ApiError(400, 'Transfer must be approved by officer before completion')
       );
@@ -275,12 +292,13 @@ const completeTransfer = async (req, res, next) => {
       }
       property.ownerId = transfer.toUserId || transfer.buyer;
       property.owner = transfer.toUserId || transfer.buyer;
-      property.currentOwnerWallet = req.user.walletAddress || null;
+      const buyer = await User.findById(transfer.toUserId).select('walletAddress');
+      property.currentOwnerWallet = buyer?.walletAddress || null;
       property.isListed = false;
       await property.save();
     }
 
-    transfer.status = 'Completed';
+    transfer.status = 'completed';
     transfer.completedAt = new Date();
     pushTimeline(transfer, 'Transfer Completed', req.user, 'Ownership officially transferred');
     await transfer.save();
@@ -327,9 +345,9 @@ const getTransfers = async (req, res, next) => {
     }
 
     const transfers = await Transfer.find(filter)
-      .populate('propertyId', 'propertyId location')
-      .populate('fromUserId', 'name email')
-      .populate('toUserId', 'name email')
+      .populate('propertyId', 'propertyId location pricing blockchain')
+      .populate('fromUserId', 'name email walletAddress')
+      .populate('toUserId', 'name email walletAddress')
       .sort({ createdAt: -1 });
 
     res.status(200).json({

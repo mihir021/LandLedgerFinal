@@ -31,7 +31,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['buyer', 'seller', 'registrar', 'admin'],
+      enum: ['buyer', 'seller', 'officer', 'registrar', 'admin'],
       default: 'buyer',
     },
     govtId: {

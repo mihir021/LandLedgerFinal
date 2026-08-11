@@ -11,7 +11,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getProperties, verifyProperty } from '../services/propertyService';
-import { getTransfers, officerApprove } from '../services/transferService';
+import { getTransfers, officerApprove, completeTransfer } from '../services/transferService';
 import { getUsers } from '../services/userService';
 import { getInquiries, updateInquiryStatus } from '../services/inquiryService';
 import { getDisputes, updateDispute } from '../services/disputeService';
@@ -150,7 +150,8 @@ export default function OfficerDashboard() {
       toast.info(`Transfer submitted on-chain: ${txHash}. Syncing with database...`);
 
       await officerApprove(transferModal.id, txHash);
-      toast.success('Transfer approved successfully');
+      await completeTransfer(transferModal.id);
+      toast.success('Transfer approved and ownership updated successfully');
       setPendingTransfers(prev => prev.filter(t => t._id !== transferModal.id));
     } catch (err) {
       toast.error(err.message || 'Failed to approve transfer.');

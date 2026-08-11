@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import WalletConnectButton from '../components/WalletConnectButton';
 import { getTransfers } from '../services/transferService';
 import { useAuth } from '../context/AuthContext';
+import { useAccount } from 'wagmi';
 
 function formatINR(amount) {
   const abs = Math.abs(amount);
@@ -17,6 +18,7 @@ function formatINR(amount) {
 
 export default function BuyerWallet() {
   const { user } = useAuth();
+  const { address: connectedWalletAddress } = useAccount();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [transactions, setTransactions] = useState([]);
@@ -51,7 +53,7 @@ export default function BuyerWallet() {
   }, []);
 
   const totalInvested = Math.abs(transactions.reduce((sum, t) => sum + t.amount, 0));
-  const walletAddress = user?.walletAddress || 'Not connected';
+  const walletAddress = connectedWalletAddress || user?.walletAddress || 'Not connected';
   const shortAddress = walletAddress.length > 18 ? `${walletAddress.slice(0, 10)}...${walletAddress.slice(-6)}` : walletAddress;
 
   return (
