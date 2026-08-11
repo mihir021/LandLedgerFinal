@@ -7,7 +7,7 @@ import { ArrowLeft, CheckCircle, Loader2, ArrowLeftRight, ExternalLink } from 'l
 import StatusBadge from '../components/StatusBadge';
 import LifecycleTracker from '../components/LifecycleTracker';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { getTransfers, officerApprove } from '../services/transferService';
+import { getTransfers, officerApprove, completeTransfer } from '../services/transferService';
 import { useToast } from '../context/ToastContext';
 import { formatPrice } from '../utils/helpers';
 
@@ -34,7 +34,9 @@ export default function AdminTransfers() {
     setActionLoading(true);
     try {
       await officerApprove(modal.id);
-      toast.success('Transfer approved. Smart contract executing...');
+      // Skip the blockchain interaction for now and immediately mark it as complete
+      await completeTransfer(modal.id);
+      toast.success('Transfer approved and ownership completed!');
       setTransfers(prev => prev.map(t =>
         (t._id === modal.id) ? { ...t, officerApproved: true, status: 'completed' } : t
       ));
