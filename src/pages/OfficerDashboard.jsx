@@ -83,9 +83,12 @@ export default function OfficerDashboard() {
           maxFeePerGas: 500000000n
         });
         toast.info(`Verification submitted on-chain: ${txHash}. Syncing with database...`);
+        
+        await verifyProperty(propModal.id, propModal.status, txHash);
+      } else {
+        await verifyProperty(propModal.id, propModal.status);
       }
-
-      await verifyProperty(propModal.id, propModal.status);
+      
       toast.success(`Property ${propModal.status} successfully`);
       setPendingProperties(prev => prev.filter(p => p._id !== propModal.id));
     } catch (err) {
@@ -113,7 +116,7 @@ export default function OfficerDashboard() {
       });
       toast.info(`Transfer submitted on-chain: ${txHash}. Syncing with database...`);
 
-      await officerApprove(transferModal.id);
+      await officerApprove(transferModal.id, txHash);
       toast.success('Transfer approved successfully');
       setPendingTransfers(prev => prev.filter(t => t._id !== transferModal.id));
     } catch (err) {

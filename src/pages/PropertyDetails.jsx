@@ -18,6 +18,9 @@ import { createInquiry } from '../services/inquiryService';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency, formatDate } from '../utils/helpers';
+import { useReadContract } from 'wagmi';
+import { CONTRACT_ADDRESS } from '../config/web3';
+import { LandLedgerABI } from '../config/LandLedgerABI.js';
 
 export default function PropertyDetails() {
   const { id } = useParams();
@@ -61,6 +64,17 @@ export default function PropertyDetails() {
     };
     fetchProperty();
   }, [id]);
+
+  const parcelId = property?.location?.surveyNumber || property?.surveyNumber;
+  const { data: onChainData, isLoading: onChainLoading } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: LandLedgerABI,
+    functionName: 'getLand',
+    args: parcelId ? [parcelId] : undefined,
+    query: {
+      enabled: !!parcelId,
+    }
+  });
 
   /** Handle purchase request */
   const handlePurchase = async () => {
@@ -289,7 +303,7 @@ export default function PropertyDetails() {
                   <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-200 p-4">
                     <div>
                       <p className="text-xs text-gray-500">Transaction Hash</p>
-                      <p className="mt-1 font-mono text-sm font-semibold text-blue-950">{property.blockchain.transactionHash}</p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-blue-950">{property.blockchain.transactionHash.slice(0, 10)}...{property.blockchain.transactionHash.slice(-8)}</p>
                     </div>
                     <button
                       onClick={() => { navigator.clipboard.writeText(property.blockchain.transactionHash); toast.info('Hash copied!'); }}
@@ -299,13 +313,26 @@ export default function PropertyDetails() {
                     </button>
                   </div>
                 )}
-                {property.blockchain?.propertyIdOnChain && (
-                  <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-200 p-4">
-                    <div>
-                      <p className="text-xs text-gray-500">On-Chain Property ID</p>
-                      <p className="mt-1 font-mono text-sm font-semibold text-blue-950">{property.blockchain.propertyIdOnChain}</p>
+                
+                {onChainLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <FiLoader className="h-4 w-4 animate-spin" /> Fetching live on-chain status...
+                  </div>
+                ) : onChainData ? (
+                  <div className="rounded-xl bg-blue-50/50 border border-blue-100 p-4 space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">On-Chain Owner</span>
+                      <span className="font-mono font-medium text-blue-900">{onChainData[0].slice(0, 6)}...{onChainData[0].slice(-4)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">On-Chain Status</span>
+                      <span className={`font-semibold ${onChainData[3] ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {onChainData[3] ? 'Verified' : 'Pending Verification'}
+                      </span>
                     </div>
                   </div>
+                ) : (
+                  <p className="text-sm text-red-500">Failed to load on-chain data</p>
                 )}
               </div>
             ) : (

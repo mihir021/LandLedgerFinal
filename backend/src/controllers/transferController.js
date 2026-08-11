@@ -112,7 +112,7 @@ const sellerApprove = async (req, res, next) => {
 // =====================================================
 const officerApprove = async (req, res, next) => {
   try {
-    const { transferId } = req.body;
+    const { transferId, txHash } = req.body;
 
     const transfer = await Transfer.findById(transferId);
     if (!transfer) return next(new ApiError(404, 'Transfer not found'));
@@ -126,6 +126,12 @@ const officerApprove = async (req, res, next) => {
 
     transfer.status = 'Approved';
     await transfer.save();
+    
+    if (txHash) {
+      await Property.findByIdAndUpdate(transfer.propertyId, {
+        blockchainTx: txHash
+      });
+    }
 
     // Notify both parties
     const msg = 'Government officer has approved the property transfer.';

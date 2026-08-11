@@ -64,7 +64,7 @@ export const deleteProperty = async (id) => {
  * @param {'verified'|'rejected'} status
  * @returns {Object} Updated property document.
  */
-export const verifyProperty = async (id, status) => {
-  const { data } = await api.put(`/properties/${id}/verify`, { status });
+export const verifyProperty = async (id, status, txHash) => {
+  const { data } = await api.put(`/properties/${id}/verify`, { status, txHash });
   return data.data;
 };

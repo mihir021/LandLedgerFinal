@@ -226,7 +226,7 @@ const deleteProperty = async (req, res, next) => {
 // =====================================================
 const verifyProperty = async (req, res, next) => {
   try {
-    const { status } = req.body;
+    const { status, txHash } = req.body;
 
     if (!['Verified', 'Rejected'].includes(status) && !['verified', 'rejected'].includes(status)) {
       return next(
@@ -236,9 +236,14 @@ const verifyProperty = async (req, res, next) => {
 
     const properStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 
+    const updateData = { 'verification.status': properStatus, 'verification.verifiedBy': req.user._id, 'verification.verificationDate': new Date() };
+    if (txHash) {
+      updateData.blockchainTx = txHash;
+    }
+
     const property = await Property.findByIdAndUpdate(
       req.params.id,
-      { 'verification.status': properStatus, 'verification.verifiedBy': req.user._id, 'verification.verificationDate': new Date() },
+      updateData,
       { new: true, runValidators: true }
     );
 
