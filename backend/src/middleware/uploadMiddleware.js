@@ -87,11 +87,16 @@ const documentFilter = (_req, file, cb) => {
   }
 };
 
+// ---- Storage Selection ----
+const hasCloudinary = !!process.env.CLOUDINARY_API_KEY && !!process.env.CLOUDINARY_CLOUD_NAME;
+const activePropertyStorage = hasCloudinary ? cloudinaryPropertyStorage : diskImageStorage;
+const activeProfileStorage = hasCloudinary ? cloudinaryProfileStorage : diskImageStorage;
+
 // ---- Multer instances ----
 
-/** Upload property images (to Cloudinary) and documents (to disk/cloud) */
+/** Upload property images (to Cloudinary or Disk) and documents (to disk/cloud) */
 const uploadPropertyFiles = multer({
-  storage: cloudinaryPropertyStorage,
+  storage: activePropertyStorage,
   fileFilter: propertyFileFilter,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit
 }).fields([
@@ -99,9 +104,9 @@ const uploadPropertyFiles = multer({
   { name: 'documents', maxCount: 5 },
 ]);
 
-/** Upload up to 10 images to Cloudinary (max 10 MB each) */
+/** Upload up to 10 images (max 10 MB each) */
 const uploadImages = multer({
-  storage: cloudinaryPropertyStorage,
+  storage: activePropertyStorage,
   fileFilter: imageFilter,
   limits: { fileSize: 10 * 1024 * 1024 },
 }).array('images', 10);
@@ -115,7 +120,7 @@ const uploadDocuments = multer({
 
 /** Upload a single profile image (max 5 MB) */
 const uploadProfileImage = multer({
-  storage: cloudinaryProfileStorage,
+  storage: activeProfileStorage,
   fileFilter: imageFilter,
   limits: { fileSize: 5 * 1024 * 1024 },
 }).single('profileImage');
