@@ -248,7 +248,7 @@ const officerApprove = async (req, res, next) => {
       if (pId) {
         await Property.findByIdAndUpdate(pId, {
           'blockchain.txHash': txHash,
-          'blockchain.chainNetwork': 'Sepolia',
+          'blockchain.chainNetwork': 'Arbitrum Sepolia',
         });
       }
     }
@@ -327,6 +327,12 @@ export const executeTransferCompletion = async (transferId, actorUser) => {
 const completeTransfer = async (req, res, next) => {
   try {
     const { transferId } = req.body;
+
+    // Defense-in-depth: ensure only admin/officer can complete transfers
+    if (!['admin', 'officer', 'registrar'].includes(req.user.role)) {
+      return next(new ApiError(403, 'Only officers or admins can complete transfers'));
+    }
+
     const transfer = await executeTransferCompletion(transferId, req.user);
     
     await logAudit({

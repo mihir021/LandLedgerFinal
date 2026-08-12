@@ -73,7 +73,7 @@ const propertySchema = new mongoose.Schema(
       // differ from the human survey number when a suffix is needed to keep it
       // unique on-chain.
       parcelId: String,
-      chainNetwork: { type: String, enum: ['Polygon', 'Solana', 'Sepolia'], default: 'Polygon' },
+      chainNetwork: { type: String, enum: ['Polygon', 'Solana', 'Sepolia', 'Arbitrum Sepolia'], default: 'Arbitrum Sepolia' },
       blockTimestamp: Date,
       ipfsDocumentHash: String,
     },

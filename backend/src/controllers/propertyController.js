@@ -239,7 +239,7 @@ const createProperty = async (req, res, next) => {
         txHash,
         parcelId: blockchainParcelId || surveyNumber,
         contractAddress: process.env.LAND_LEDGER_CONTRACT_ADDRESS || undefined,
-        chainNetwork: 'Sepolia',
+        chainNetwork: 'Arbitrum Sepolia',
       } : undefined,
     });
 
@@ -355,7 +355,7 @@ const verifyProperty = async (req, res, next) => {
     if (txHash) {
       updateData['blockchain.txHash'] = txHash;
       updateData['blockchain.contractAddress'] = process.env.LAND_LEDGER_CONTRACT_ADDRESS || undefined;
-      updateData['blockchain.chainNetwork'] = 'Sepolia';
+      updateData['blockchain.chainNetwork'] = 'Arbitrum Sepolia';
     }
 
     const property = await Property.findByIdAndUpdate(
