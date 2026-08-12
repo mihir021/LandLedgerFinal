@@ -4,6 +4,13 @@ import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 import ApiError from '../utils/ApiError.js';
 import logAudit from '../utils/auditLogger.js';
+import { createPublicClient, http } from 'viem';
+import { arbitrumSepolia } from 'viem/chains';
+
+const publicClient = createPublicClient({
+  chain: arbitrumSepolia,
+  transport: http(process.env.RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc')
+});
 
 // Helper to append a timeline entry
 const pushTimeline = (transfer, stage, actor, note = '') => {
@@ -229,12 +236,13 @@ const officerApprove = async (req, res, next) => {
       return next(new ApiError(400, 'Buyer must sign before the officer can approve the transfer'));
     }
 
-    // Step 1: Mark officer approval
     transfer.officerApproved = true;
+    transfer.status = 'pendingConfirmation';
     transfer.officerApprovalTxHash = txHash;
     transfer.blockchainTxHash = txHash;
     pushTimeline(transfer, 'Officer Approved', req.user, 'Government officer approved the transfer');
-
+    await transfer.save();
+    
     if (txHash) {
       const pId = transfer.propertyId || transfer.property;
       if (pId) {
@@ -245,49 +253,23 @@ const officerApprove = async (req, res, next) => {
       }
     }
 
-    // Step 2: Automatically complete the transfer & transfer ownership
-    const targetPropertyId = transfer.propertyId?._id || transfer.propertyId || transfer.property?._id || transfer.property;
-    const property = await Property.findById(targetPropertyId);
-
-    if (property) {
-      // Move current owner to previousOwners
-      if (property.ownerId || property.owner) {
-        property.previousOwners = property.previousOwners || [];
-        property.previousOwners.push(property.ownerId || property.owner);
-      }
-      // Transfer ownership to buyer
-      property.ownerId = transfer.toUserId || transfer.buyer;
-      property.owner = transfer.toUserId || transfer.buyer;
-      const buyer = await User.findById(transfer.toUserId).select('walletAddress');
-      property.currentOwnerWallet = buyer?.walletAddress || null;
-      // Remove from seller's listings so they can't sell it again
-      property.isListed = false;
-      await property.save();
-    }
-
-    transfer.status = 'completed';
-    transfer.completedAt = new Date();
-    pushTimeline(transfer, 'Transfer Completed', req.user, 'Ownership officially transferred');
-    await transfer.save();
-
-    // Notify both parties about the completed transfer
-    const msg = 'Property transfer has been completed successfully. Ownership has been transferred.';
+    // Notify both parties
+    const msg = 'Government officer has approved the property transfer.';
     await Notification.insertMany([
-      { receiver: transfer.fromUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
-      { receiver: transfer.toUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+      { receiver: transfer.fromUserId, title: 'Officer Approved', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+      { receiver: transfer.toUserId, title: 'Officer Approved', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
     ]);
 
     await logAudit({
       req,
-      action: 'transfer.officer_approve_and_complete',
+      action: 'transfer.officer_approve',
       targetType: 'Transfer',
       targetId: transfer._id,
-      details: { propertyId: property?.propertyId, newOwner: transfer.toUserId || transfer.buyer },
     });
 
     res.status(200).json({
       success: true,
-      message: 'Transfer approved and completed — ownership transferred',
+      message: 'Officer approval recorded, pending on-chain confirmation',
       data: transfer,
     });
   } catch (error) {
@@ -295,59 +277,64 @@ const officerApprove = async (req, res, next) => {
   }
 };
 
+export const executeTransferCompletion = async (transferId, actorUser) => {
+  const transfer = await Transfer.findById(transferId).populate('propertyId');
+  if (!transfer) throw new Error('Transfer not found');
+  
+  if (transfer.status === 'completed') {
+    return transfer; // Idempotent return
+  }
+
+  const targetPropertyId = transfer.propertyId?._id || transfer.propertyId || transfer.property?._id || transfer.property;
+  const property = await Property.findById(targetPropertyId);
+  
+  if (property) {
+    if (property.ownerId || property.owner) {
+      property.previousOwners = property.previousOwners || [];
+      property.previousOwners.push(property.ownerId || property.owner);
+    }
+    property.ownerId = transfer.toUserId || transfer.buyer;
+    
+    const buyer = await User.findById(transfer.toUserId).select('walletAddress');
+    property.currentOwnerWallet = buyer?.walletAddress || null;
+    property.isListed = false;
+    await property.save();
+  } else {
+    console.warn(`[executeTransferCompletion] Property not found for targetPropertyId: ${targetPropertyId}`);
+  }
+
+  transfer.status = 'completed';
+  transfer.completedAt = new Date();
+  pushTimeline(transfer, 'Transfer Completed', actorUser, 'Ownership officially transferred');
+  await transfer.save();
+
+  const msg = 'Property transfer has been completed successfully.';
+  await Notification.insertMany([
+    { receiver: transfer.fromUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+    { receiver: transfer.toUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+  ]);
+
+  return transfer;
+};
+
+// Helper removed: background monitoring doesn't work in Vercel serverless
+
 // =====================================================
-// @desc    Complete the transfer
+// @desc    Complete the transfer manually/fallback
 // @route   POST /api/transfers/complete
 // @access  Private (officer, admin)
 // =====================================================
 const completeTransfer = async (req, res, next) => {
   try {
     const { transferId } = req.body;
-
-    const transfer = await Transfer.findById(transferId).populate('propertyId');
-    if (!transfer) return next(new ApiError(404, 'Transfer not found'));
-
-    if (transfer.status !== 'Approved' && transfer.status !== 'officerApproved' && !transfer.officerApproved) {
-      return next(
-        new ApiError(400, 'Transfer must be approved by officer before completion')
-      );
-    }
-
-    // Update property ownership
-    const targetPropertyId = transfer.propertyId?._id || transfer.propertyId || transfer.property?._id || transfer.property;
-    const property = await Property.findById(targetPropertyId);
+    const transfer = await executeTransferCompletion(transferId, req.user);
     
-    if (property) {
-      if (property.ownerId || property.owner) {
-        property.previousOwners = property.previousOwners || [];
-        property.previousOwners.push(property.ownerId || property.owner);
-      }
-      property.ownerId = transfer.toUserId || transfer.buyer;
-      property.owner = transfer.toUserId || transfer.buyer;
-      const buyer = await User.findById(transfer.toUserId).select('walletAddress');
-      property.currentOwnerWallet = buyer?.walletAddress || null;
-      property.isListed = false;
-      await property.save();
-    }
-
-    transfer.status = 'completed';
-    transfer.completedAt = new Date();
-    pushTimeline(transfer, 'Transfer Completed', req.user, 'Ownership officially transferred');
-    await transfer.save();
-
-    // Notify both parties
-    const msg = 'Property transfer has been completed successfully.';
-    await Notification.insertMany([
-      { receiver: transfer.fromUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
-      { receiver: transfer.toUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
-    ]);
-
     await logAudit({
       req,
       action: 'transfer.complete',
       targetType: 'Transfer',
       targetId: transfer._id,
-      details: { propertyId: property?.propertyId, newOwner: transfer.toUserId || transfer.buyer },
+      details: { propertyId: transfer.propertyId?._id },
     });
 
     res.status(200).json({
@@ -369,18 +356,54 @@ const getTransfers = async (req, res, next) => {
   try {
     let filter = {};
 
-    // Non-admin/officer users only see their own transfers
     if (!['admin', 'officer', 'registrar'].includes(req.user.role)) {
       filter = {
         $or: [{ fromUserId: req.user._id }, { toUserId: req.user._id }],
       };
     }
 
-    const transfers = await Transfer.find(filter)
+    // First fetch all matching transfers
+    let transfers = await Transfer.find(filter)
       .populate('propertyId', 'propertyId location pricing blockchain')
       .populate('fromUserId', 'name email walletAddress')
       .populate('toUserId', 'name email walletAddress')
       .sort({ createdAt: -1 });
+
+    // Sync-on-Read: Check if any transfers are stuck in pendingConfirmation
+    const pendingTransfers = transfers.filter(t => t.status === 'pendingConfirmation' && t.blockchainTxHash);
+    let stateMutated = false;
+
+    for (const t of pendingTransfers) {
+      try {
+        // Use getTransactionReceipt (synchronous read), NOT waitForTransactionReceipt
+        const receipt = await publicClient.getTransactionReceipt({ hash: t.blockchainTxHash });
+        if (receipt) {
+          if (receipt.status === 'success') {
+            await executeTransferCompletion(t._id, req.user);
+          } else {
+            const transferDoc = await Transfer.findById(t._id);
+            transferDoc.status = 'failedConfirmation';
+            pushTimeline(transferDoc, 'Transaction Failed', req.user, 'Smart contract execution reverted');
+            await transferDoc.save();
+          }
+          stateMutated = true;
+        }
+      } catch (err) {
+        // Block might not be mined yet, or RPC error. Safely ignore and it will remain pending.
+        if (err.name !== 'TransactionReceiptNotFoundError') {
+          console.error(`[Sync-on-Read] Error checking receipt for tx ${t.blockchainTxHash}:`, err);
+        }
+      }
+    }
+
+    // Refetch if we mutated state during reconciliation
+    if (stateMutated) {
+      transfers = await Transfer.find(filter)
+        .populate('propertyId', 'propertyId location pricing blockchain')
+        .populate('fromUserId', 'name email walletAddress')
+        .populate('toUserId', 'name email walletAddress')
+        .sort({ createdAt: -1 });
+    }
 
     res.status(200).json({
       success: true,
