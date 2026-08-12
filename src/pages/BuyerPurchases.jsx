@@ -10,6 +10,9 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import { getTransfers, buyerApprove } from '../services/transferService';
 import { useToast } from '../context/ToastContext';
 import { formatPrice } from '../utils/helpers';
+import { useAccount, usePublicClient, useWriteContract } from 'wagmi';
+import { CONTRACT_ADDRESS, getSafeFeeOverrides } from '../config/web3';
+import { LandLedgerABI } from '../config/LandLedgerABI.js';
 
 export default function BuyerPurchases() {
   const toast = useToast();
@@ -19,6 +22,9 @@ export default function BuyerPurchases() {
   const [expanded, setExpanded] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [signModal, setSignModal] = useState(null);
+  const { address: walletAddress, isConnected } = useAccount();
+  const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
 
   useEffect(() => {
     const load = async () => {
@@ -68,9 +74,27 @@ export default function BuyerPurchases() {
   const handleBuyerSign = async () => {
     setActionLoading(true);
     try {
-      const updated = await buyerApprove(signModal.transferId);
+      const purchase = purchases.find(p => p._id === signModal.transferId || p.id === signModal.transferId);
+      const property = purchase?.propertyId || purchase?.property;
+      const parcelId = property?.blockchain?.parcelId || property?.blockchainPropertyId || property?.surveyNumber || property?.propertyId;
+      if (!isConnected || !walletAddress) throw new Error('Connect the buyer wallet before signing.');
+      if (!parcelId) throw new Error('This transfer has no on-chain parcel ID.');
+
+      toast.info('Confirm the purchase acceptance in the buyer wallet...');
+      const feeOverrides = await getSafeFeeOverrides(publicClient);
+      const txHash = await writeContractAsync({
+        address: CONTRACT_ADDRESS,
+        abi: LandLedgerABI,
+        functionName: 'acceptPurchase',
+        args: [parcelId],
+        ...feeOverrides,
+      });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+      if (receipt.status !== 'success') throw new Error('Purchase acceptance reverted on-chain.');
+
+      const updated = await buyerApprove(signModal.transferId, txHash);
       setPurchases(prev => prev.map(p => (p._id === signModal.transferId || p.id === signModal.transferId) ? updated : p));
-      toast.success('You have signed and approved the transfer');
+      toast.success('You approved the purchase on-chain. It is ready for officer finalization.');
     } catch (err) {
       toast.error(err.message || 'Failed to sign transfer');
     } finally {

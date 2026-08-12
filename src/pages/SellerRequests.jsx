@@ -9,6 +9,9 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import { getTransfers, sellerApprove } from '../services/transferService';
 import { useToast } from '../context/ToastContext';
 import { formatPrice } from '../utils/helpers';
+import { useAccount, usePublicClient, useWriteContract } from 'wagmi';
+import { CONTRACT_ADDRESS, getSafeFeeOverrides } from '../config/web3';
+import { LandLedgerABI } from '../config/LandLedgerABI.js';
 
 
 export default function SellerRequests() {
@@ -18,6 +21,9 @@ export default function SellerRequests() {
   const [error, setError] = useState('');
   const [modal, setModal] = useState({ open: false, id: null, action: null });
   const [actionLoading, setActionLoading] = useState(false);
+  const { address: walletAddress, isConnected } = useAccount();
+  const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
 
   useEffect(() => {
     setError('');
@@ -41,8 +47,28 @@ export default function SellerRequests() {
     setActionLoading(true);
     try {
       if (modal.action === 'approve') {
-        await sellerApprove(modal.id);
-        toast.success('Request approved! Buyer will be notified.');
+        const request = requests.find(r => r._id === modal.id || r.id === modal.id);
+        const property = request?.propertyId || request?.property;
+        const parcelId = property?.blockchain?.parcelId || property?.blockchainPropertyId || property?.surveyNumber || property?.propertyId;
+        const buyerWallet = request?.toUserId?.walletAddress || request?.buyer?.walletAddress || request?.buyerWallet;
+        if (!isConnected || !walletAddress) throw new Error('Connect the seller wallet before approving.');
+        if (!parcelId) throw new Error('This transfer has no on-chain parcel ID.');
+        if (!buyerWallet) throw new Error('The buyer wallet address is missing from this transfer.');
+
+        toast.info('Confirm the sale approval in the seller wallet...');
+        const feeOverrides = await getSafeFeeOverrides(publicClient);
+        const txHash = await writeContractAsync({
+          address: CONTRACT_ADDRESS,
+          abi: LandLedgerABI,
+          functionName: 'approveSale',
+          args: [parcelId, buyerWallet],
+          ...feeOverrides,
+        });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+        if (receipt.status !== 'success') throw new Error('Sale approval reverted on-chain.');
+
+        await sellerApprove(modal.id, txHash);
+        toast.success('Sale approved on-chain. The buyer can now sign.');
         setRequests(prev => prev.map(r =>
           (r._id === modal.id || r.id === modal.id) ? { ...r, status: 'seller_approved', sellerApproved: true } : r
         ));
