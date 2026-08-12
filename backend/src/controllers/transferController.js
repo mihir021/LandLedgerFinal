@@ -449,15 +449,6 @@ const getTransfers = async (req, res, next) => {
   }
 };
 
-    res.status(200).json({
-      success: true,
-      message: 'Transfers retrieved',
-      data,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
 
 export {
   requestTransfer,
