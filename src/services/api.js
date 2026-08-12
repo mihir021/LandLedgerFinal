@@ -5,7 +5,16 @@
  */
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (!envUrl || envUrl.includes('railway.app')) {
+    // Fallback to Vercel serverless function endpoint when railway host fails DNS resolution
+    return '/api';
+  }
+  return envUrl;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 const api = axios.create({
   baseURL: API_BASE_URL,

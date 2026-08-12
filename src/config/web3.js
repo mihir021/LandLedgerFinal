@@ -9,7 +9,7 @@ export const BLOCK_EXPLORER_TX_URL = 'https://sepolia.arbiscan.io/tx/';
 export const WALLETCONNECT_PROJECT_ID =
   import.meta.env.VITE_WC_PROJECT_ID ||
   import.meta.env.VITE_REOWN_PROJECT_ID ||
-  'a0280ebdb26c11b1bfbe9c3b838c64bb';
+  '3a40073b6199731d4726d66c024b6528';
 
 export const web3Config = getDefaultConfig({
   appName: 'LandLedger',
