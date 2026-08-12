@@ -9,7 +9,7 @@ import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
 import { getProperties } from '../services/propertyService';
 import { getTransfers } from '../services/transferService';
-import { formatPrice } from '../utils/helpers';
+import { formatPrice, getImgUrl } from '../utils/helpers';
 
 export default function SellerDashboard() {
   const { user, canBuy, setMode } = useAuth();
@@ -127,8 +127,7 @@ export default function SellerDashboard() {
         ) : (
           <div className="divide-y divide-gray-50">
             {properties.slice(0, 6).map(p => {
-              const rawImg = p.images?.[0] || (typeof p.documents?.[0] === 'string' ? p.documents[0] : p.documents?.[0]?.url);
-              const image = typeof rawImg === 'object' ? rawImg?.url : rawImg;
+              const imgSrc = getImgUrl(p.images?.[0] || p.documents?.[0]);
               const locationStr = p.location?.district 
                 ? `${p.location?.district}, ${p.location?.city || p.location?.state || 'Gujarat'}`
                 : p.district ? `${p.district}, ${p.city || p.state}` : 'Gujarat Property';
@@ -140,9 +139,9 @@ export default function SellerDashboard() {
                 <Link key={p._id} to={`/property/${p._id}`}
                   className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
                   <div className="h-14 w-14 rounded-xl bg-gray-100 flex items-center justify-center text-xl shrink-0 overflow-hidden border border-gray-200">
-                    {typeof image === 'string' && image ? (
+                    {imgSrc ? (
                       <img
-                        src={image.startsWith('http') ? image : (image.startsWith('uploads/') || image.startsWith('uploads\\') ? `/${image.replace(/\\/g, '/')}` : `/uploads/images/${image.replace(/\\/g, '/')}`)}
+                        src={imgSrc}
                         className="h-full w-full object-cover"
                         alt=""
                         onError={(e) => {

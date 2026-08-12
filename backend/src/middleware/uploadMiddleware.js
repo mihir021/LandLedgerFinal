@@ -16,6 +16,15 @@ const cloudinaryPropertyStorage = new CloudinaryStorage({
   },
 });
 
+const cloudinaryProfileStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'landledger/profiles',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    transformation: [{ width: 800, crop: 'limit' }],
+  },
+});
+
 const diskImageStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     cb(null, 'uploads/images');
@@ -106,7 +115,7 @@ const uploadDocuments = multer({
 
 /** Upload a single profile image (max 5 MB) */
 const uploadProfileImage = multer({
-  storage: imageStorage,
+  storage: cloudinaryProfileStorage,
   fileFilter: imageFilter,
   limits: { fileSize: 5 * 1024 * 1024 },
 }).single('profileImage');
