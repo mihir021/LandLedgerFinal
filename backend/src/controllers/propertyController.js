@@ -546,52 +546,62 @@ const getPropertyHistory = async (req, res, next) => {
 };
 
 // =====================================================
-// @desc    Get signed URL for Cloudinary documents (Bypasses PDF delivery block)
+// @desc    Stream a Cloudinary document through the backend (bypasses PDF delivery block)
 // @route   GET /api/properties/document-proxy
 // @access  Public
 // =====================================================
 const getSignedDocumentUrl = async (req, res, next) => {
   try {
     const { url } = req.query;
-    if (!url || !url.includes('cloudinary.com')) {
-      return res.redirect(url || '/');
+    if (!url) {
+      return res.status(400).json({ success: false, message: 'Missing url parameter' });
     }
 
-    const urlParts = url.split('/upload/');
-    if (urlParts.length !== 2) {
+    // Non-Cloudinary URLs — just redirect
+    if (!url.includes('cloudinary.com')) {
       return res.redirect(url);
     }
-    
-    const resourceType = url.includes('/raw/upload/') ? 'raw' : 'image';
-    let pathPart = urlParts[1];
-    
-    // Remove version e.g. v1786557031/
-    pathPart = pathPart.replace(/^v\d+\//, '');
-    
-    // Extract public_id and format
-    let publicId = pathPart;
-    let format = '';
-    
-    const lastDotIndex = pathPart.lastIndexOf('.');
-    if (lastDotIndex !== -1) {
-      format = pathPart.substring(lastDotIndex + 1);
-      if (resourceType === 'image') {
-        publicId = pathPart.substring(0, lastDotIndex);
+
+    // Fetch the file from Cloudinary server-side (backend has full access)
+    const cloudinaryResponse = await fetch(url);
+
+    if (!cloudinaryResponse.ok) {
+      // If direct URL fails (401), try fetching via Cloudinary API with resource_type raw
+      const urlParts = url.split('/upload/');
+      if (urlParts.length === 2) {
+        const pathPart = urlParts[1].replace(/^v\d+\//, '');
+        // Try as raw resource type
+        const rawUrl = url.replace('/image/upload/', '/raw/upload/');
+        const rawResponse = await fetch(rawUrl);
+        if (rawResponse.ok) {
+          const contentType = rawResponse.headers.get('content-type') || 'application/octet-stream';
+          const fileName = pathPart.split('/').pop() || 'document';
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+          const { Readable } = await import('stream');
+          Readable.fromWeb(rawResponse.body).pipe(res);
+          return;
+        }
       }
+      return res.status(cloudinaryResponse.status).json({
+        success: false,
+        message: `Cloudinary returned ${cloudinaryResponse.status}. The document may not exist or access is restricted.`,
+      });
     }
 
-    const options = {
-      secure: true,
-      sign_url: true,
-      resource_type: resourceType,
-    };
+    // Stream the file content directly to the browser
+    const contentType = cloudinaryResponse.headers.get('content-type') || 'application/octet-stream';
+    const fileName = url.split('/').pop() || 'document';
     
-    if (format && resourceType === 'image') {
-      options.format = format;
-    }
-
-    const signedUrl = cloudinary.url(publicId, options);
-    res.redirect(302, signedUrl);
+    // Force PDF content type for .pdf files
+    const finalContentType = fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : contentType;
+    
+    res.setHeader('Content-Type', finalContentType);
+    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+    
+    // Pipe the Cloudinary response body directly to our response
+    const { Readable } = await import('stream');
+    Readable.fromWeb(cloudinaryResponse.body).pipe(res);
   } catch (error) {
     next(error);
   }

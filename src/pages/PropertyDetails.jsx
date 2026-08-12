@@ -1254,7 +1254,7 @@ export default function PropertyDetails() {
                 <img src={previewDoc.url} alt={previewDoc.name} className="max-h-[70vh] max-w-full object-contain rounded-lg shadow-md" />
               ) : (
                 <iframe
-                  src={(!previewDoc.url.includes('localhost') && !previewDoc.url.includes('127.0.0.1') && previewDoc.url.toLowerCase().includes('.pdf')) ? `https://docs.google.com/viewer?url=${encodeURIComponent(previewDoc.url)}&embedded=true` : previewDoc.url}
+                  src={previewDoc.url}
                   title={previewDoc.name}
                   className="w-full h-[70vh] rounded-lg border border-gray-300 shadow-inner bg-white"
                 />
