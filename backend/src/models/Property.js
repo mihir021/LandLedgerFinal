@@ -10,7 +10,28 @@ const propertySchema = new mongoose.Schema(
       default: () => `LAND-REG-${uuidv4().slice(0, 8).toUpperCase()}`,
     },
     ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     previousOwners: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+
+    // Flat convenience fields used by the API/frontend (in addition to the
+    // nested location/landDetails/pricing/verification blocks below).
+    surveyNumber: String,
+    district: String,
+    state: String,
+    city: String,
+    address: String,
+    landType: String,
+    area: Number,
+    price: Number,
+    description: String,
+    latitude: Number,
+    longitude: Number,
+    verificationStatus: {
+      type: String,
+      enum: ['pending', 'verified', 'rejected', 'Pending', 'Verified', 'Rejected'],
+      default: 'pending',
+    },
+    currentOwnerWallet: String,
 
     location: {
       state: String,
@@ -73,7 +94,7 @@ const propertySchema = new mongoose.Schema(
       // differ from the human survey number when a suffix is needed to keep it
       // unique on-chain.
       parcelId: String,
-      chainNetwork: { type: String, enum: ['Polygon', 'Solana', 'Sepolia'], default: 'Polygon' },
+      chainNetwork: { type: String, enum: ['Polygon', 'Solana', 'Sepolia', 'Arbitrum Sepolia'], default: 'Arbitrum Sepolia' },
       blockTimestamp: Date,
       ipfsDocumentHash: String,
     },
@@ -101,6 +122,9 @@ const propertySchema = new mongoose.Schema(
 propertySchema.index({ 'location.state': 1, 'location.city': 1 });
 propertySchema.index({ 'verification.status': 1 });
 propertySchema.index({ ownerId: 1 });
+propertySchema.index({ owner: 1 });
+propertySchema.index({ verificationStatus: 1 });
+propertySchema.index({ isListed: 1 });
 
 const Property = mongoose.model('Property', propertySchema);
 

@@ -56,10 +56,14 @@ export default function OfficerDashboard() {
 
   useEffect(() => {
     fetchData();
+    const interval = setInterval(() => {
+      fetchData(false);
+    }, 10000);
+    return () => clearInterval(interval);
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const [propRes, transfers, userRes, inqData, disputeRes] = await Promise.all([
         getProperties({ verificationStatus: 'pending', limit: 100 }).catch(() => getProperties({ limit: 1000 }).catch(() => ({ properties: [] }))),
@@ -160,8 +164,7 @@ export default function OfficerDashboard() {
       toast.info('On-chain transfer confirmed! Updating ownership in database...');
 
       await officerApprove(transferModal.id, txHash);
-      await completeTransfer(transferModal.id);
-      toast.success('Transfer approved and ownership updated successfully');
+      toast.success('Transfer approved and confirmed on-chain');
       setPendingTransfers(prev => prev.filter(t => t._id !== transferModal.id));
     } catch (err) {
       toast.error(err.message || 'Failed to approve transfer.');

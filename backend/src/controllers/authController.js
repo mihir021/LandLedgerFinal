@@ -3,7 +3,7 @@ import generateToken from '../utils/generateToken.js';
 import ApiError from '../utils/ApiError.js';
 
 // =====================================================
-// @desc    Register a new user (buyer or seller only)
+// @desc    Register a new user (buyer, seller, or both)
 // @route   POST /api/auth/register
 // @access  Public
 // =====================================================
@@ -14,10 +14,11 @@ const register = async (req, res, next) => {
     // Support both fullName and name from frontend
     const finalName = name || fullName;
 
-    // Only buyer and seller may self-register
-    if (role && !['buyer', 'seller'].includes(role)) {
+    // Regular users may self-register as buyer, seller, or both.
+    // New accounts default to 'both' so everyone can buy AND sell.
+    if (role && !['buyer', 'seller', 'both'].includes(role)) {
       return next(
-        new ApiError(403, 'Only buyer and seller roles can self-register')
+        new ApiError(403, 'Only buyer, seller, or both roles can self-register')
       );
     }
 
@@ -34,7 +35,7 @@ const register = async (req, res, next) => {
       passwordHash: password,
       phone,
       govtId: aadhaarNumber ? { type: 'Aadhaar', numberHash: aadhaarNumber } : undefined,
-      role: role || 'buyer',
+      role: role || 'both',
     });
 
     const token = generateToken(user);

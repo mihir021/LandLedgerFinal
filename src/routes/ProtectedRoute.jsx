@@ -3,10 +3,11 @@
  * Route guard component that checks authentication.
  * Shows a loading spinner while auth state is initializing.
  * Redirects to /login if the user is not authenticated.
- * Optionally checks for allowed roles.
+ * Optionally checks for allowed roles (capability-based, so 'both'
+ * accounts pass buyer/seller guards).
  */
 import { Navigate } from 'react-router-dom';
-import { useAuth, ROLE_ROUTES } from '../context/AuthContext';
+import { useAuth, ROLE_ROUTES, hasRoleCapability } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function ProtectedRoute({ children, allowedRoles }) {
@@ -26,8 +27,8 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/login" replace />;
   }
 
-  // Role check (if allowedRoles is specified)
-  if (allowedRoles && !allowedRoles.includes(user?.role)) {
+  // Role check (if allowedRoles is specified) — capability-based
+  if (allowedRoles && !hasRoleCapability(user?.role, allowedRoles)) {
     // Redirect to the user's own dashboard instead of login
     const fallback = ROLE_ROUTES[user?.role] || '/login';
     return <Navigate to={fallback} replace />;

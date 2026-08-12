@@ -73,44 +73,44 @@ const router = createBrowserRouter([
         element: <ProtectedRoute><Profile /></ProtectedRoute>,
       },
 
-      // Buyer
+      // Buyer (also available to 'both' accounts)
       {
         path: 'buyer',
-        element: <ProtectedRoute allowedRoles={['buyer']}><BuyerDashboard /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['buyer', 'both']}><BuyerDashboard /></ProtectedRoute>,
       },
       {
         path: 'buyer/purchases',
-        element: <ProtectedRoute allowedRoles={['buyer']}><BuyerPurchases /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['buyer', 'both']}><BuyerPurchases /></ProtectedRoute>,
       },
       {
         path: 'buyer/wallet',
-        element: <ProtectedRoute allowedRoles={['buyer']}><BuyerWallet /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['buyer', 'both']}><BuyerWallet /></ProtectedRoute>,
       },
       {
         path: 'buyer/notifications',
-        element: <ProtectedRoute allowedRoles={['buyer']}><NotificationsPage backTo="/buyer" role="buyer" /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['buyer', 'both']}><NotificationsPage backTo="/buyer" role="buyer" /></ProtectedRoute>,
       },
 
-      // Seller
+      // Seller (also available to 'both' accounts)
       {
         path: 'seller',
-        element: <ProtectedRoute allowedRoles={['seller']}><SellerDashboard /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['seller', 'both']}><SellerDashboard /></ProtectedRoute>,
       },
       {
         path: 'seller/properties',
-        element: <ProtectedRoute allowedRoles={['seller']}><SellerProperties /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['seller', 'both']}><SellerProperties /></ProtectedRoute>,
       },
       {
         path: 'seller/requests',
-        element: <ProtectedRoute allowedRoles={['seller']}><SellerRequests /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['seller', 'both']}><SellerRequests /></ProtectedRoute>,
       },
       {
         path: 'seller/notifications',
-        element: <ProtectedRoute allowedRoles={['seller']}><NotificationsPage backTo="/seller" role="seller" /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['seller', 'both']}><NotificationsPage backTo="/seller" role="seller" /></ProtectedRoute>,
       },
       {
         path: 'register-property',
-        element: <ProtectedRoute allowedRoles={['seller', 'admin']}><RegisterProperty /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['seller', 'both', 'admin']}><RegisterProperty /></ProtectedRoute>,
       },
 
       // Officer

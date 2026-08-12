@@ -1,13 +1,22 @@
 /**
- * Register Page — role selection (Buyer / Seller) + form fields
+ * Register Page — account type selection (Buyer / Seller / Buyer & Seller) + form fields
  */
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, Eye, EyeOff, AlertCircle, Home, ShoppingBag, ArrowRight, ArrowLeft } from 'lucide-react';
+import { UserPlus, Eye, EyeOff, AlertCircle, Home, ShoppingBag, ArrowRight, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
 const ROLE_OPTIONS = [
+  {
+    role: 'both',
+    icon: Users,
+    label: 'Buyer & Seller',
+    desc: 'Buy and sell properties with one account',
+    color: 'border-blue-200 bg-blue-50 text-blue-800',
+    activeColor: 'border-blue-700 bg-blue-50 ring-2 ring-blue-600 ring-offset-1',
+    activeIcon: 'text-blue-700',
+  },
   {
     role: 'buyer',
     icon: ShoppingBag,
@@ -15,19 +24,21 @@ const ROLE_OPTIONS = [
     desc: 'Search and purchase verified properties',
     color: 'border-green-200 bg-green-50 text-green-800',
     activeColor: 'border-green-600 bg-green-50 ring-2 ring-green-500 ring-offset-1',
+    activeIcon: 'text-green-700',
   },
   {
     role: 'seller',
     icon: Home,
     label: 'Seller',
     desc: 'Register and list properties for sale',
-    color: 'border-blue-200 bg-blue-50 text-blue-800',
-    activeColor: 'border-blue-700 bg-blue-50 ring-2 ring-blue-600 ring-offset-1',
+    color: 'border-amber-200 bg-amber-50 text-amber-800',
+    activeColor: 'border-amber-600 bg-amber-50 ring-2 ring-amber-500 ring-offset-1',
+    activeIcon: 'text-amber-700',
   },
 ];
 
 export default function Register() {
-  const [role, setRole] = useState('buyer');
+  const [role, setRole] = useState('both');
   const [form, setForm] = useState({ fullName: '', email: '', phone: '', password: '', aadhaarNumber: '' });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -55,7 +66,7 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      const data = await register({ ...form, role });
+      await register({ ...form, role });
       toast.success('Registration successful! Please sign in with your credentials.');
       navigate('/login', { state: { email: form.email, registered: true } });
     } catch (err) {
@@ -76,10 +87,10 @@ export default function Register() {
         </div>
 
         <div className="ll-card p-6 animate-fade-in-up">
-          {/* Role Selection */}
+          {/* Account Type Selection */}
           <div className="mb-6">
-            <p className="ll-label mb-3">I want to register as</p>
-            <div className="grid grid-cols-2 gap-3">
+            <p className="ll-label mb-3">I want to use my account as</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {ROLE_OPTIONS.map(opt => {
                 const Icon = opt.icon;
                 const isActive = role === opt.role;
@@ -92,7 +103,7 @@ export default function Register() {
                       isActive ? opt.activeColor : 'border-gray-200 hover:border-gray-300 bg-white'
                     }`}
                   >
-                    <Icon className={`h-6 w-6 ${isActive ? (opt.role === 'buyer' ? 'text-green-700' : 'text-blue-700') : 'text-gray-400'}`} />
+                    <Icon className={`h-6 w-6 ${isActive ? opt.activeIcon : 'text-gray-400'}`} />
                     <span className={`text-sm font-semibold ${isActive ? 'text-gray-900' : 'text-gray-600'}`}>{opt.label}</span>
                     <span className="text-xs text-gray-500">{opt.desc}</span>
                   </button>

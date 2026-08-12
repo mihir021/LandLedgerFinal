@@ -1,7 +1,7 @@
 /**
  * Profile Page — view user details, role, wallet address, and account status.
  */
-import { useAuth } from '../context/AuthContext';
+import { useAuth, ROLE_LABELS } from '../context/AuthContext';
 import { Mail, Phone, ShieldCheck, Wallet } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 
@@ -9,6 +9,9 @@ export default function Profile() {
   const { user } = useAuth();
 
   if (!user) return null;
+
+  const roleLabel = ROLE_LABELS[user.role] || user.role || 'User';
+  const portal = user.role === 'both' ? 'Buyer & Seller' : user.role === 'seller' ? 'Seller' : user.role === 'buyer' ? 'Buyer' : user.role;
 
   return (
     <div className="mx-auto max-w-3xl py-8 px-4 sm:px-6">
@@ -27,7 +30,7 @@ export default function Profile() {
               <h2 className="text-xl font-bold font-serif text-gray-900">{user.name || user.fullName || 'User'}</h2>
               <StatusBadge status={user.kycStatus || user.status || 'Verified'} size="sm" />
             </div>
-            <p className="text-sm font-medium text-blue-900 capitalize mt-0.5">{user.role} Account</p>
+            <p className="text-sm font-medium text-blue-900 capitalize mt-0.5">{roleLabel} Account</p>
           </div>
         </div>
 
@@ -60,7 +63,7 @@ export default function Profile() {
               <ShieldCheck className="h-4 w-4 text-blue-900" /> Account Status
             </div>
             <p className="text-sm font-semibold text-gray-900">
-              Verified & Active • Full access granted for {user.role} portal.
+              Verified & Active • Full access granted for the {portal} portal.
             </p>
           </div>
         </div>

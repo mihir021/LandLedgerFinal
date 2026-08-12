@@ -5,6 +5,13 @@ import User from '../models/User.js';
 import ApiError from '../utils/ApiError.js';
 import logAudit from '../utils/auditLogger.js';
 import { getTransactionReceipt, syncTransferStatus } from '../services/blockchainService.js';
+import { createPublicClient, http } from 'viem';
+import { arbitrumSepolia } from 'viem/chains';
+
+const publicClient = createPublicClient({
+  chain: arbitrumSepolia,
+  transport: http(process.env.RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc')
+});
 
 // Helper to append a timeline entry
 const pushTimeline = (transfer, stage, actor, note = '') => {
@@ -32,11 +39,12 @@ const requestTransfer = async (req, res, next) => {
     if (!property) {
       return next(new ApiError(404, 'Property not found'));
     }
-    const isVerified = property.verification?.status === 'Verified' || property.verificationStatus === 'verified' || property.verificationStatus === 'Verified';
+    const isVerified = (property.verification?.status || property.verificationStatus)?.toLowerCase() === 'verified';
     if (!isVerified) {
       return next(new ApiError(400, 'Property must be verified before transfer'));
     }
-    if (property.ownerId?.toString() !== sellerId && property.owner?.toString() !== sellerId) {
+    const propertyOwnerId = property.ownerId || property.owner;
+    if (!propertyOwnerId || propertyOwnerId.toString() !== sellerId) {
       return next(new ApiError(400, 'Seller does not own this property'));
     }
 
@@ -44,7 +52,7 @@ const requestTransfer = async (req, res, next) => {
     const existingTransfer = await Transfer.findOne({
       propertyId: propertyId,
       toUserId: buyerId,
-      status: { $nin: ['Completed', 'completed', 'Rejected', 'failed', 'Failed'] },
+      status: { $nin: ['Completed', 'completed', 'Rejected', 'failed', 'Failed', 'failedConfirmation'] },
     });
     if (existingTransfer) {
       return next(new ApiError(409, 'A transfer request already exists for this property'));
@@ -79,6 +87,7 @@ const requestTransfer = async (req, res, next) => {
         // Notify seller
         await Notification.create({
           receiver: sellerId,
+          userId: sellerId,
           title: 'New Transfer Request',
           message: `A buyer has requested to purchase property ${property.propertyId}.`,
           type: 'Transfer Update',
@@ -94,7 +103,6 @@ const requestTransfer = async (req, res, next) => {
     }
 
     await transfer.save();
-
     await logAudit({
       req,
       action: 'transfer.request',
@@ -143,6 +151,7 @@ const sellerApprove = async (req, res, next) => {
     // Notify buyer
     await Notification.create({
       receiver: transfer.toUserId,
+      userId: transfer.toUserId,
       title: 'Seller Approved Transfer',
       message: 'The seller has approved the property transfer.',
       type: 'Transfer Update',
@@ -196,6 +205,7 @@ const buyerApprove = async (req, res, next) => {
 
     // Notify seller and the officers who need to perform the next review.
     await Notification.create({
+      receiver: transfer.fromUserId,
       userId: transfer.fromUserId,
       title: 'Buyer Approved Transfer',
       message: 'The buyer has signed and approved the property transfer.',
@@ -206,6 +216,7 @@ const buyerApprove = async (req, res, next) => {
     const reviewers = await User.find({ role: { $in: ['officer', 'registrar', 'admin'] }, kycStatus: { $ne: 'suspended' } }).select('_id');
     if (reviewers.length) {
       await Notification.insertMany(reviewers.map(({ _id }) => ({
+        receiver: _id,
         userId: _id,
         title: 'Transfer Ready for Review',
         message: 'A buyer has signed a property transfer and it is ready for officer approval.',
@@ -251,65 +262,40 @@ const officerApprove = async (req, res, next) => {
       return next(new ApiError(400, 'Buyer must sign before the officer can approve the transfer'));
     }
 
-    // Step 1: Mark officer approval
     transfer.officerApproved = true;
+    transfer.status = 'pendingConfirmation';
     transfer.officerApprovalTxHash = txHash;
     transfer.blockchainTxHash = txHash;
     pushTimeline(transfer, 'Officer Approved', req.user, 'Government officer approved the transfer');
-
+    await transfer.save();
+    
     if (txHash) {
       const pId = transfer.propertyId || transfer.property;
       if (pId) {
         await Property.findByIdAndUpdate(pId, {
           'blockchain.txHash': txHash,
-          'blockchain.chainNetwork': 'Sepolia',
+          'blockchain.chainNetwork': 'Arbitrum Sepolia',
         });
       }
     }
 
-    // Step 2: Automatically complete the transfer & transfer ownership
-    const targetPropertyId = transfer.propertyId?._id || transfer.propertyId || transfer.property?._id || transfer.property;
-    const property = await Property.findById(targetPropertyId);
-
-    if (property) {
-      // Move current owner to previousOwners
-      if (property.ownerId || property.owner) {
-        property.previousOwners = property.previousOwners || [];
-        property.previousOwners.push(property.ownerId || property.owner);
-      }
-      // Transfer ownership to buyer
-      property.ownerId = transfer.toUserId || transfer.buyer;
-      property.owner = transfer.toUserId || transfer.buyer;
-      const buyer = await User.findById(transfer.toUserId).select('walletAddress');
-      property.currentOwnerWallet = buyer?.walletAddress || null;
-      // Remove from seller's listings so they can't sell it again
-      property.isListed = false;
-      await property.save();
-    }
-
-    transfer.status = 'completed';
-    transfer.completedAt = new Date();
-    pushTimeline(transfer, 'Transfer Completed', req.user, 'Ownership officially transferred');
-    await transfer.save();
-
-    // Notify both parties about the completed transfer
-    const msg = 'Property transfer has been completed successfully. Ownership has been transferred.';
+    // Notify both parties
+    const msg = 'Government officer has approved the property transfer.';
     await Notification.insertMany([
-      { receiver: transfer.fromUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
-      { receiver: transfer.toUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+      { receiver: transfer.fromUserId, userId: transfer.fromUserId, title: 'Officer Approved', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+      { receiver: transfer.toUserId, userId: transfer.toUserId, title: 'Officer Approved', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
     ]);
 
     await logAudit({
       req,
-      action: 'transfer.officer_approve_and_complete',
+      action: 'transfer.officer_approve',
       targetType: 'Transfer',
       targetId: transfer._id,
-      details: { propertyId: property?.propertyId, newOwner: transfer.toUserId || transfer.buyer },
     });
 
     res.status(200).json({
       success: true,
-      message: 'Transfer approved and completed — ownership transferred',
+      message: 'Officer approval recorded, pending on-chain confirmation',
       data: transfer,
     });
   } catch (error) {
@@ -317,8 +303,51 @@ const officerApprove = async (req, res, next) => {
   }
 };
 
+export const executeTransferCompletion = async (transferId, actorUser) => {
+  const transfer = await Transfer.findById(transferId).populate('propertyId');
+  if (!transfer) throw new Error('Transfer not found');
+  
+  if (transfer.status === 'completed') {
+    return transfer; // Idempotent return
+  }
+
+  const targetPropertyId = transfer.propertyId?._id || transfer.propertyId || transfer.property?._id || transfer.property;
+  const property = await Property.findById(targetPropertyId);
+  
+  if (property) {
+    if (property.ownerId || property.owner) {
+      property.previousOwners = property.previousOwners || [];
+      property.previousOwners.push(property.ownerId || property.owner);
+    }
+    property.ownerId = transfer.toUserId || transfer.buyer;
+    property.owner = transfer.toUserId || transfer.buyer;
+    
+    const buyer = await User.findById(transfer.toUserId).select('walletAddress');
+    property.currentOwnerWallet = buyer?.walletAddress || null;
+    property.isListed = false;
+    await property.save();
+  } else {
+    console.warn(`[executeTransferCompletion] Property not found for targetPropertyId: ${targetPropertyId}`);
+  }
+
+  transfer.status = 'completed';
+  transfer.completedAt = new Date();
+  pushTimeline(transfer, 'Transfer Completed', actorUser, 'Ownership officially transferred');
+  await transfer.save();
+
+  const msg = 'Property transfer has been completed successfully.';
+  await Notification.insertMany([
+    { receiver: transfer.fromUserId, userId: transfer.fromUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+    { receiver: transfer.toUserId, userId: transfer.toUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
+  ]);
+
+  return transfer;
+};
+
+// Helper removed: background monitoring doesn't work in Vercel serverless
+
 // =====================================================
-// @desc    Complete the transfer
+// @desc    Complete the transfer manually/fallback
 // @route   POST /api/transfers/complete
 // @access  Private (officer, admin)
 // =====================================================
@@ -326,50 +355,19 @@ const completeTransfer = async (req, res, next) => {
   try {
     const { transferId } = req.body;
 
-    const transfer = await Transfer.findById(transferId).populate('propertyId');
-    if (!transfer) return next(new ApiError(404, 'Transfer not found'));
-
-    if (transfer.status !== 'Approved' && transfer.status !== 'officerApproved' && !transfer.officerApproved) {
-      return next(
-        new ApiError(400, 'Transfer must be approved by officer before completion')
-      );
+    // Defense-in-depth: ensure only admin/officer can complete transfers
+    if (!['admin', 'officer', 'registrar'].includes(req.user.role)) {
+      return next(new ApiError(403, 'Only officers or admins can complete transfers'));
     }
 
-    // Update property ownership
-    const targetPropertyId = transfer.propertyId?._id || transfer.propertyId || transfer.property?._id || transfer.property;
-    const property = await Property.findById(targetPropertyId);
-    
-    if (property) {
-      if (property.ownerId || property.owner) {
-        property.previousOwners = property.previousOwners || [];
-        property.previousOwners.push(property.ownerId || property.owner);
-      }
-      property.ownerId = transfer.toUserId || transfer.buyer;
-      property.owner = transfer.toUserId || transfer.buyer;
-      const buyer = await User.findById(transfer.toUserId).select('walletAddress');
-      property.currentOwnerWallet = buyer?.walletAddress || null;
-      property.isListed = false;
-      await property.save();
-    }
-
-    transfer.status = 'completed';
-    transfer.completedAt = new Date();
-    pushTimeline(transfer, 'Transfer Completed', req.user, 'Ownership officially transferred');
-    await transfer.save();
-
-    // Notify both parties
-    const msg = 'Property transfer has been completed successfully.';
-    await Notification.insertMany([
-      { receiver: transfer.fromUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
-      { receiver: transfer.toUserId, title: 'Transfer Completed', message: msg, type: 'Transfer Update', relatedEntityType: 'Transfer', relatedEntityId: transfer._id },
-    ]);
+    const transfer = await executeTransferCompletion(transferId, req.user);
 
     await logAudit({
       req,
       action: 'transfer.complete',
       targetType: 'Transfer',
       targetId: transfer._id,
-      details: { propertyId: property?.propertyId, newOwner: transfer.toUserId || transfer.buyer },
+      details: { propertyId: transfer.propertyId?._id },
     });
 
     res.status(200).json({
@@ -384,43 +382,104 @@ const completeTransfer = async (req, res, next) => {
 
 // =====================================================
 // @desc    Get all transfers (admin/officer: all, others: own)
-// @route   GET /api/transfers
+// @route   GET /api/transfers?view=buyer|seller
 // @access  Private
 // =====================================================
 const getTransfers = async (req, res, next) => {
   try {
+    const { view } = req.query;
+
     let filter = {};
 
-    // Non-admin/officer users only see their own transfers
-    if (!['admin', 'officer', 'registrar'].includes(req.user.role)) {
-      filter = {
-        $or: [{ fromUserId: req.user._id }, { toUserId: req.user._id }],
-      };
+    // Non-admin/officer users only see transfers for the selected side.
+    // 'both' accounts pick a side via the `view` query param (matches the
+    // active Buyer/Seller mode chosen in the UI).
+    const isStaff = ['admin', 'officer', 'registrar'].includes(req.user.role);
+    if (!isStaff) {
+      if (view === 'seller') {
+        filter.fromUserId = req.user._id; // transfers where I am the seller
+      } else if (view === 'buyer') {
+        filter.toUserId = req.user._id; // transfers where I am the buyer
+      } else {
+        filter = {
+          $or: [{ fromUserId: req.user._id }, { toUserId: req.user._id }],
+        };
+      }
     }
 
-    const transfers = await Transfer.find(filter)
+    // First fetch all matching transfers
+    let transfers = await Transfer.find(filter)
       .populate('propertyId', 'propertyId location pricing blockchain isListed')
       .populate('fromUserId', 'name email walletAddress')
       .populate('toUserId', 'name email walletAddress')
       .sort({ createdAt: -1 });
 
-    // Sync-on-read: check pending transfers on-chain
-    const pendingTransfers = transfers.filter(
+    let stateMutated = false;
+
+    // 1. Sync-on-read: check pendingRequest / pending transfers
+    const pendingRequests = transfers.filter(
       (t) => t.status === 'pendingRequest' || t.status === 'pending'
     );
-    if (pendingTransfers.length > 0) {
-      await Promise.allSettled(pendingTransfers.map((t) => syncTransferStatus(t)));
+    if (pendingRequests.length > 0) {
+      await Promise.allSettled(pendingRequests.map((t) => syncTransferStatus(t)));
+      stateMutated = true;
     }
+
+    // 2. Sync-on-Read: Check if any transfers are stuck in pendingConfirmation
+    const pendingConfirmations = transfers.filter(t => t.status === 'pendingConfirmation' && t.blockchainTxHash);
+
+    for (const t of pendingConfirmations) {
+      try {
+        // Use getTransactionReceipt (synchronous read), NOT waitForTransactionReceipt
+        const receipt = await publicClient.getTransactionReceipt({ hash: t.blockchainTxHash });
+        if (receipt) {
+          if (receipt.status === 'success') {
+            await executeTransferCompletion(t._id, req.user);
+          } else {
+            const transferDoc = await Transfer.findById(t._id);
+            transferDoc.status = 'failedConfirmation';
+            pushTimeline(transferDoc, 'Transaction Failed', req.user, 'Smart contract execution reverted');
+            await transferDoc.save();
+          }
+          stateMutated = true;
+        }
+      } catch (err) {
+        // Block might not be mined yet, or RPC error. Safely ignore and it will remain pending.
+        if (err.name !== 'TransactionReceiptNotFoundError') {
+          console.error(`[Sync-on-Read] Error checking receipt for tx ${t.blockchainTxHash}:`, err);
+        }
+      }
+    }
+
+    // Refetch if we mutated state during reconciliation
+    if (stateMutated) {
+      transfers = await Transfer.find(filter)
+        .populate('propertyId', 'propertyId location pricing blockchain isListed')
+        .populate('fromUserId', 'name email walletAddress')
+        .populate('toUserId', 'name email walletAddress')
+        .sort({ createdAt: -1 });
+    }
+
+    // Expose friendly aliases so the existing UI (which reads t.buyer,
+    // t.seller, t.property) keeps working regardless of role.
+    const data = transfers.map((t) => {
+      const doc = t.toObject();
+      doc.buyer = doc.toUserId;
+      doc.seller = doc.fromUserId;
+      doc.property = doc.propertyId;
+      return doc;
+    });
 
     res.status(200).json({
       success: true,
       message: 'Transfers retrieved',
-      data: transfers,
+      data,
     });
   } catch (error) {
     next(error);
   }
 };
+
 
 export {
   requestTransfer,

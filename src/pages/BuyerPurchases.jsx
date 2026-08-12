@@ -24,7 +24,7 @@ export default function BuyerPurchases() {
     const load = async () => {
       setError('');
       try {
-        const data = await getTransfers();
+        const data = await getTransfers({ view: 'buyer' });
         setPurchases(Array.isArray(data) ? data : []);
       } catch (err) {
         setError(err.message || 'Failed to load purchase requests.');
@@ -32,7 +32,15 @@ export default function BuyerPurchases() {
         setLoading(false);
       }
     };
+    
     load();
+    const interval = setInterval(() => {
+      getTransfers().then(data => {
+        if (Array.isArray(data)) setPurchases(data);
+      }).catch(console.error);
+    }, 10000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const statusToLifecycle = (status) => {
@@ -46,9 +54,11 @@ export default function BuyerPurchases() {
       'Pending Verification': 'buyer_signed',
       buyer_signed: 'officer_approved',
       buyerApproved: 'officer_approved',
-      officer_approved: 'completed',
-      officerApproved: 'completed',
-      Approved: 'completed',
+      officer_approved: 'chain_processing',
+      officerApproved: 'chain_processing',
+      pendingConfirmation: 'chain_processing',
+      failedConfirmation: 'chain_processing', // Will show as stuck, or we could add a dedicated failed stage
+      Approved: 'chain_processing',
       completed: 'completed',
       Completed: 'completed',
     };
@@ -109,8 +119,7 @@ export default function BuyerPurchases() {
               : (req.property && typeof req.property === 'object' ? req.property : null);
             const propId = property?._id || (typeof req.propertyId === 'string' ? req.propertyId : null) || (typeof req.property === 'string' ? req.property : null);
             const propTitle = property?.title || property?.location?.district || property?.location?.surveyNumber || req.propertyTitle || 'Property';
-            const rawStatus = req.status || 'pending';
-            const status = ['officerApproved', 'Approved'].includes(rawStatus) ? 'completed' : rawStatus;
+            const status = req.status || 'pending';
             const amount = req.agreedPrice || req.property?.pricing?.priceINR || req.amount;
             const lifecycleStage = statusToLifecycle(status);
 

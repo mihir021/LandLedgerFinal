@@ -7,9 +7,12 @@ import { ArrowLeft, CheckCircle, Loader2, ArrowLeftRight, ExternalLink } from 'l
 import StatusBadge from '../components/StatusBadge';
 import LifecycleTracker from '../components/LifecycleTracker';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { getTransfers, officerApprove } from '../services/transferService';
+import { getTransfers, officerApprove, completeTransfer } from '../services/transferService';
 import { useToast } from '../context/ToastContext';
 import { formatPrice } from '../utils/helpers';
+import { useAccount, usePublicClient, useWriteContract } from 'wagmi';
+import { CONTRACT_ADDRESS, getSafeFeeOverrides } from '../config/web3';
+import { LandLedgerABI } from '../config/LandLedgerABI.js';
 
 export default function AdminTransfers() {
   const toast = useToast();
@@ -18,32 +21,90 @@ export default function AdminTransfers() {
   const [expanded, setExpanded] = useState(null);
   const [modal, setModal] = useState({ open: false, id: null });
   const [actionLoading, setActionLoading] = useState(false);
+  const { address: walletAddress, isConnected } = useAccount();
+  const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
 
   useEffect(() => {
-    getTransfers()
-      .then(data => setTransfers(Array.isArray(data) ? data : []))
-      .catch(() => setTransfers([]))
-      .finally(() => setLoading(false));
+    const fetchTransfers = () => {
+      getTransfers()
+        .then(data => setTransfers(Array.isArray(data) ? data : []))
+        .catch(() => setTransfers([]))
+        .finally(() => setLoading(false));
+    };
+    
+    fetchTransfers();
+    const interval = setInterval(() => {
+      getTransfers()
+        .then(data => { if (Array.isArray(data)) setTransfers(data); })
+        .catch(console.error);
+    }, 10000);
+    
+    return () => clearInterval(interval);
   }, []);
 
-  const isCompleted = (t) => ['completed', 'Completed', 'officerApproved', 'Approved'].includes(t.status);
-  const pending  = transfers.filter(t => t.sellerApproved && t.buyerApproved && !t.officerApproved && !isCompleted(t));
-  const active   = transfers.filter(t => (!t.sellerApproved || !t.buyerApproved) && !isCompleted(t));
-  const completed= transfers.filter(t => isCompleted(t));
+  const pending  = transfers.filter(t => t.sellerApproved && t.buyerApproved && !t.officerApproved && t.status !== 'completed');
+  const processing = transfers.filter(t => t.officerApproved && t.status !== 'completed');
+  const active   = transfers.filter(t => (!t.sellerApproved || !t.buyerApproved) && t.status !== 'completed');
+  const completed= transfers.filter(t => t.status === 'completed');
+
+  const finalizeOnChain = async (transfer) => {
+    const parcelId = transfer?.property?.blockchain?.parcelId
+      || transfer?.property?.blockchainPropertyId
+      || transfer?.property?.surveyNumber
+      || transfer?.property?.propertyId;
+
+    if (!isConnected || !walletAddress) {
+      throw new Error('Connect the registry-admin wallet in the top bar before completing this transfer.');
+    }
+    if (!parcelId) {
+      throw new Error('This transfer is missing its on-chain parcel ID.');
+    }
+
+    toast.info('Confirm the final transfer transaction in your wallet...');
+    const feeOverrides = await getSafeFeeOverrides(publicClient);
+    const txHash = await writeContractAsync({
+      address: CONTRACT_ADDRESS,
+      abi: LandLedgerABI,
+      functionName: 'finalizeTransfer',
+      args: [parcelId],
+      ...feeOverrides,
+    });
+    toast.info(`Transfer submitted on-chain: ${txHash}. Background monitoring started...`);
+    
+    return txHash;
+  };
 
   const handleApprove = async () => {
     setActionLoading(true);
     try {
-      await officerApprove(modal.id);
-      toast.success('Transfer approved and ownership completed!');
+      const transfer = transfers.find(t => t._id === modal.id);
+      if (!transfer) throw new Error('Transfer not found. Refresh and try again.');
+      const txHash = await finalizeOnChain(transfer);
+      await officerApprove(modal.id, txHash);
+      toast.success('Transfer approved. Background job is monitoring the blockchain.');
       setTransfers(prev => prev.map(t =>
-        (t._id === modal.id) ? { ...t, officerApproved: true, status: 'completed' } : t
+        t._id === modal.id ? { ...t, officerApproved: true, status: 'pendingConfirmation', blockchainTxHash: txHash } : t
       ));
     } catch (err) {
       toast.error(err.message || 'Failed to approve');
     } finally {
       setActionLoading(false);
       setModal({ open: false, id: null });
+    }
+  };
+
+  const handleComplete = async (transfer) => {
+    setActionLoading(transfer._id);
+    try {
+      await finalizeOnChain(transfer);
+      await officerApprove(transfer._id, '0x...'); // Fallback manual trigger, tx already exists
+      toast.success('Transfer completed manually');
+      setTransfers(prev => prev.map(t => t._id === transfer._id ? { ...t, status: 'pendingConfirmation' } : t));
+    } catch (err) {
+      toast.error(err.message || 'Failed to complete transfer');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -81,6 +142,16 @@ export default function AdminTransfers() {
                 <CheckCircle className="h-3.5 w-3.5" /> Approve
               </button>
             )}
+            {t.officerApproved && t.status !== 'completed' && (
+              <button
+                disabled={actionLoading === t._id}
+                onClick={e => { e.stopPropagation(); handleComplete(t); }}
+                className="flex items-center gap-1.5 rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-800 disabled:opacity-60"
+              >
+                {actionLoading === t._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                Complete on-chain
+              </button>
+            )}
           </div>
         </div>
 
@@ -88,7 +159,7 @@ export default function AdminTransfers() {
           <div className="border-t border-gray-100 p-4 bg-gray-50 animate-fade-in">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Transfer Progress</p>
             <LifecycleTracker
-              currentStage={t.status === 'Completed' || t.status === 'completed' ? 'completed' : t.status === 'Approved' || t.officerApproved ? 'completed' : t.status === 'buyerApproved' || t.buyerApproved ? 'officer_approved' : t.status === 'Pending Verification' || t.sellerApproved ? 'buyer_signed' : 'seller_approved'}
+              currentStage={t.status === 'Completed' || t.status === 'completed' ? 'completed' : t.status === 'Approved' || t.officerApproved ? 'chain_processing' : t.status === 'buyerApproved' || t.buyerApproved ? 'officer_approved' : t.status === 'Pending Verification' || t.sellerApproved ? 'buyer_signed' : 'seller_approved'}
               compact
             />
           </div>
@@ -120,6 +191,14 @@ export default function AdminTransfers() {
                 Awaiting Officer Approval ({pending.length})
               </h2>
               {pending.map(t => <TransferRow key={t._id} t={t} showApprove />)}
+            </div>
+          )}
+
+          {processing.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Ready for On-Chain Completion ({processing.length})</h2>
+              <p className="text-sm text-gray-500 mb-3">Use the registry-admin wallet to finalize these previously approved transfers.</p>
+              {processing.map(t => <TransferRow key={t._id} t={t} />)}
             </div>
           )}
 

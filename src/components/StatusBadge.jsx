@@ -30,6 +30,8 @@ const STATUS_CONFIG = {
   sellerApproved:     { label: 'Seller Approved',   cls: 'status-transfer'  },
   buyerApproved:      { label: 'Buyer Signed',      cls: 'status-transfer'  },
   officerApproved:    { label: 'Officer Approved',  cls: 'status-transfer'  },
+  pendingConfirmation:{ label: 'Awaiting Confirm',  cls: 'status-pending'   },
+  failedConfirmation: { label: 'Failed on Chain',   cls: 'status-rejected'  },
   'in-progress':      { label: 'In Progress',       cls: 'status-listed'    },
   closed:             { label: 'Closed',            cls: 'status-draft'     },
   pending:            { label: 'Pending',           cls: 'status-pending'   },

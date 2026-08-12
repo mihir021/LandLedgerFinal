@@ -20,11 +20,20 @@ export default function AdminProperties() {
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
+    setLoading(true);
     const params = filter !== 'all' ? { status: filter.charAt(0).toUpperCase() + filter.slice(1), limit: 1000 } : { limit: 1000 };
     getProperties(params)
       .then(res => setProperties(res.properties || []))
       .catch(() => setProperties([]))
       .finally(() => setLoading(false));
+
+    const interval = setInterval(() => {
+      const p = filter !== 'all' ? { status: filter.charAt(0).toUpperCase() + filter.slice(1), limit: 1000 } : { limit: 1000 };
+      getProperties(p).then(res => {
+        setProperties(res.properties || []);
+      }).catch(console.error);
+    }, 10000);
+    return () => clearInterval(interval);
   }, [filter]);
 
   const filtered = properties.filter(p => deepSearchProperty(p, search));

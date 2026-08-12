@@ -21,10 +21,17 @@ export default function SellerRequests() {
 
   useEffect(() => {
     setError('');
-    getTransfers()
+    getTransfers({ view: 'seller' })
       .then(data => setRequests(Array.isArray(data) ? data : []))
       .catch(err => setError(err.message || 'Failed to load purchase requests.'))
       .finally(() => setLoading(false));
+
+    const interval = setInterval(() => {
+      getTransfers({ view: 'seller' }).then(data => {
+        if (Array.isArray(data)) setRequests(data);
+      }).catch(console.error);
+    }, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const openModal = (id, action) => setModal({ open: true, id, action });
