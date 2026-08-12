@@ -19,11 +19,19 @@ const getDocUrl = (doc) => {
   const rawUrl = typeof doc === 'object' ? (doc?.url || doc?.path) : doc;
   if (!rawUrl || typeof rawUrl !== 'string') return null;
   if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) return rawUrl;
-  if (rawUrl.startsWith('/')) return rawUrl;
-  if (rawUrl.startsWith('uploads/') || rawUrl.startsWith('uploads\\')) {
-    return `/${rawUrl.replace(/\\/g, '/')}`;
+  
+  // Extract base URL from VITE_API_URL (e.g. http://localhost:5000/api -> http://localhost:5000)
+  let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  if (baseUrl.endsWith('/api')) baseUrl = baseUrl.slice(0, -4);
+  else if (baseUrl.endsWith('/api/')) baseUrl = baseUrl.slice(0, -5);
+  
+  let formattedUrl = rawUrl.replace(/\\/g, '/');
+  if (formattedUrl.startsWith('/')) formattedUrl = formattedUrl.substring(1);
+  
+  if (formattedUrl.startsWith('uploads/')) {
+    return `${baseUrl}/${formattedUrl}`;
   }
-  return `/uploads/documents/${rawUrl.replace(/\\/g, '/')}`;
+  return `${baseUrl}/uploads/documents/${formattedUrl}`;
 };
 import { SiBlockchaindotcom } from 'react-icons/si';
 import { QRCodeSVG } from 'qrcode.react';
@@ -544,7 +552,7 @@ export default function PropertyDetails() {
                 <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2">
                   {documents.map((doc, i) => {
                     const rawUrl = typeof doc === 'string' ? doc : (doc?.url || doc?.path || '');
-                    const docUrl = getDocUrl(rawUrl) || getImgUrl(rawUrl) || rawUrl;
+                    let docUrl = getDocUrl(rawUrl) || getImgUrl(rawUrl) || rawUrl;
                     const docType = typeof doc === 'object' && doc?.type ? doc.type : 'Legal Document';
                     const docName = typeof doc === 'object' && (doc?.name || doc?.title)
                       ? (doc.name || doc.title)
@@ -553,6 +561,11 @@ export default function PropertyDetails() {
                     const isCloudinary = rawUrl.includes('cloudinary') || rawUrl.startsWith('http');
                     const isPdf = rawUrl.toLowerCase().endsWith('.pdf') || docType.toLowerCase().includes('deed') || docType.toLowerCase().includes('tax');
                     const isImg = rawUrl.toLowerCase().match(/\.(jpg|jpeg|png|webp|gif)$/);
+
+                    // Cloudinary blocks PDF delivery by default for security, we must force attachment
+                    if (isCloudinary && isPdf && docUrl.includes('/upload/') && !docUrl.includes('fl_attachment')) {
+                      docUrl = docUrl.replace('/upload/', '/upload/fl_attachment/');
+                    }
 
                     return (
                       <div key={i} className="flex flex-col justify-between rounded-xl bg-gray-50/80 p-4 border border-gray-200/80 hover:border-blue-300 hover:shadow-sm transition-all">
@@ -1241,7 +1254,7 @@ export default function PropertyDetails() {
                 <img src={previewDoc.url} alt={previewDoc.name} className="max-h-[70vh] max-w-full object-contain rounded-lg shadow-md" />
               ) : (
                 <iframe
-                  src={previewDoc.url}
+                  src={(!previewDoc.url.includes('localhost') && !previewDoc.url.includes('127.0.0.1') && previewDoc.url.toLowerCase().includes('.pdf')) ? `https://docs.google.com/viewer?url=${encodeURIComponent(previewDoc.url)}&embedded=true` : previewDoc.url}
                   title={previewDoc.name}
                   className="w-full h-[70vh] rounded-lg border border-gray-300 shadow-inner bg-white"
                 />
