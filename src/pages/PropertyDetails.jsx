@@ -19,11 +19,19 @@ const getDocUrl = (doc) => {
   const rawUrl = typeof doc === 'object' ? (doc?.url || doc?.path) : doc;
   if (!rawUrl || typeof rawUrl !== 'string') return null;
   if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) return rawUrl;
-  if (rawUrl.startsWith('/')) return rawUrl;
-  if (rawUrl.startsWith('uploads/') || rawUrl.startsWith('uploads\\')) {
-    return `/${rawUrl.replace(/\\/g, '/')}`;
+  
+  // Extract base URL from VITE_API_URL (e.g. http://localhost:5000/api -> http://localhost:5000)
+  let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  if (baseUrl.endsWith('/api')) baseUrl = baseUrl.slice(0, -4);
+  else if (baseUrl.endsWith('/api/')) baseUrl = baseUrl.slice(0, -5);
+  
+  let formattedUrl = rawUrl.replace(/\\/g, '/');
+  if (formattedUrl.startsWith('/')) formattedUrl = formattedUrl.substring(1);
+  
+  if (formattedUrl.startsWith('uploads/')) {
+    return `${baseUrl}/${formattedUrl}`;
   }
-  return `/uploads/documents/${rawUrl.replace(/\\/g, '/')}`;
+  return `${baseUrl}/uploads/documents/${formattedUrl}`;
 };
 import { SiBlockchaindotcom } from 'react-icons/si';
 import { QRCodeSVG } from 'qrcode.react';
