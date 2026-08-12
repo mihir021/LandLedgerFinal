@@ -19,6 +19,8 @@ const transferSchema = new mongoose.Schema(
         'Pending Verification',
         'Approved',
         'Rejected',
+        'pendingConfirmation',
+        'failedConfirmation'
       ],
       default: 'pending',
     },

@@ -32,7 +32,15 @@ export default function BuyerPurchases() {
         setLoading(false);
       }
     };
+    
     load();
+    const interval = setInterval(() => {
+      getTransfers().then(data => {
+        if (Array.isArray(data)) setPurchases(data);
+      }).catch(console.error);
+    }, 10000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const statusToLifecycle = (status) => {
@@ -46,6 +54,8 @@ export default function BuyerPurchases() {
       buyerApproved: 'officer_approved',
       officer_approved: 'chain_processing',
       officerApproved: 'chain_processing',
+      pendingConfirmation: 'chain_processing',
+      failedConfirmation: 'chain_processing', // Will show as stuck, or we could add a dedicated failed stage
       Approved: 'chain_processing',
       completed: 'completed',
       Completed: 'completed',

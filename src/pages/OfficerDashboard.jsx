@@ -56,10 +56,14 @@ export default function OfficerDashboard() {
 
   useEffect(() => {
     fetchData();
+    const interval = setInterval(() => {
+      fetchData(false);
+    }, 10000);
+    return () => clearInterval(interval);
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const [propRes, transfers, userRes, inqData, disputeRes] = await Promise.all([
         getProperties({ verificationStatus: 'pending', limit: 100 }).catch(() => getProperties({ limit: 1000 }).catch(() => ({ properties: [] }))),
@@ -108,7 +112,6 @@ export default function OfficerDashboard() {
           ...feeOverrides,
         });
         toast.info(`Verification submitted on-chain: ${txHash}. Syncing with database...`);
-        
         await verifyProperty(propModal.id, 'Verified', txHash);
       } else {
         await verifyProperty(propModal.id, 'Rejected');
@@ -147,11 +150,10 @@ export default function OfficerDashboard() {
         args: [parcelId],
         ...feeOverrides,
       });
-      toast.info(`Transfer submitted on-chain: ${txHash}. Syncing with database...`);
+      toast.info(`Transfer submitted on-chain: ${txHash}. Background monitoring started...`);
 
       await officerApprove(transferModal.id, txHash);
-      await completeTransfer(transferModal.id);
-      toast.success('Transfer approved and ownership updated successfully');
+      toast.success('Transfer approved. Monitoring blockchain for final confirmation.');
       setPendingTransfers(prev => prev.filter(t => t._id !== transferModal.id));
     } catch (err) {
       toast.error(err.message || 'Failed to approve transfer.');
