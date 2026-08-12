@@ -25,6 +25,14 @@ export default function SellerProperties() {
 
   useEffect(() => {
     load();
+    const interval = setInterval(() => {
+      const params = user?._id ? { owner: user._id, limit: 100 } : { limit: 100 };
+      getProperties(params).then(res => {
+        const props = res.properties || [];
+        if (props.length > 0) setProperties(props);
+      }).catch(console.error);
+    }, 10000);
+    return () => clearInterval(interval);
   }, [user]);
 
   const load = async () => {
