@@ -427,7 +427,7 @@ const getTransfers = async (req, res, next) => {
 
     // First fetch all matching transfers
     let transfers = await Transfer.find(filter)
-      .populate('propertyId', 'propertyId location pricing blockchain isListed')
+      .populate('propertyId', 'propertyId location pricing blockchain isListed documents images surveyNumber address landType area price')
       .populate('fromUserId', 'name email walletAddress')
       .populate('toUserId', 'name email walletAddress')
       .sort({ createdAt: -1 });
@@ -479,7 +479,7 @@ const getTransfers = async (req, res, next) => {
     // Refetch if we mutated state during reconciliation
     if (stateMutated) {
       transfers = await Transfer.find(filter)
-        .populate('propertyId', 'propertyId location pricing blockchain isListed')
+        .populate('propertyId', 'propertyId location pricing blockchain isListed documents images surveyNumber address landType area price')
         .populate('fromUserId', 'name email walletAddress')
         .populate('toUserId', 'name email walletAddress')
         .sort({ createdAt: -1 });
@@ -506,6 +506,62 @@ const getTransfers = async (req, res, next) => {
 };
 
 
+// =====================================================
+// @desc    Upload documents for a transfer (buyer/seller/officer)
+// @route   POST /api/transfers/:id/documents
+// @access  Private
+// =====================================================
+const uploadTransferDocument = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const transfer = await Transfer.findById(id).populate('propertyId');
+    if (!transfer) return next(new ApiError(404, 'Transfer request not found'));
+
+    // Check authorization
+    const isBuyer = transfer.toUserId.toString() === req.user._id.toString();
+    const isSeller = transfer.fromUserId.toString() === req.user._id.toString();
+    const isStaff = ['admin', 'officer', 'registrar'].includes(req.user.role);
+
+    if (!isBuyer && !isSeller && !isStaff) {
+      return next(new ApiError(403, 'Not authorized to upload documents for this transfer'));
+    }
+
+    const files = req.files ? (Array.isArray(req.files) ? req.files : req.files.documents || []) : (req.file ? [req.file] : []);
+    if (files.length === 0) {
+      return next(new ApiError(400, 'No document files provided for upload'));
+    }
+
+    const newDocs = files.map((f) => ({
+      name: f.originalname,
+      type: req.body.docType || 'Verification Document',
+      url: f.path,
+      public_id: f.filename || f.public_id,
+      uploadedBy: req.user._id,
+      uploadedAt: new Date(),
+    }));
+
+    transfer.documents.push(...newDocs);
+    pushTimeline(transfer, 'Document Uploaded', req.user, `${files.length} document(s) attached by ${req.user.role || 'user'}`);
+    await transfer.save();
+
+    await logAudit({
+      req,
+      action: 'transfer.upload_document',
+      targetType: 'Transfer',
+      targetId: transfer._id,
+      details: { docCount: files.length },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Document(s) uploaded successfully to Cloudinary',
+      data: transfer,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export {
   requestTransfer,
   sellerApprove,
@@ -513,4 +569,5 @@ export {
   officerApprove,
   completeTransfer,
   getTransfers,
+  uploadTransferDocument,
 };

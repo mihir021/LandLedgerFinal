@@ -181,7 +181,12 @@ const createProperty = async (req, res, next) => {
       : [];
 
     const docObjects = req.files?.documents
-      ? req.files.documents.map((f) => ({ type: 'Other', url: f.path }))
+      ? req.files.documents.map((f) => ({
+          type: 'Other',
+          url: f.path,
+          public_id: f.filename || f.public_id,
+          uploadedAt: new Date(),
+        }))
       : [];
 
     const MAP_LAND_TYPE = {
