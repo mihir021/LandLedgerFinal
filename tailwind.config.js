@@ -8,6 +8,14 @@ export default {
     extend: {
       colors: {
         paper: "#FFF8E7",
+        voxel: {
+          navy: "#0A1628",
+          dark: "#060D17",
+          gold: "#D4AF37",
+          grass: "#4A7C3F",
+          stone: "#8A8A8A",
+          sand: "#C9A876",
+        },
         comic: {
           blue: "#2D5BFF",
           yellow: "#FFD400",
@@ -22,10 +30,15 @@ export default {
         }
       },
       fontFamily: {
+        pixel: ['Pixelify Sans', 'Silkscreen', 'Press Start 2P', 'monospace'],
+        sans: ['Pixelify Sans', 'Inter', 'sans-serif'],
+        serif: ['Pixelify Sans', 'Fraunces', 'serif'],
         comic: ['Bangers', 'cursive', 'sans-serif'],
-        sans: ['Plus Jakarta Sans', 'Poppins', 'sans-serif'],
       },
       boxShadow: {
+        'voxel-gold': '4px 4px 0px rgba(212, 175, 55, 0.3)',
+        'voxel-dark': '4px 4px 0px #0A1628',
+        'voxel-grass': '4px 4px 0px #4A7C3F',
         'pop-sm': '3px 3px 0px #111111',
         'pop': '5px 5px 0px #111111',
         'pop-lg': '7px 7px 0px #111111',

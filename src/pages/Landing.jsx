@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ShieldCheck, Search, FileText, ArrowRight, Lock, Zap, Globe, 
@@ -11,6 +11,14 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { motion, useScroll, useSpring } from 'framer-motion';
 import { getProperties } from '../services/propertyService';
+
+const HeroLandParcel = lazy(() => import('../components/HeroLandParcel'));
+
+const Hero3DFallback = () => (
+  <div className="w-full h-[450px] sm:h-[500px] lg:h-[550px] flex items-center justify-center pointer-events-none">
+    <div className="w-72 h-72 rounded-full bg-amber-500/20 blur-3xl animate-pulse" />
+  </div>
+);
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -59,8 +67,8 @@ const LiveCanvasBackground = () => {
       particles.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.4,
-        vy: (Math.random() - 0.5) * 0.4,
+        vx: (Math.random() - 0.5) * 0.1,
+        vy: (Math.random() - 0.5) * 0.1,
         radius: Math.random() * 2 + 1,
         color: Math.random() > 0.4 ? 'rgba(212, 175, 55, ' : 'rgba(59, 130, 246, ',
         baseAlpha: Math.random() * 0.35 + 0.15,
@@ -473,62 +481,88 @@ export default function Landing() {
         {/* Ambient Gradient Glow overlay */}
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(212,175,55,0.15),rgba(255,255,255,0))]" />
 
-        <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="max-w-3xl">
-            <motion.div 
-              custom={1} initial="hidden" animate="visible" variants={heroVariants}
-              className="inline-flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-3.5 sm:px-4 py-1.5 mb-6 sm:mb-8 backdrop-blur-md"
-            >
-              <ShieldCheck className="h-4 w-4 text-amber-400 shrink-0" />
-              <span className="text-xs sm:text-sm font-medium text-white/90">Government-Grade Blockchain Land Registry</span>
-            </motion.div>
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            {/* Left Column: Hero Text & CTA */}
+            <div className="lg:col-span-7">
+              <motion.div 
+                custom={1} initial="hidden" animate="visible" variants={heroVariants}
+                className="inline-flex items-center gap-2 rounded-sm bg-[#0D1B2A] border border-[#D4AF37]/40 border-l-4 border-l-amber-400 px-3.5 sm:px-4 py-1.5 mb-6 sm:mb-8 shadow-[3px_3px_0px_#060D17]"
+              >
+                <ShieldCheck className="h-4 w-4 text-amber-400 shrink-0" />
+                <span className="font-pixel text-xs sm:text-sm font-semibold tracking-wider text-white/95 uppercase">Government-Grade Blockchain Land Registry</span>
+              </motion.div>
 
-            <motion.h1 
-              custom={2} initial="hidden" animate="visible" variants={heroVariants}
-              className="font-serif text-3xl sm:text-5xl lg:text-7xl font-bold text-white leading-tight mb-4 sm:mb-6 tracking-tight"
-            >
-              The Future of
-              <span className="block mt-1 sm:mt-2" style={{ color: '#D4AF37', textShadow: '0 2px 20px rgba(212,175,55,0.2)' }}>Land Ownership</span>
-              is Here
-            </motion.h1>
+              <motion.h1 
+                custom={2} initial="hidden" animate="visible" variants={heroVariants}
+                className="font-pixel text-4xl sm:text-6xl lg:text-6xl xl:text-7xl font-extrabold text-white leading-tight mb-4 sm:mb-6 uppercase tracking-wider"
+                style={{ textShadow: '3px 3px 0px #0A1628, 6px 6px 0px rgba(0,0,0,0.5)' }}
+              >
+                The Future of
+                <span className="block mt-1 sm:mt-2" style={{ color: '#D4AF37', textShadow: '3px 3px 0px #0A1628, 6px 6px 0px rgba(212,175,55,0.4)' }}>Land Ownership</span>
+                is Here
+              </motion.h1>
 
-            <motion.p 
-              custom={3} initial="hidden" animate="visible" variants={heroVariants}
-              className="text-base sm:text-lg lg:text-xl text-white/70 leading-relaxed mb-8 sm:mb-10 max-w-2xl font-light"
-            >
-              LandLedger digitizes India's land registry — making property transactions transparent, tamper-proof, and instant. Every deed, every transfer, immutably recorded on the blockchain.
-            </motion.p>
+              <motion.p 
+                custom={3} initial="hidden" animate="visible" variants={heroVariants}
+                className="font-pixel text-base sm:text-lg text-white/80 leading-relaxed mb-8 sm:mb-10 max-w-2xl tracking-wide"
+              >
+                LandLedger digitizes India's land registry — making property transactions transparent, tamper-proof, and instant. Every deed, every transfer, immutably recorded on the blockchain.
+              </motion.p>
 
-            <motion.div custom={4} initial="hidden" animate="visible" variants={heroVariants} className="flex flex-col sm:flex-row gap-4 sm:gap-5">
-              <MagneticButton className="w-full sm:w-auto">
-                <Link to="/register" className="flex items-center justify-center gap-2 rounded-lg px-8 py-4 text-base font-semibold text-[#0A1628] transition-all shadow-[0_4px_20px_rgba(212,175,55,0.3)] hover:shadow-[0_8px_30px_rgba(212,175,55,0.5)] w-full sm:w-auto"
-                  style={{ background: 'linear-gradient(135deg, #D4AF37, #FDE047)' }}>
-                  Get Started <ArrowRight className="h-4 w-4" />
-                </Link>
-              </MagneticButton>
-            </motion.div>
+              <motion.div custom={4} initial="hidden" animate="visible" variants={heroVariants} className="flex flex-col sm:flex-row gap-4 sm:gap-5">
+                <MagneticButton className="w-full sm:w-auto">
+                  <Link to="/register" className="flex items-center justify-center gap-2 rounded-sm px-8 py-4 font-pixel text-base font-bold text-[#0A1628] uppercase tracking-wider transition-all duration-150 shadow-[4px_4px_0px_rgba(212,175,55,0.4)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_rgba(212,175,55,0.6)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none w-full sm:w-auto border border-[#D4AF37]"
+                    style={{ background: 'linear-gradient(135deg, #D4AF37, #FDE047)' }}>
+                    Get Started <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </MagneticButton>
+              </motion.div>
+            </div>
+
+            {/* Right Column: 3D Floating Digital Land Parcel */}
+            <div className="hidden lg:block lg:col-span-5 relative">
+              <Suspense fallback={<Hero3DFallback />}>
+                <HeroLandParcel />
+              </Suspense>
+            </div>
           </div>
 
           {/* Hero stats with Live DB Sync Indicator */}
           <div ref={statsRef} className="mt-14 sm:mt-20 relative z-10">
             {/* Sync Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-1 text-xs font-semibold text-emerald-400 mb-4 backdrop-blur-md">
+            <div className="inline-flex items-center gap-2 rounded-sm bg-[#060D17] border border-emerald-500/40 px-3.5 py-1.5 font-pixel text-xs font-semibold text-emerald-400 mb-4 shadow-[2px_2px_0px_rgba(16,185,129,0.3)] tracking-wider uppercase">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-sm bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-sm h-2 w-2 bg-emerald-500"></span>
               </span>
               <RefreshCw className="h-3 w-3 animate-spin duration-1000" style={{ animationDuration: '4s' }} />
               <span>Live Database Sync</span>
               {dbStats.lastSynced && <span className="opacity-75">({dbStats.lastSynced})</span>}
             </div>
 
+            {/* 4 Voxel Brick Stat Cards with Terrain Top Bars & Pixel Score Numbers */}
             <div className="grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-4">
-              {dynamicStatsList.map(s => (
-                <div key={s.label} className="stat-card rounded-xl bg-white/5 border border-white/10 p-3.5 sm:p-5 backdrop-blur-md hover:bg-white/10 transition-colors duration-300">
-                  <Counter value={s.value} suffix={s.suffix} />
-                  <p className="text-xs sm:text-sm text-white/60 mt-1 sm:mt-2 font-medium">{s.label}</p>
-                </div>
-              ))}
+              {dynamicStatsList.map((s, idx) => {
+                // Voxel terrain material colors for top accent bar
+                const barColors = ['#4A7C3F', '#D4AF37', '#8A8A8A', '#C9A876']; // Grass, Gold, Stone, Sand
+                const barColor = barColors[idx % barColors.length];
+
+                return (
+                  <div 
+                    key={s.label} 
+                    className="relative overflow-hidden rounded-sm bg-[#0D1B2A] border border-white/10 p-4 sm:p-5 shadow-[4px_4px_0px_rgba(212,175,55,0.2)] hover:border-amber-400/40 hover:-translate-x-[1px] hover:-translate-y-[1px] transition-all duration-150"
+                  >
+                    {/* Top Terrain Color Bar */}
+                    <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: barColor }} />
+                    
+                    <div className="font-pixel text-3xl sm:text-4xl font-extrabold text-amber-400 tracking-wider shadow-text-pixel">
+                      <Counter value={s.value} suffix={s.suffix} />
+                    </div>
+                    <p className="font-pixel text-xs text-white/70 mt-1.5 font-medium tracking-wide uppercase">{s.label}</p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -536,16 +570,16 @@ export default function Landing() {
 
       {/* ── Core Features / Trust Indicators ── */}
       <section ref={trustRef} className="relative z-20 -mt-6 sm:-mt-8 mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="bg-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border border-gray-100 p-6 sm:p-8 lg:p-12">
+        <div className="bg-white rounded-sm shadow-[4px_4px_0px_#0A1628] border-2 border-gray-200 p-6 sm:p-8 lg:p-12">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 md:grid-cols-4">
             {TRUST_INDICATORS.map((item, i) => (
               <div key={i} className="trust-item flex flex-col items-center text-center gap-3 sm:gap-4">
-                <div className="trust-icon flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-amber-50/80 border border-amber-200/80 text-amber-700 shadow-sm">
-                  <item.icon className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={1.5} />
+                <div className="trust-icon flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-sm bg-amber-50 border border-amber-200 text-amber-700 shadow-[2px_2px_0px_#0A1628]">
+                  <item.icon className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={1.75} />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900 text-sm sm:text-base mb-1">{item.label}</p>
-                  <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-medium">{item.desc}</p>
+                  <p className="font-bold text-gray-900 text-sm sm:text-base mb-1">{item.label}</p>
+                  <p className="text-xs sm:text-sm text-gray-600 leading-relaxed font-medium">{item.desc}</p>
                 </div>
               </div>
             ))}
@@ -561,10 +595,10 @@ export default function Landing() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
-              className="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-4 py-1.5 mb-4 sm:mb-6"
+              className="inline-flex items-center gap-2 rounded-sm bg-amber-50 border border-amber-300 px-4 py-1.5 mb-4 sm:mb-6 shadow-[2px_2px_0px_#0A1628]"
             >
               <FileText className="h-4 w-4 text-amber-700" />
-              <span className="text-xs sm:text-sm font-semibold text-amber-800 uppercase tracking-wider">The Complete Process</span>
+              <span className="font-pixel text-xs sm:text-sm font-bold text-amber-900 uppercase tracking-widest">The Complete Process</span>
             </motion.div>
             <motion.h2 
               initial={{ opacity: 0, y: 20 }}
@@ -580,7 +614,7 @@ export default function Landing() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ delay: 0.2 }}
-              className="text-gray-500 max-w-xl mx-auto text-base sm:text-lg"
+              className="text-gray-600 max-w-xl mx-auto text-base sm:text-lg"
             >
               From identity verification to blockchain-recorded ownership — a government-grade process, digitized.
             </motion.p>
@@ -631,12 +665,12 @@ export default function Landing() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-50px" }}
                   transition={{ duration: 0.6, delay: i * 0.15, ease: 'easeOut' }}
-                  className={`relative group bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm transition-all duration-300 ${card.shadow} ${card.borderHover}`}
+                  className={`relative group bg-white rounded-sm p-6 sm:p-8 border-2 border-gray-200 shadow-[4px_4px_0px_#0A1628] hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[6px_6px_0px_#0A1628] transition-all duration-200`}
                 >
-                  <div className={`absolute top-0 left-0 w-full h-1 rounded-t-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent`} style={{ '--accent': card.iconBg.includes('green') ? '#15803d' : card.iconBg.includes('blue') ? '#1e40af' : '#b45309' }} />
+                  <div className={`absolute top-0 left-0 w-full h-1 opacity-100 bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent`} style={{ '--accent': card.iconBg.includes('green') ? '#4A7C3F' : card.iconBg.includes('blue') ? '#1E3A5F' : '#D4AF37' }} />
                   
-                  {/* Clean SVG Icon Container (No Emojis) */}
-                  <div className={`w-14 h-14 sm:w-16 sm:h-16 mb-5 sm:mb-6 flex items-center justify-center rounded-2xl border ${card.iconBg} group-hover:scale-110 transition-transform duration-300 ease-out shadow-sm`}>
+                  {/* Clean Icon Container */}
+                  <div className={`w-14 h-14 sm:w-16 sm:h-16 mb-5 sm:mb-6 flex items-center justify-center rounded-sm border ${card.iconBg} shadow-[2px_2px_0px_#0A1628]`}>
                     <RoleIcon className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={1.75} />
                   </div>
 
@@ -645,7 +679,7 @@ export default function Landing() {
                   
                   <Link
                     to={card.link}
-                    className={`mt-auto flex items-center justify-center gap-2 w-full rounded-xl py-3.5 text-sm font-semibold text-white transition-all duration-300 shadow-md ${card.btnColor} group-hover:shadow-lg`}
+                    className={`mt-auto flex items-center justify-center gap-2 w-full rounded-sm py-3.5 font-pixel text-sm font-bold text-white uppercase tracking-wider transition-all duration-150 shadow-[3px_3px_0px_#0A1628] hover:translate-x-[1.5px] hover:translate-y-[1.5px] hover:shadow-[1.5px_1.5px_0px_#0A1628] ${card.btnColor}`}
                   >
                     {card.cta} <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </Link>
@@ -657,11 +691,8 @@ export default function Landing() {
       </section>
 
       {/* ── CTA Banner ── */}
-      <section className="py-16 sm:py-24 px-4 sm:px-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[#0A1628]">
-          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, #1E3A5F 0%, transparent 70%)' }} />
-        </div>
-        <div className="relative mx-auto max-w-3xl text-center z-10">
+      <section className="py-16 sm:py-24 px-4 sm:px-6 relative overflow-hidden bg-[#060D17]">
+        <div className="relative mx-auto max-w-4xl text-center z-10 rounded-sm bg-[#0D1B2A] border border-[#D4AF37]/30 p-8 sm:p-12 shadow-[6px_6px_0px_#060D17]">
           <motion.div 
             initial={{ scale: 0.8, opacity: 0 }}
             whileInView={{ scale: 1, opacity: 1 }}
@@ -695,11 +726,11 @@ export default function Landing() {
             transition={{ delay: 0.3 }}
             className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-5"
           >
-            <Link to="/register" className="flex items-center justify-center gap-2 rounded-lg px-8 py-4 text-base font-semibold text-[#0A1628] hover:shadow-[0_8px_30px_rgba(212,175,55,0.4)] transition-all"
+            <Link to="/register" className="flex items-center justify-center gap-2 rounded-sm px-8 py-4 font-pixel text-base font-bold text-[#0A1628] uppercase tracking-wider shadow-[4px_4px_0px_rgba(212,175,55,0.4)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_rgba(212,175,55,0.6)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-150 border border-[#D4AF37]"
               style={{ background: 'linear-gradient(135deg, #D4AF37, #FDE047)' }}>
               Start Registration <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link to="/login" className="flex items-center justify-center gap-2 rounded-lg border border-white/20 px-8 py-4 text-base font-semibold text-white hover:bg-white/10 transition-all">
+            <Link to="/login" className="flex items-center justify-center gap-2 rounded-sm border-1.5 border-white/30 px-8 py-4 font-pixel text-base font-bold text-white uppercase tracking-wider shadow-[4px_4px_0px_#060D17] hover:bg-white/10 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_#060D17] transition-all duration-150">
               Sign In
             </Link>
           </motion.div>
@@ -735,15 +766,15 @@ const TimelineLine = ({ containerRef }) => {
   });
 
   const scaleY = useSpring(scrollYProgress, {
-    stiffness: 100,
-    damping: 30,
+    stiffness: 120,
+    damping: 25,
     restDelta: 0.001
   });
 
   return (
-    <div className="absolute left-0 md:left-1/2 top-0 bottom-0 w-0.5 bg-gray-200 md:-translate-x-px">
+    <div className="absolute left-[3px] md:left-1/2 top-0 bottom-0 w-1.5 bg-[#0A1628]/20 md:-translate-x-1/2 rounded-full overflow-hidden">
       <motion.div 
-        className="absolute top-0 left-0 w-full bg-gradient-to-b from-amber-400 to-amber-600 origin-top"
+        className="absolute top-0 left-0 w-full bg-gradient-to-b from-amber-400 via-amber-500 to-amber-600 origin-top shadow-[0_0_10px_rgba(212,175,55,0.6)]"
         style={{ scaleY, bottom: 0 }}
       />
     </div>
@@ -753,41 +784,73 @@ const TimelineLine = ({ containerRef }) => {
 const TimelineCard = ({ step, index }) => {
   const isEven = index % 2 === 0;
   const StepIcon = step.icon;
-  
+
+  // Voxel material accent bar colors for each step
+  const stepColors = ['#4A7C3F', '#D4AF37', '#8A8A8A', '#C9A876', '#3A6499']; // Grass, Gold, Stone, Sand, Navy
+  const stepColor = stepColors[index % stepColors.length];
+
   return (
     <motion.div 
-      initial={{ opacity: 0, x: isEven ? -50 : 50 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true, margin: "-20%" }}
-      transition={{ duration: 0.7, ease: [0.215, 0.61, 0.355, 1] }}
+      initial={{ opacity: 0, y: -45, scale: 0.92, rotate: isEven ? -2 : 2 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
+      viewport={{ once: true, margin: "-12%" }}
+      transition={{ 
+        type: 'spring', 
+        stiffness: 280, 
+        damping: 18, 
+        bounce: 0.4,
+        delay: (index % 2) * 0.08
+      }}
       className={`relative flex flex-col md:flex-row items-start md:items-center gap-8 md:gap-0 ${isEven ? 'md:flex-row' : 'md:flex-row-reverse'}`}
     >
-      {/* Connector Dot */}
-      <div className="absolute left-[-33px] md:left-1/2 top-6 md:top-1/2 md:-translate-y-1/2 w-4 h-4 rounded-full bg-white border-4 border-gray-200 md:-translate-x-2 z-10" />
+      {/* LEGO Stud Center Node */}
       <motion.div 
-        initial={{ scale: 0 }}
-        whileInView={{ scale: 1 }}
-        viewport={{ once: true, margin: "-20%" }}
-        transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
-        className="absolute left-[-33px] md:left-1/2 top-6 md:top-1/2 md:-translate-y-1/2 w-4 h-4 rounded-full bg-amber-500 md:-translate-x-2 z-20 shadow-[0_0_15px_rgba(245,158,11,0.5)]" 
-      />
+        initial={{ scale: 0, rotate: 45 }}
+        whileInView={{ scale: 1, rotate: 0 }}
+        viewport={{ once: true, margin: "-12%" }}
+        transition={{ type: 'spring', stiffness: 400, damping: 15, delay: (index % 2) * 0.08 + 0.12 }}
+        className="absolute left-[-28px] md:left-1/2 top-6 md:top-1/2 md:-translate-y-1/2 w-6 h-6 rounded-sm bg-amber-400 border-2 border-[#0A1628] md:-translate-x-3 z-20 shadow-[3px_3px_0px_#0A1628] flex items-center justify-center" 
+      >
+        <div className="w-2 h-2 rounded-full bg-[#0A1628]" />
+      </motion.div>
 
-      {/* Card Content */}
+      {/* Card Content - LEGO Brick Module */}
       <div className={`w-full md:w-1/2 ${isEven ? 'md:pr-16' : 'md:pl-16'}`}>
-        <div className="bg-white p-8 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-shadow duration-300 group">
-          <div className="flex items-center justify-between mb-4">
-            <span className="font-mono text-5xl font-black text-gray-100 group-hover:text-amber-100/50 transition-colors duration-300 absolute top-4 right-6 pointer-events-none">{step.step}</span>
-            <div className="flex items-center gap-3 relative z-10">
-              <div className="bg-amber-50 text-amber-700 w-12 h-12 flex items-center justify-center rounded-xl border border-amber-200/70 shadow-sm">
-                <StepIcon className="h-6 w-6" strokeWidth={1.75} />
-              </div>
-              <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${step.actorStyle}`}>
-                {step.actor}
-              </span>
+        <div className="relative group bg-white rounded-sm p-6 sm:p-8 border-2 border-[#0A1628] shadow-[5px_5px_0px_#0A1628] hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[7px_7px_0px_#0A1628] transition-all duration-200 overflow-hidden">
+          {/* Top Terrain Color Bar */}
+          <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: stepColor }} />
+
+          {/* LEGO Studs Row & Actor Tag */}
+          <div className="flex items-center justify-between gap-2 mb-4 pt-1">
+            <div className="flex gap-1.5">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="w-2.5 h-2.5 rounded-full bg-amber-400 border border-[#0A1628]/40 shadow-inner" />
+              ))}
             </div>
+            <span className={`font-pixel text-xs font-bold px-2.5 py-0.5 rounded-sm border border-[#0A1628]/30 shadow-[1.5px_1.5px_0px_#0A1628] uppercase tracking-wider ${step.actorStyle}`}>
+              {step.actor}
+            </span>
           </div>
-          <h3 className="font-serif text-2xl font-bold text-gray-900 mb-3 relative z-10">{step.title}</h3>
-          <p className="text-gray-500 leading-relaxed relative z-10">{step.desc}</p>
+
+          <div className="flex items-start justify-between gap-4 mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-sm bg-amber-50 border-2 border-[#0A1628] text-amber-700 shadow-[2px_2px_0px_#0A1628] flex items-center justify-center shrink-0">
+                <StepIcon className="h-5 w-5" strokeWidth={2} />
+              </div>
+              <h3 className="font-pixel text-lg sm:text-xl font-bold text-[#0A1628] uppercase tracking-wide leading-tight">
+                {step.title}
+              </h3>
+            </div>
+            
+            {/* Retro Score Step Number */}
+            <span className="font-pixel text-4xl sm:text-5xl font-black text-amber-400 group-hover:text-amber-500 transition-colors duration-200 shrink-0 pointer-events-none" style={{ textShadow: '2px 2px 0px #0A1628' }}>
+              {step.step}
+            </span>
+          </div>
+
+          <p className="font-pixel text-xs sm:text-sm text-gray-700 leading-relaxed tracking-wide">
+            {step.desc}
+          </p>
         </div>
       </div>
     </motion.div>

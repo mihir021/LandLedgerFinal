@@ -28,7 +28,7 @@ export default function DashboardCard({ icon: Icon, label, value, color = 'navy'
           )}
         </div>
         {Icon && (
-          <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${c.bg} border ${c.border}`}>
+          <div className={`flex h-11 w-11 items-center justify-center rounded-sm ${c.bg} border ${c.border} shadow-[2px_2px_0px_#0A1628]`}>
             <Icon className={`h-5 w-5 ${c.icon}`} />
           </div>
         )}

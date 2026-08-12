@@ -59,19 +59,19 @@ export default function Navbar() {
 
         {/* Premium Institutional Logo */}
         <Link to="/" className="flex items-center gap-3 shrink-0 group" onClick={() => setMobileOpen(false)}>
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-[#0A1628] border border-amber-500/40 shadow-sm group-hover:border-amber-400 group-hover:shadow-[0_0_15px_rgba(212,175,55,0.25)] transition-all duration-300 group-hover:scale-105">
+          <div className="relative flex h-10 w-10 items-center justify-center rounded-sm bg-[#0A1628] border border-amber-500/50 shadow-[2px_2px_0px_#0A1628] group-hover:border-amber-400 transition-all duration-200">
             <ShieldCheck className="h-5 w-5 text-amber-400 transition-transform duration-300 group-hover:scale-110" />
             <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-sm bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-sm h-2.5 w-2.5 bg-amber-500"></span>
             </span>
           </div>
           <div className="flex flex-col">
             <div className="flex items-center">
-              <span className="text-xl font-extrabold text-[#0A1628] font-serif tracking-tight">Land</span>
-              <span className="text-xl font-extrabold text-amber-600 font-serif tracking-tight">Ledger</span>
+              <span className="text-xl font-black text-[#0A1628] font-pixel tracking-wider uppercase">Land</span>
+              <span className="text-xl font-black text-amber-600 font-pixel tracking-wider uppercase">Ledger</span>
             </div>
-            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest leading-none">Govt. Registry</span>
+            <span className="text-[10px] font-bold text-gray-500 font-pixel uppercase tracking-widest leading-none mt-0.5">Govt. Registry</span>
           </div>
         </Link>
 
@@ -99,13 +99,13 @@ export default function Navbar() {
             <>
               <Link
                 to="/login"
-                className="text-sm font-medium text-gray-700 hover:text-gray-950 px-4 py-2 rounded-lg hover:bg-gray-100/70 transition-all duration-200"
+                className="font-pixel text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-800 hover:text-gray-950 px-4 py-2 rounded-sm hover:bg-gray-100 transition-all duration-150"
               >
                 Sign In
               </Link>
               <Link
                 to="/register"
-                className="group flex items-center gap-2 rounded-xl bg-[#0A1628] px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-[#14233c] hover:shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                className="group flex items-center gap-2 rounded-sm bg-[#0A1628] px-5 py-2.5 font-pixel text-xs sm:text-sm font-bold text-white uppercase tracking-wider border border-amber-500/30 shadow-[3px_3px_0px_rgba(212,175,55,0.35)] hover:translate-x-[1.5px] hover:translate-y-[1.5px] hover:shadow-[1.5px_1.5px_0px_rgba(212,175,55,0.5)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none transition-all duration-150"
               >
                 <span>Get Started</span>
                 <ArrowRight className="h-4 w-4 text-amber-400 group-hover:translate-x-0.5 transition-transform" />
@@ -117,12 +117,12 @@ export default function Navbar() {
               {(user?.role === 'buyer' || user?.role === 'seller' || user?.role === 'both') && (
                 <Link
                   to={notificationRoute}
-                  className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-blue-800 transition-colors"
+                  className="relative flex h-9 w-9 items-center justify-center rounded-sm border border-gray-300 bg-gray-50 text-gray-700 shadow-[2px_2px_0px_#0A1628] hover:bg-blue-50 hover:text-blue-800 transition-all"
                   title="Notifications"
                 >
                   <Bell className="h-4 w-4" />
                   {unreadCount > 0 && (
-                    <span className="absolute -right-1 -top-1 min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center font-bold">
+                    <span className="absolute -right-1 -top-1 min-w-4 h-4 px-1 rounded-sm bg-red-600 text-white text-[10px] leading-4 text-center font-bold">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
@@ -131,9 +131,9 @@ export default function Navbar() {
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(o => !o)}
-                  className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-1.5 text-sm text-gray-800 hover:bg-gray-100 transition-colors"
+                  className="flex items-center gap-2 rounded-sm border border-gray-300 bg-gray-50 px-3 py-1.5 text-sm text-gray-800 shadow-[2px_2px_0px_#0A1628] hover:bg-gray-100 transition-all"
                 >
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-gray-950">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-amber-500 text-xs font-bold text-gray-950">
                     {initials}
                   </div>
                   <div className="text-left">
@@ -144,7 +144,7 @@ export default function Navbar() {
                 </button>
 
                 {userMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2 z-50 w-52 rounded-xl bg-white border border-gray-100 shadow-xl py-1 animate-fade-in">
+                  <div className="absolute right-0 top-full mt-2 z-50 w-52 rounded-sm bg-white border border-gray-200 shadow-[4px_4px_0px_#0A1628] py-1 animate-fade-in">
                     <Link
                       to="/profile"
                       onClick={() => setUserMenuOpen(false)}

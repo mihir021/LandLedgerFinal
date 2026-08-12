@@ -2,16 +2,17 @@
    LandLedger Design System — Light Government-Fintech Theme
    ===================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Pixelify+Sans:wght@400;500;600;700&family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap');
 
 @import "tailwindcss";
 
 /* ===== Custom Theme Tokens ===== */
 @theme {
-  /* Typography */
-  --font-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Typography — Global LEGO Voxel Pixelify Sans */
+  --font-serif: 'Pixelify Sans', 'Fraunces', Georgia, serif;
+  --font-sans: 'Pixelify Sans', 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  --font-pixel: 'Pixelify Sans', 'Silkscreen', 'Press Start 2P', monospace;
 
   /* Background scale */
   --color-surface-0: #FFFFFF;
@@ -65,6 +66,12 @@
   --color-red-100: #F8D7DA;
   --color-red-50: #FEF1F3;
 
+  /* Voxel Terrain Material Accents (Grass, Stone, Sand) */
+  --color-voxel-grass: #4A7C3F;
+  --color-voxel-stone: #8A8A8A;
+  --color-voxel-sand: #C9A876;
+  --color-voxel-dark: #060D17;
+
   /* Text */
   --color-text-primary: #1F2937;
   --color-text-secondary: #4B5563;
@@ -90,7 +97,8 @@
   }
 
   body {
-    font-family: var(--font-sans);
+    font-family: var(--font-pixel);
+    letter-spacing: 0.04em;
     background-color: var(--color-surface-1);
     color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;
@@ -98,9 +106,9 @@
     line-height: 1.6;
   }
 
-  h1, h2, h3 {
-    font-family: var(--font-serif);
-    letter-spacing: -0.01em;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-pixel);
+    letter-spacing: 0.05em;
   }
 
   code, .mono, [data-mono] {
@@ -110,7 +118,7 @@
   /* Custom scrollbar — light */
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: var(--color-surface-2); }
-  ::-webkit-scrollbar-thumb { background: var(--color-surface-4); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb { background: var(--color-surface-4); border-radius: 2px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--color-navy-300); }
 
   input, textarea, select {
@@ -173,97 +181,119 @@
   .delay-600 { animation-delay: 600ms; }
   .delay-700 { animation-delay: 700ms; }
 
-  /* Card — core reusable surface */
-  .ll-card, .glass-card {
+  /* LEGO Voxel Brick Card — core surface */
+  .ll-card, .glass-card, .voxel-card {
+    position: relative;
     background: var(--color-surface-0);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
-    box-shadow: 0 1px 4px rgba(30, 58, 95, 0.06), 0 2px 12px rgba(30, 58, 95, 0.04);
+    border: 1.5px solid var(--color-border-strong);
+    border-radius: 4px; /* Blocky LEGO edge */
+    box-shadow: 4px 4px 0px #0A1628; /* Hard brick offset shadow */
+  }
+
+  .voxel-card-dark {
+    position: relative;
+    background: #0F1F3D;
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    border-radius: 4px;
+    box-shadow: 4px 4px 0px rgba(212, 175, 55, 0.2);
   }
 
   .ll-card-hover {
-    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s ease;
   }
   .ll-card-hover:hover {
-    box-shadow: 0 4px 20px rgba(30, 58, 95, 0.12), 0 1px 4px rgba(30, 58, 95, 0.08);
-    border-color: var(--color-navy-200);
-    transform: translateY(-1px);
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0px #0A1628;
+    border-color: var(--color-navy-800);
   }
 
-  /* Section card with slight texture */
-  .ll-section {
-    background: var(--color-surface-0);
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(30, 58, 95, 0.05);
-  }
+  /* Terrain Material Accent Top Bar */
+  .voxel-bar-grass::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: #4A7C3F; }
+  .voxel-bar-gold::before  { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: #D4AF37; }
+  .voxel-bar-stone::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: #8A8A8A; }
+  .voxel-bar-sand::before  { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: #C9A876; }
 
-  /* Primary button */
+  /* Primary Navy Button with Tactile Brick Press Physics */
   .btn-primary {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
     background: var(--color-navy-800);
     color: white;
     font-weight: 600;
     font-size: 0.875rem;
     padding: 0.625rem 1.25rem;
-    border-radius: 8px;
-    border: none;
+    border-radius: 3px; /* Blocky squared corner */
+    border: 1px solid var(--color-navy-950);
     cursor: pointer;
-    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
-    box-shadow: 0 1px 3px rgba(30,58,95,0.3), 0 0 0 0 rgba(30,58,95,0);
+    box-shadow: 3px 3px 0px var(--color-navy-950);
+    transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translate(0, 0);
   }
   .btn-primary:hover {
     background: var(--color-navy-700);
-    box-shadow: 0 4px 12px rgba(30,58,95,0.25);
-    transform: translateY(-1px);
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0px var(--color-navy-950);
   }
-  .btn-primary:active { transform: translateY(0); }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-primary:active {
+    transform: translate(3px, 3px);
+    box-shadow: 0px 0px 0px var(--color-navy-950);
+  }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
-  /* Secondary button */
+  /* Secondary Button */
   .btn-secondary {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
-    background: transparent;
-    color: var(--color-navy-800);
+    background: var(--color-surface-0);
+    color: var(--color-navy-900);
     font-weight: 600;
     font-size: 0.875rem;
     padding: 0.625rem 1.25rem;
-    border-radius: 8px;
-    border: 1.5px solid var(--color-navy-300);
+    border-radius: 3px;
+    border: 1.5px solid var(--color-navy-800);
     cursor: pointer;
-    transition: all 0.2s ease;
+    box-shadow: 3px 3px 0px var(--color-navy-800);
+    transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translate(0, 0);
   }
   .btn-secondary:hover {
     background: var(--color-navy-50);
-    border-color: var(--color-navy-500);
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0px var(--color-navy-800);
   }
 
-  /* Gold / official action button */
+  /* Gold Tactile Action Button */
   .btn-gold {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
-    background: var(--color-gold-600);
-    color: white;
-    font-weight: 600;
+    background: linear-gradient(135deg, #D4AF37, #FDE047);
+    color: #0A1628;
+    font-weight: 700;
     font-size: 0.875rem;
     padding: 0.625rem 1.25rem;
-    border-radius: 8px;
-    border: none;
+    border-radius: 3px; /* Blocky corner */
+    border: 1px solid #D4AF37;
     cursor: pointer;
-    transition: background 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 1px 3px rgba(201,162,39,0.4);
+    box-shadow: 4px 4px 0px rgba(212, 175, 55, 0.35);
+    transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translate(0, 0);
   }
   .btn-gold:hover {
-    background: var(--color-gold-700);
-    box-shadow: 0 4px 12px rgba(201,162,39,0.35);
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px rgba(212, 175, 55, 0.5);
+  }
+  .btn-gold:active {
+    transform: translate(4px, 4px);
+    box-shadow: 0px 0px 0px rgba(212, 175, 55, 0);
   }
 
-  /* Danger button */
+  /* Danger Button */
   .btn-danger {
     display: inline-flex;
     align-items: center;
@@ -273,46 +303,57 @@
     font-weight: 600;
     font-size: 0.875rem;
     padding: 0.625rem 1.25rem;
-    border-radius: 8px;
-    border: none;
+    border-radius: 3px;
+    border: 1px solid var(--color-red-700);
     cursor: pointer;
-    transition: background 0.2s ease;
+    box-shadow: 3px 3px 0px var(--color-red-700);
+    transition: all 0.12s ease;
   }
-  .btn-danger:hover { background: var(--color-red-700); }
+  .btn-danger:hover {
+    background: var(--color-red-700);
+    transform: translate(1.5px, 1.5px);
+    box-shadow: 1.5px 1.5px 0px var(--color-red-700);
+  }
 
-  /* Success / green button */
+  /* Success Button */
   .btn-success {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    background: var(--color-green-600);
+    background: #4A7C3F;
     color: white;
     font-weight: 600;
     font-size: 0.875rem;
     padding: 0.625rem 1.25rem;
-    border-radius: 8px;
-    border: none;
+    border-radius: 3px;
+    border: 1px solid #37612E;
     cursor: pointer;
-    transition: background 0.2s ease;
+    box-shadow: 3px 3px 0px #37612E;
+    transition: all 0.12s ease;
   }
-  .btn-success:hover { background: var(--color-green-700); }
+  .btn-success:hover {
+    background: #37612E;
+    transform: translate(1.5px, 1.5px);
+    box-shadow: 1.5px 1.5px 0px #37612E;
+  }
 
-  /* Input field */
+  /* Blocky Input Field */
   .ll-input {
     width: 100%;
     padding: 0.625rem 0.875rem;
     border: 1.5px solid var(--color-border-strong);
-    border-radius: 8px;
+    border-radius: 3px; /* Blocky corner */
     font-size: 0.875rem;
     font-family: var(--font-sans);
     color: var(--color-text-primary);
     background: var(--color-surface-0);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 2px 2px 0px rgba(10, 22, 40, 0.15);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
     outline: none;
   }
   .ll-input:focus {
     border-color: var(--color-navy-800);
-    box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.08);
+    box-shadow: 3px 3px 0px var(--color-navy-800);
   }
   .ll-input::placeholder { color: var(--color-text-light); }
 
@@ -366,6 +407,14 @@
   /* Serif heading utility */
   .font-serif { font-family: var(--font-serif); }
   .font-mono  { font-family: var(--font-mono);  }
+  .font-pixel {
+    font-family: var(--font-pixel);
+    letter-spacing: 0.06em;
+  }
+
+  .shadow-text-pixel {
+    text-shadow: 2px 2px 0px rgba(212, 175, 55, 0.4);
+  }
 
   /* Mono data display */
   .mono-data {
@@ -409,5 +458,53 @@
   .actor-seller   { background: var(--color-navy-100);  color: var(--color-navy-800);  }
   .actor-officer  { background: var(--color-gold-100);  color: var(--color-gold-700);  }
   .actor-buyer    { background: var(--color-green-100); color: var(--color-green-700); }
+
+  /* ===== Block Design System Input Slots & Micro-animations ===== */
+  .ll-input-brick {
+    width: 100%;
+    border-radius: 4px;
+    border: 2px solid #0A1628;
+    background-color: #FFFFFF;
+    padding: 0.625rem 0.875rem;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    color: #0A1628;
+    outline: none;
+    transition: all 150ms ease-out;
+    box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.06);
+  }
+
+  .ll-input-brick:focus {
+    border-color: #D4AF37;
+    background-color: #FFFDF5;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.12), 0 0 0 2px rgba(212, 175, 55, 0.3);
+  }
+
+  /* Idle bob animation for badges */
+  @keyframes idleBob {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
+  }
+
+  .animate-idle-bob {
+    animation: idleBob 3s ease-in-out infinite;
+  }
+
+  /* Click pop animation */
+  @keyframes clickPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
+  .animate-click-pop {
+    animation: clickPop 200ms ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-idle-bob, .animate-click-pop {
+      animation: none !important;
+    }
+  }
   .actor-chain    { background: var(--color-surface-3); color: var(--color-text-secondary); font-family: var(--font-mono); }
 }

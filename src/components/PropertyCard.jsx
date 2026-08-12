@@ -69,7 +69,7 @@ export default function PropertyCard({ property, delay = 0 }) {
         />
         {/* Type badge overlay */}
         <div className="absolute top-2 left-2">
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${TYPE_COLORS[propTypeKey]}`}>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-sm capitalize border border-gray-200/50 shadow-[1.5px_1.5px_0px_#0A1628] ${TYPE_COLORS[propTypeKey]}`}>
             {propType}
           </span>
         </div>
