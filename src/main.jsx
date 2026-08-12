@@ -13,6 +13,7 @@ import { WagmiProvider } from 'wagmi';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { web3Config } from './config/web3';
 
+
 const queryClient = new QueryClient();
 
 createRoot(document.getElementById('root')).render(
