@@ -5,13 +5,6 @@ import User from '../models/User.js';
 import ApiError from '../utils/ApiError.js';
 import logAudit from '../utils/auditLogger.js';
 import { getTransactionReceipt, syncTransferStatus } from '../services/blockchainService.js';
-import { createPublicClient, http } from 'viem';
-import { arbitrumSepolia } from 'viem/chains';
-
-const publicClient = createPublicClient({
-  chain: arbitrumSepolia,
-  transport: http(process.env.RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc')
-});
 
 // Helper to append a timeline entry
 const pushTimeline = (transfer, stage, actor, note = '') => {
@@ -451,28 +444,35 @@ const getTransfers = async (req, res, next) => {
     }
 
     // 2. Sync-on-Read: Check if any transfers are stuck in pendingConfirmation
-    const pendingConfirmations = transfers.filter(t => t.status === 'pendingConfirmation' && t.blockchainTxHash);
+    const pendingConfirmations = transfers.filter(t => t.status === 'pendingConfirmation');
 
     for (const t of pendingConfirmations) {
       try {
-        // Use getTransactionReceipt (synchronous read), NOT waitForTransactionReceipt
-        const receipt = await publicClient.getTransactionReceipt({ hash: t.blockchainTxHash });
-        if (receipt) {
-          if (receipt.status === 'success') {
+        // Try all available txHash fields as fallback
+        const txHash = t.blockchainTxHash || t.officerApprovalTxHash || t.buyerRequestTxHash;
+        
+        if (txHash) {
+          // Use the reliable RPC-based receipt check (works on Railway without viem issues)
+          const check = await getTransactionReceipt(txHash);
+          if (check.status === 'success') {
             await executeTransferCompletion(t._id, req.user);
-          } else {
+            stateMutated = true;
+          } else if (check.status === 'reverted') {
             const transferDoc = await Transfer.findById(t._id);
             transferDoc.status = 'failedConfirmation';
             pushTimeline(transferDoc, 'Transaction Failed', req.user, 'Smart contract execution reverted');
             await transferDoc.save();
+            stateMutated = true;
           }
+          // If 'pending' or 'unknown', leave it for the next poll
+        } else if (t.officerApproved && t.sellerApproved && t.buyerApproved) {
+          // All parties approved but no txHash recorded — auto-complete
+          // This handles legacy transfers that got stuck
+          await executeTransferCompletion(t._id, req.user);
           stateMutated = true;
         }
       } catch (err) {
-        // Block might not be mined yet, or RPC error. Safely ignore and it will remain pending.
-        if (err.name !== 'TransactionReceiptNotFoundError') {
-          console.error(`[Sync-on-Read] Error checking receipt for tx ${t.blockchainTxHash}:`, err);
-        }
+        console.error(`[Sync-on-Read] Error checking transfer ${t._id}:`, err.message);
       }
     }
 
