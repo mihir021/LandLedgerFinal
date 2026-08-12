@@ -99,27 +99,41 @@ export default function OfficerDashboard() {
       if (isApprove) {
         const prop = pendingProperties.find(p => p._id === propModal.id);
         const parcelId = prop?.blockchain?.parcelId || prop?.blockchainPropertyId || prop?.surveyNumber || prop?.propertyId || propModal.id;
-        
-        if (isConnected && walletAddress) {
-          try {
-            toast.info('Confirm property verification in wallet...');
-            const feeOverrides = await getSafeFeeOverrides(publicClient);
-            txHash = await writeContractAsync({
-              address: CONTRACT_ADDRESS,
-              abi: LandLedgerABI,
-              functionName: 'verifyLand',
-              args: [parcelId],
-              ...feeOverrides,
-            });
-            toast.info(`Verification submitted: ${txHash}. Waiting for on-chain confirmation...`);
-            const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-            if (receipt.status !== 'success') {
-              console.warn('On-chain land verification transaction reverted or failed.');
-            }
-          } catch (contractErr) {
-            console.warn('Smart contract verification bypassed:', contractErr.message);
-            toast.info('On-chain verification bypassed (non-admin wallet). Approving in database...');
-          }
+        if (!isConnected || !walletAddress) {
+          throw new Error('Connect the registry-admin wallet before verifying a property.');
+        }
+        if (REGISTRY_ADMIN_ADDRESS && walletAddress.toLowerCase() !== REGISTRY_ADMIN_ADDRESS) {
+          throw new Error('Wrong officer wallet. Switch MetaMask to the contract deployer wallet.');
+        }
+
+        // Preflight avoids MetaMask's misleading "Network fee unavailable"
+        // message when this database property was never registered on the
+        // currently configured contract.
+        const land = await publicClient.readContract({
+          address: CONTRACT_ADDRESS,
+          abi: LandLedgerABI,
+          functionName: 'getLand',
+          args: [parcelId],
+        });
+        if (!land?.[0] || land[0].toLowerCase() === '0x0000000000000000000000000000000000000000') {
+          throw new Error(`Parcel "${parcelId}" is not registered on the current contract. Register this property again with the seller wallet first.`);
+        }
+        if (land[3]) {
+          throw new Error('This parcel is already verified on-chain. Refresh the dashboard.');
+        }
+
+        toast.info('Confirm property verification in wallet...');
+        const feeOverrides = await getSafeFeeOverrides(publicClient);
+        txHash = await writeContractAsync({
+          address: CONTRACT_ADDRESS,
+          abi: LandLedgerABI,
+          functionName: 'verifyLand',
+          args: [parcelId],
+          ...feeOverrides,
+        });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+        if (receipt.status !== 'success') {
+          throw new Error('Property-verification transaction reverted. Database verification was not recorded.');
         }
         
         await verifyProperty(propModal.id, 'Verified', txHash);
