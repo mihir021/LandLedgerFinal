@@ -31,7 +31,7 @@ router.post('/buyer-approve', authorize('buyer'), validateTransferAction, buyerA
 // Officer approves
 router.post(
   '/officer-approve',
-  authorize('officer', 'admin'),
+  authorize('officer', 'admin', 'registrar'),
   validateTransferAction,
   officerApprove
 );
@@ -39,7 +39,7 @@ router.post(
 // Officer / Admin completes
 router.post(
   '/complete',
-  authorize('officer', 'admin'),
+  authorize('officer', 'admin', 'registrar'),
   validateTransferAction,
   completeTransfer
 );
