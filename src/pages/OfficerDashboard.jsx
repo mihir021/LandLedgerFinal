@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, ShieldCheck, ArrowLeftRight, MessageSquare, Check, X, Loader2, Send, ArrowRight, Scale, Search } from 'lucide-react';
+import { Users, ShieldCheck, ArrowLeftRight, MessageSquare, Check, X, Loader2, Send, ArrowRight, Scale, Search, Eye } from 'lucide-react';
 import DashboardCard from '../components/DashboardCard';
 import StatusBadge from '../components/StatusBadge';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -278,6 +278,13 @@ export default function OfficerDashboard() {
                       <p className="text-xs text-gray-500">Owner: {p.ownerId?.name || p.ownerId?.fullName || '—'} · {p.landDetails?.landType || 'Unknown'}</p>
                     </div>
                     <div className="flex gap-2 shrink-0">
+                      <Link
+                        to={`/property/${p._id}`}
+                        className="flex items-center gap-1 rounded-lg bg-blue-50 border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+                        title="View Property"
+                      >
+                        <Eye className="h-3.5 w-3.5" /> View Property
+                      </Link>
                       <button
                         onClick={() => setPropModal({ open: true, id: p._id, status: 'Verified', name: `${p.location?.district || p.location?.surveyNumber}, ${p.location?.city}` })}
                         disabled={actionLoading === p._id}
