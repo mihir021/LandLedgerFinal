@@ -3,7 +3,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, ShieldCheck, ArrowLeftRight, Home, ArrowRight, Activity, Loader2, CheckCircle2, FileClock, UserPlus, X } from 'lucide-react';
+import { Users, ShieldCheck, ArrowLeftRight, Home, ArrowRight, Activity, Loader2, CheckCircle2, FileClock, UserPlus, X, Eye } from 'lucide-react';
 import DashboardCard from '../components/DashboardCard';
 import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
@@ -174,8 +174,8 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <StatusBadge status="pending" />
-                    <Link to="/admin/properties" className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-700">
-                      <ArrowRight className="h-3.5 w-3.5" />
+                    <Link to={`/property/${p._id}`} className="flex items-center gap-1 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-lg px-2.5 py-1 transition-colors" title="View Property">
+                      <Eye className="h-3.5 w-3.5" /> View Property
                     </Link>
                   </div>
                 </div>

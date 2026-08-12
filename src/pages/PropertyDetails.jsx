@@ -4,13 +4,27 @@
  * Fetches data from the backend API.
  */
 import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   FiMapPin, FiMaximize, FiTag, FiUser, FiCalendar,
   FiFileText, FiShield, FiArrowLeft, FiShoppingCart, FiCopy,
-  FiLoader, FiAlertCircle, FiClock, FiMessageSquare, FiX, FiFlag, FiMap, FiShare2, FiHeart, FiCheckCircle
+  FiLoader, FiAlertCircle, FiClock, FiMessageSquare, FiX, FiFlag, FiMap, FiShare2, FiHeart, FiCheckCircle,
+  FiExternalLink, FiInfo, FiDownload
 } from 'react-icons/fi';
-import { ShieldCheck, Activity, Map as MapIcon, Key, FileText, ArrowRight, UserCheck, Phone, Mail, ChevronRight } from 'lucide-react';
+import { ShieldCheck, Activity, Map as MapIcon, Key, FileText, ArrowRight, UserCheck, Phone, Mail, ChevronRight, Eye } from 'lucide-react';
+
+/** Helper function to safely resolve document URLs (Cloudinary or local upload) */
+const getDocUrl = (doc) => {
+  if (!doc) return null;
+  const rawUrl = typeof doc === 'object' ? (doc?.url || doc?.path) : doc;
+  if (!rawUrl || typeof rawUrl !== 'string') return null;
+  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) return rawUrl;
+  if (rawUrl.startsWith('/')) return rawUrl;
+  if (rawUrl.startsWith('uploads/') || rawUrl.startsWith('uploads\\')) {
+    return `/${rawUrl.replace(/\\/g, '/')}`;
+  }
+  return `/uploads/documents/${rawUrl.replace(/\\/g, '/')}`;
+};
 import { SiBlockchaindotcom } from 'react-icons/si';
 import { QRCodeSVG } from 'qrcode.react';
 import StatusBadge from '../components/StatusBadge';
@@ -45,6 +59,21 @@ export default function PropertyDetails() {
   const [purchasing, setPurchasing] = useState(false);
   const [purchaseStep, setPurchaseStep] = useState(null);
   const [existingTransfer, setExistingTransfer] = useState(null);
+
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => {
+    if (location.hash === '#documents' || location.search.includes('tab=documents')) {
+      return 'documents';
+    }
+    return 'overview';
+  });
+  const [previewDoc, setPreviewDoc] = useState(null);
+
+  useEffect(() => {
+    if (location.hash === '#documents' || location.search.includes('tab=documents')) {
+      setActiveTab('documents');
+    }
+  }, [location]);
 
   // INR / Crypto toggle — session-only, defaults to INR
   const [paymentMode, setPaymentMode] = useState('INR');
@@ -422,8 +451,62 @@ export default function PropertyDetails() {
             </div>
           </div>
 
+          {/* Navigation Tabs */}
+          <div className="border-b border-gray-200 bg-white rounded-xl p-1.5 shadow-sm border border-gray-100 flex flex-wrap gap-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab('overview')}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                activeTab === 'overview'
+                  ? 'bg-blue-800 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              <FiInfo className="h-4 w-4" /> Overview
+            </button>
+            <button
+              type="button"
+              id="documents-tab"
+              onClick={() => setActiveTab('documents')}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                activeTab === 'documents'
+                  ? 'bg-blue-800 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              <FiFileText className="h-4 w-4" /> Documents Tab
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${
+                activeTab === 'documents' ? 'bg-white text-blue-900' : 'bg-blue-100 text-blue-800'
+              }`}>
+                {documents.length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('blockchain')}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                activeTab === 'blockchain'
+                  ? 'bg-blue-800 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              <SiBlockchaindotcom className="h-4 w-4" /> Blockchain & History
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('all')}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                activeTab === 'all'
+                  ? 'bg-blue-800 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              <FiMaximize className="h-4 w-4" /> All Sections
+            </button>
+          </div>
+
           {/* Location Map */}
-          {(property.latitude && property.longitude) && (
+          {(activeTab === 'overview' || activeTab === 'all') && (property.latitude && property.longitude) && (
             <div className="ll-card p-6 animate-fade-in-up delay-150">
               <div className="flex items-center gap-2 mb-4">
                 <FiMap className="h-5 w-5 text-blue-900" />
@@ -437,30 +520,106 @@ export default function PropertyDetails() {
             </div>
           )}
 
-          {/* Documents */}
-          <div className="ll-card p-6 animate-fade-in-up delay-200">
-            <div className="flex items-center gap-2 mb-4">
-              <FiFileText className="h-5 w-5 text-blue-900" />
-              <h2 className="text-lg font-bold font-serif text-gray-900">Documents</h2>
-            </div>
-            {documents.length > 0 ? (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {documents.map((doc, i) => {
-                  const url = typeof doc === 'string' ? doc : doc.url;
-                  const fileName = url ? url.split(/[/\\]/).pop() : `Document ${i+1}`;
-                  return (
-                    <div key={i} className="flex items-center gap-3 rounded-xl bg-gray-50 px-4 py-3 border border-gray-200">
-                      <FiFileText className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm font-medium text-gray-800 truncate">{fileName}</span>
-                      <span className="ml-auto rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">Uploaded</span>
-                    </div>
-                  );
-                })}
+          {/* Documents Tab */}
+          {(activeTab === 'documents' || activeTab === 'overview' || activeTab === 'all') && (
+            <div className={`ll-card p-6 animate-fade-in-up delay-200 ${activeTab === 'documents' ? 'ring-2 ring-blue-500/20' : ''}`}>
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <FiFileText className="h-5 w-5 text-blue-900" />
+                    <h2 className="text-lg font-bold font-serif text-gray-900">Property Documents</h2>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Official property deeds, survey maps, and government verification records.
+                  </p>
+                </div>
+                {documents.length > 0 && (
+                  <span className="rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-800">
+                    {documents.length} {documents.length === 1 ? 'Document' : 'Documents'} Available
+                  </span>
+                )}
               </div>
-            ) : (
-              <p className="text-sm text-gray-500">No documents uploaded yet.</p>
-            )}
-          </div>
+
+              {documents.length > 0 ? (
+                <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2">
+                  {documents.map((doc, i) => {
+                    const rawUrl = typeof doc === 'string' ? doc : (doc?.url || doc?.path || '');
+                    const docUrl = getDocUrl(rawUrl) || getImgUrl(rawUrl) || rawUrl;
+                    const docType = typeof doc === 'object' && doc?.type ? doc.type : 'Legal Document';
+                    const docName = typeof doc === 'object' && (doc?.name || doc?.title)
+                      ? (doc.name || doc.title)
+                      : (rawUrl ? rawUrl.split(/[/\\]/).pop() : `Property_Document_${i + 1}.pdf`);
+
+                    const isCloudinary = rawUrl.includes('cloudinary') || rawUrl.startsWith('http');
+                    const isPdf = rawUrl.toLowerCase().endsWith('.pdf') || docType.toLowerCase().includes('deed') || docType.toLowerCase().includes('tax');
+                    const isImg = rawUrl.toLowerCase().match(/\.(jpg|jpeg|png|webp|gif)$/);
+
+                    return (
+                      <div key={i} className="flex flex-col justify-between rounded-xl bg-gray-50/80 p-4 border border-gray-200/80 hover:border-blue-300 hover:shadow-sm transition-all">
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="rounded-md bg-blue-100 text-blue-900 text-[11px] font-bold px-2.5 py-0.5">
+                                {docType}
+                              </span>
+                              <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                Verified Record
+                              </span>
+                            </div>
+                            {isCloudinary && (
+                              <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded" title="Cloudinary Secured Storage">
+                                Cloud
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-start gap-3 mt-3">
+                            <div className={`p-3 rounded-lg shrink-0 ${isPdf ? 'bg-red-50 text-red-700 border border-red-100' : isImg ? 'bg-purple-50 text-purple-700 border border-purple-100' : 'bg-blue-50 text-blue-800 border border-blue-100'}`}>
+                              <FiFileText className="h-5 w-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-sm font-semibold text-gray-900 truncate" title={docName}>
+                                {docName}
+                              </h3>
+                              <p className="text-xs text-gray-500 mt-0.5 truncate">
+                                {isPdf ? 'PDF Document' : isImg ? 'Image File' : 'Official Registry Document'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-gray-200/60 flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewDoc({ url: docUrl, name: docName, type: docType })}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> Preview
+                          </button>
+                          <a
+                            href={docUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-blue-800 hover:bg-blue-900 rounded-lg transition-colors shadow-sm"
+                          >
+                            <FiExternalLink className="h-3.5 w-3.5" /> Open Document
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-10 px-4 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                  <FiFileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                  <h3 className="text-sm font-semibold text-gray-700">No Documents Uploaded</h3>
+                  <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+                    There are currently no additional legal documents or survey files attached to this property.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Blockchain Section */}
           <div className="ll-card p-6 animate-fade-in-up delay-300">
@@ -1041,6 +1200,53 @@ export default function PropertyDetails() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Document Preview Modal */}
+      {previewDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-50 text-blue-800 rounded-lg">
+                  <FiFileText className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 truncate max-w-md">{previewDoc.name}</h3>
+                  <p className="text-xs text-gray-500">{previewDoc.type}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewDoc.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  <FiExternalLink className="h-3.5 w-3.5" /> Open in New Tab
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDoc(null)}
+                  className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  <FiX className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 bg-gray-100 p-4 overflow-auto min-h-[450px] flex items-center justify-center">
+              {previewDoc.url.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? (
+                <img src={previewDoc.url} alt={previewDoc.name} className="max-h-[70vh] max-w-full object-contain rounded-lg shadow-md" />
+              ) : (
+                <iframe
+                  src={previewDoc.url}
+                  title={previewDoc.name}
+                  className="w-full h-[70vh] rounded-lg border border-gray-300 shadow-inner bg-white"
+                />
+              )}
+            </div>
           </div>
         </div>
       )}
