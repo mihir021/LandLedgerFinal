@@ -169,7 +169,7 @@ export default function RegisterProperty() {
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
-    setImageFiles((prev) => [...prev, ...files].slice(0, 5));
+    setImageFiles((prev) => [...prev, ...files].slice(0, 10));
     if (errors.images) setErrors((prev) => ({ ...prev, images: '' }));
   };
 

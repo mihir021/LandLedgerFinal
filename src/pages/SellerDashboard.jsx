@@ -127,7 +127,8 @@ export default function SellerDashboard() {
         ) : (
           <div className="divide-y divide-gray-50">
             {properties.slice(0, 6).map(p => {
-              const image = p.images?.[0] || (typeof p.documents?.[0] === 'string' ? p.documents[0] : p.documents?.[0]?.url);
+              const rawImg = p.images?.[0] || (typeof p.documents?.[0] === 'string' ? p.documents[0] : p.documents?.[0]?.url);
+              const image = typeof rawImg === 'object' ? rawImg?.url : rawImg;
               const locationStr = p.location?.district 
                 ? `${p.location?.district}, ${p.location?.city || p.location?.state || 'Gujarat'}`
                 : p.district ? `${p.district}, ${p.city || p.state}` : 'Gujarat Property';
@@ -141,7 +142,7 @@ export default function SellerDashboard() {
                   <div className="h-14 w-14 rounded-xl bg-gray-100 flex items-center justify-center text-xl shrink-0 overflow-hidden border border-gray-200">
                     {image ? (
                       <img
-                        src={image.startsWith('http') ? image : `/${image.replace(/\\/g, '/')}`}
+                        src={image.startsWith('http') ? image : (image.startsWith('uploads/') || image.startsWith('uploads\\') ? `/${image.replace(/\\/g, '/')}` : `/uploads/images/${image.replace(/\\/g, '/')}`)}
                         className="h-full w-full object-cover"
                         alt=""
                         onError={(e) => {

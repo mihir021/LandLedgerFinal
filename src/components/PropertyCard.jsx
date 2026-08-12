@@ -49,18 +49,19 @@ export default function PropertyCard({ property, delay = 0 }) {
   // Prioritize property.images array, fallback to documents or high-res default
   const rawImages = (property.images && property.images.length > 0)
     ? property.images
-    : (property.documents?.map(d => d.url).filter(Boolean) || []);
+    : (property.documents?.map(d => typeof d === 'object' ? d.url : d).filter(Boolean) || []);
 
-  let imgSrc = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=80';
-  if (rawImages[0]) {
-    if (rawImages[0].startsWith('http')) {
-      imgSrc = rawImages[0];
-    } else if (rawImages[0].startsWith('uploads/') || rawImages[0].startsWith('uploads\\')) {
-      imgSrc = `/${rawImages[0].replace(/\\/g, '/')}`;
-    } else if (!rawImages[0].startsWith('#')) {
-      imgSrc = `/uploads/images/${rawImages[0].replace(/\\/g, '/')}`;
-    }
-  }
+  const getImgUrl = (img) => {
+    if (!img) return null;
+    const url = typeof img === 'object' ? img.url : img;
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    if (url.startsWith('uploads/') || url.startsWith('uploads\\')) return `/${url.replace(/\\/g, '/')}`;
+    if (!url.startsWith('#')) return `/uploads/images/${url.replace(/\\/g, '/')}`;
+    return null;
+  };
+
+  let imgSrc = getImgUrl(rawImages[0]) || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=80';
 
   return (
     <Link

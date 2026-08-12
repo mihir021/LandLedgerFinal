@@ -140,9 +140,11 @@ export default function SellerProperties() {
                 const image = (p.images && p.images.length > 0) ? p.images[0] : (p.documents?.[0]?.url || null);
                 const getImgUrl = (img) => {
                   if (!img) return null;
-                  if (img.startsWith('http')) return img;
-                  if (img.startsWith('uploads/') || img.startsWith('uploads\\')) return `/${img.replace(/\\/g, '/')}`;
-                  return `/uploads/images/${img.replace(/\\/g, '/')}`;
+                  const url = typeof img === 'object' ? img.url : img;
+                  if (!url) return null;
+                  if (url.startsWith('http')) return url;
+                  if (url.startsWith('uploads/') || url.startsWith('uploads\\')) return `/${url.replace(/\\/g, '/')}`;
+                  return `/uploads/images/${url.replace(/\\/g, '/')}`;
                 };
 
                 return (
