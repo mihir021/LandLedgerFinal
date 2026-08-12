@@ -18,12 +18,17 @@ const getDocUrl = (doc) => {
   if (!doc) return null;
   const rawUrl = typeof doc === 'object' ? (doc?.url || doc?.path) : doc;
   if (!rawUrl || typeof rawUrl !== 'string') return null;
-  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) return rawUrl;
-  
   // Extract base URL from VITE_API_URL (e.g. http://localhost:5000/api -> http://localhost:5000)
   let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
   if (baseUrl.endsWith('/api')) baseUrl = baseUrl.slice(0, -4);
   else if (baseUrl.endsWith('/api/')) baseUrl = baseUrl.slice(0, -5);
+
+  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+    if (rawUrl.includes('res.cloudinary.com')) {
+      return `${baseUrl}/api/properties/document-proxy?url=${encodeURIComponent(rawUrl)}`;
+    }
+    return rawUrl;
+  }
   
   let formattedUrl = rawUrl.replace(/\\/g, '/');
   if (formattedUrl.startsWith('/')) formattedUrl = formattedUrl.substring(1);

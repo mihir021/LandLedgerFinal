@@ -545,6 +545,58 @@ const getPropertyHistory = async (req, res, next) => {
   }
 };
 
+// =====================================================
+// @desc    Get signed URL for Cloudinary documents (Bypasses PDF delivery block)
+// @route   GET /api/properties/document-proxy
+// @access  Public
+// =====================================================
+const getSignedDocumentUrl = async (req, res, next) => {
+  try {
+    const { url } = req.query;
+    if (!url || !url.includes('cloudinary.com')) {
+      return res.redirect(url || '/');
+    }
+
+    const urlParts = url.split('/upload/');
+    if (urlParts.length !== 2) {
+      return res.redirect(url);
+    }
+    
+    const resourceType = url.includes('/raw/upload/') ? 'raw' : 'image';
+    let pathPart = urlParts[1];
+    
+    // Remove version e.g. v1786557031/
+    pathPart = pathPart.replace(/^v\d+\//, '');
+    
+    // Extract public_id and format
+    let publicId = pathPart;
+    let format = '';
+    
+    const lastDotIndex = pathPart.lastIndexOf('.');
+    if (lastDotIndex !== -1) {
+      format = pathPart.substring(lastDotIndex + 1);
+      if (resourceType === 'image') {
+        publicId = pathPart.substring(0, lastDotIndex);
+      }
+    }
+
+    const options = {
+      secure: true,
+      sign_url: true,
+      resource_type: resourceType,
+    };
+    
+    if (format && resourceType === 'image') {
+      options.format = format;
+    }
+
+    const signedUrl = cloudinary.url(publicId, options);
+    res.redirect(302, signedUrl);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export {
   getProperties,
   getPropertyById,
@@ -554,4 +606,5 @@ export {
   verifyProperty,
   toggleListing,
   getPropertyHistory,
+  getSignedDocumentUrl,
 };
