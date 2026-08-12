@@ -1,11 +1,8 @@
-/**
- * PropertyCard — light-theme card for property listings
- * Shows thumbnail, address, type badge, price, lifecycle pill, and verification.
- */
 import { Link } from 'react-router-dom';
 import { MapPin, ArrowRight } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import VerificationBadge from './VerificationBadge';
+import { getImgUrl } from '../utils/helpers';
 
 const TYPE_COLORS = {
   residential: 'bg-blue-50 text-blue-700',
@@ -49,17 +46,7 @@ export default function PropertyCard({ property, delay = 0 }) {
   // Prioritize property.images array, fallback to documents or high-res default
   const rawImages = (property.images && property.images.length > 0)
     ? property.images
-    : (property.documents?.map(d => typeof d === 'object' ? d.url : d).filter(Boolean) || []);
-
-  const getImgUrl = (img) => {
-    if (!img) return null;
-    const url = typeof img === 'object' ? img.url : img;
-    if (!url || typeof url !== 'string') return null;
-    if (url.startsWith('http')) return url;
-    if (url.startsWith('uploads/') || url.startsWith('uploads\\')) return `/${url.replace(/\\/g, '/')}`;
-    if (!url.startsWith('#')) return `/uploads/images/${url.replace(/\\/g, '/')}`;
-    return null;
-  };
+    : (property.documents?.map(d => typeof d === 'object' ? (d?.url || null) : d).filter(Boolean) || []);
 
   let imgSrc = getImgUrl(rawImages[0]) || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=80';
 
