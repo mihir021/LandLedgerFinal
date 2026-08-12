@@ -21,7 +21,7 @@ import { createInquiry } from '../services/inquiryService';
 import { createDispute } from '../services/disputeService';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { formatCurrency, formatPrice, formatDate } from '../utils/helpers';
+import { formatCurrency, formatPrice, formatDate, getImgUrl } from '../utils/helpers';
 import { useReadContract, useWriteContract, useAccount, usePublicClient } from 'wagmi';
 import { CONTRACT_ADDRESS, getSafeFeeOverrides, BLOCK_EXPLORER_TX_URL } from '../config/web3';
 import { LandLedgerABI } from '../config/LandLedgerABI.js';
@@ -298,26 +298,17 @@ export default function PropertyDetails() {
   const status = property.verificationStatus || property.verification?.status || 'pending';
   const ownerName = typeof property.owner === 'object' ? (property.owner?.fullName || property.owner?.name) : (property.ownerId && typeof property.ownerId === 'object' ? (property.ownerId.name || property.ownerId.fullName) : (property.owner || 'Unknown'));
   const documents = property.documents || [];
-  // Prioritize property.images, fallback to documents
+  // Prioritize property.images, fallback to documents — always extract URL strings safely
   const images = (property.images && property.images.length > 0)
     ? property.images
-    : documents.map(d => d.url).filter(Boolean);
-  const firstImgUrl = typeof images[0] === 'object' ? images[0]?.url : images[0];
-  const hasRealImages = images.length > 0 && firstImgUrl && typeof firstImgUrl === 'string' && !firstImgUrl.startsWith('#');
+    : documents.map(d => typeof d === 'object' ? (d?.url || null) : d).filter(Boolean);
+  const firstImgUrl = getImgUrl(images[0]);
+  const hasRealImages = !!firstImgUrl;
   const propertyTxHash = property?.blockchain?.txHash || property?.blockchainTx;
   const hasBlockchain = !!(propertyTxHash || property?.blockchain?.parcelId || property?.blockchain?.propertyIdOnChain);
   const propType = property.landDetails?.landType || property.landType || property.type || 'residential';
   const title = property.title || `${propType.split(' ')[0]} Property — ${property.location?.city || 'Unknown'}`;
   const price = property.pricing?.priceINR || 0;
-
-  const getImgUrl = (img) => {
-    if (!img) return null;
-    const url = typeof img === 'object' ? img.url : img;
-    if (!url || typeof url !== 'string') return null;
-    if (url.startsWith('http')) return url;
-    if (url.startsWith('uploads/') || url.startsWith('uploads\\')) return `/${url.replace(/\\/g, '/')}`;
-    return `/uploads/images/${url.replace(/\\/g, '/')}`;
-  };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
