@@ -3,11 +3,11 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, CheckCircle, ExternalLink, Loader2, ArrowLeft, PenLine, Upload } from 'lucide-react';
+import { FileText, CheckCircle, ExternalLink, Loader2, ArrowLeft, PenLine } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import LifecycleTracker from '../components/LifecycleTracker';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { getTransfers, buyerApprove, uploadTransferDocument } from '../services/transferService';
+import { getTransfers, buyerApprove } from '../services/transferService';
 import { useToast } from '../context/ToastContext';
 import { formatPrice } from '../utils/helpers';
 
@@ -19,24 +19,6 @@ export default function BuyerPurchases() {
   const [expanded, setExpanded] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [signModal, setSignModal] = useState(null);
-  const [uploadingDocId, setUploadingDocId] = useState(null);
-
-  const handleUploadDoc = async (transferId, file) => {
-    if (!file) return;
-    setUploadingDocId(transferId);
-    try {
-      const formData = new FormData();
-      formData.append('documents', file);
-      formData.append('docType', 'Buyer Verification Document');
-      const updated = await uploadTransferDocument(transferId, formData);
-      toast.success('Document uploaded successfully to Cloudinary!');
-      setPurchases(prev => prev.map(p => (p._id === transferId || p.id === transferId) ? updated : p));
-    } catch (err) {
-      toast.error(err.message || 'Failed to upload document.');
-    } finally {
-      setUploadingDocId(null);
-    }
-  };
 
   useEffect(() => {
     const load = async () => {
@@ -206,61 +188,7 @@ export default function BuyerPurchases() {
                           </div>
                         </div>
                       </div>
-                    )}
-                    {/* Cloudinary Documents Section */}
-                    <div className="mt-5 rounded-xl border border-gray-200 bg-white p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
-                          <FileText className="h-4 w-4 text-blue-700" />
-                          Property & Transfer Documents (Cloudinary)
-                        </h4>
-                        <label className="cursor-pointer btn-secondary text-xs py-1 px-2.5 flex items-center gap-1">
-                          <Upload className="h-3 w-3" />
-                          {uploadingDocId === (req._id || req.id) ? 'Uploading...' : 'Upload Verification Doc'}
-                          <input
-                            type="file"
-                            accept="image/*,.pdf,.doc,.docx"
-                            className="hidden"
-                            onChange={(e) => handleUploadDoc(req._id || req.id, e.target.files[0])}
-                            disabled={uploadingDocId === (req._id || req.id)}
-                          />
-                        </label>
-                      </div>
-
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {/* Property legal deeds */}
-                        {req.property?.documents?.map((d, idx) => {
-                          const url = typeof d === 'object' ? d.url : d;
-                          return (
-                            <div key={`prop-${idx}`} className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 border border-gray-100 text-xs">
-                              <span className="truncate max-w-[160px] font-medium text-gray-700">📄 {d.type || 'Property Deed'}</span>
-                              {url && (
-                                <a href={url.startsWith('http') ? url : `/${url}`} target="_blank" rel="noopener noreferrer" className="text-blue-700 font-semibold hover:underline">
-                                  View ↗
-                                </a>
-                              )}
-                            </div>
-                          );
-                        })}
-
-                        {/* Buyer uploaded transfer docs */}
-                        {req.documents?.map((d, idx) => {
-                          const url = typeof d === 'object' ? d.url : d;
-                          return (
-                            <div key={`buyer-${idx}`} className="flex items-center justify-between p-2.5 rounded-lg bg-blue-50/60 border border-blue-100 text-xs">
-                              <span className="truncate max-w-[160px] font-medium text-blue-900">📑 {d.name || d.type || 'Buyer Doc'}</span>
-                              {url && (
-                                <a href={url.startsWith('http') ? url : `/${url}`} target="_blank" rel="noopener noreferrer" className="text-blue-700 font-semibold hover:underline">
-                                  View ↗
-                                </a>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Timeline */}
+                    )}{/* Timeline */}
                     {req.timeline && req.timeline.length > 0 && (
                       <div className="mt-5">
                         <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Activity Log</h4>

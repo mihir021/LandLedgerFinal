@@ -100,8 +100,6 @@ export default function ConfirmationModal({
               ))}
             </div>
           )}
-
-          {children && <div className="mt-4">{children}</div>}
         </div>
 
         {/* Footer */}

@@ -7,14 +7,32 @@ import ApiError from '../utils/ApiError.js';
 
 // ---- Storage configuration ----
 
-const cloudinaryMultiStorage = new CloudinaryStorage({
+const cloudinaryPropertyStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: async (_req, file) => {
-    const isDoc = file.fieldname === 'documents';
-    return {
-      folder: isDoc ? 'landledger/documents' : 'landledger/properties',
-      resource_type: 'auto',
-    };
+  params: {
+    folder: 'landledger/properties',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    transformation: [{ width: 1600, crop: 'limit' }],
+  },
+});
+
+const diskImageStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, 'uploads/images');
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `${uuidv4()}${ext}`);
+  },
+});
+
+const documentStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, 'uploads/documents');
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `${uuidv4()}${ext}`);
   },
 });
 
@@ -25,10 +43,10 @@ const propertyFileFilter = (_req, file, cb) => {
   
   if (file.fieldname === 'documents') {
     const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'doc', 'docx'];
-    if (allowedExts.includes(ext) || file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf' || file.mimetype.includes('word')) {
+    if (allowedExts.includes(ext) || file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
       cb(null, true);
     } else {
-      cb(new ApiError(400, 'Only JPG, JPEG, PNG, WEBP, PDF, and DOC/DOCX files are allowed for documents'), false);
+      cb(new ApiError(400, 'Only JPG, JPEG, PNG, WEBP, and PDF files are allowed for documents'), false);
     }
   } else {
     const allowedExts = ['jpg', 'jpeg', 'png', 'webp'];
@@ -53,18 +71,18 @@ const imageFilter = (_req, file, cb) => {
 const documentFilter = (_req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
   const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'doc', 'docx'];
-  if (allowedExts.includes(ext) || file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf' || file.mimetype.includes('word')) {
+  if (allowedExts.includes(ext) || file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
     cb(null, true);
   } else {
-    cb(new ApiError(400, 'Only JPG, JPEG, PNG, WEBP, PDF, and DOC/DOCX files are allowed'), false);
+    cb(new ApiError(400, 'Only JPG, JPEG, PNG, WEBP, and PDF files are allowed'), false);
   }
 };
 
 // ---- Multer instances ----
 
-/** Upload property images and documents directly to Cloudinary */
+/** Upload property images (to Cloudinary) and documents (to disk/cloud) */
 const uploadPropertyFiles = multer({
-  storage: cloudinaryMultiStorage,
+  storage: cloudinaryPropertyStorage,
   fileFilter: propertyFileFilter,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit
 }).fields([
@@ -74,21 +92,21 @@ const uploadPropertyFiles = multer({
 
 /** Upload up to 10 images to Cloudinary (max 10 MB each) */
 const uploadImages = multer({
-  storage: cloudinaryMultiStorage,
+  storage: cloudinaryPropertyStorage,
   fileFilter: imageFilter,
   limits: { fileSize: 10 * 1024 * 1024 },
 }).array('images', 10);
 
-/** Upload up to 5 documents to Cloudinary (max 10 MB each) */
+/** Upload up to 5 documents (max 5 MB each) */
 const uploadDocuments = multer({
-  storage: cloudinaryMultiStorage,
+  storage: documentStorage,
   fileFilter: documentFilter,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 5 * 1024 * 1024 },
 }).array('documents', 5);
 
-/** Upload a single profile image to Cloudinary */
+/** Upload a single profile image (max 5 MB) */
 const uploadProfileImage = multer({
-  storage: cloudinaryMultiStorage,
+  storage: imageStorage,
   fileFilter: imageFilter,
   limits: { fileSize: 5 * 1024 * 1024 },
 }).single('profileImage');

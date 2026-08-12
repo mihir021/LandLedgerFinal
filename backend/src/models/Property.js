@@ -105,7 +105,6 @@ const propertySchema = new mongoose.Schema(
       {
         type: { type: String, enum: ['Sale Deed', 'Survey Map', 'Tax Receipt', 'NOC', 'Other'] },
         url: String,
-        public_id: String,
         ipfsHash: String,
         uploadedAt: Date,
       },

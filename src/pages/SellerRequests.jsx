@@ -103,26 +103,6 @@ export default function SellerRequests() {
                           {(req.transferAmount || req.agreedPrice || req.amount) ? ` · ${formatPrice(req.transferAmount || req.agreedPrice || req.amount)}` : ''}
                         </p>
                         <p className="text-xs text-gray-400 mt-0.5">{req.createdAt && `Submitted ${new Date(req.createdAt).toLocaleDateString('en-IN')}`}</p>
-                        
-                        {/* Attached Cloudinary Documents */}
-                        {((req.documents && req.documents.length > 0) || (req.propertyId?.documents && req.propertyId.documents.length > 0)) && (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {req.documents?.map((d, idx) => {
-                              const url = typeof d === 'object' ? d.url : d;
-                              return (
-                                <a
-                                  key={`buyer-doc-${idx}`}
-                                  href={url?.startsWith('http') ? url : `/${url}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 rounded bg-purple-50 border border-purple-200 px-2 py-1 text-[11px] font-medium text-purple-700 hover:bg-purple-100"
-                                >
-                                  📑 {d.name || d.type || 'Buyer Doc'} ↗
-                                </a>
-                              );
-                            })}
-                          </div>
-                        )}
                       </div>
                     </div>
                     <div className="flex gap-2 shrink-0">
