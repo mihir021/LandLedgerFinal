@@ -11,7 +11,7 @@ import { getProperties, toggleListing } from '../services/propertyService';
 import { deepSearchProperty } from '../utils/searchFilters';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { formatPrice } from '../utils/helpers';
+import { formatPrice, getImgUrl } from '../utils/helpers';
 
 export default function SellerProperties() {
   const { user } = useAuth();
@@ -137,29 +137,20 @@ export default function SellerProperties() {
             <tbody className="divide-y divide-gray-50">
               {filtered.map((p, i) => {
                 const status = p.verification?.status || p.verificationStatus || 'Pending';
-                const image = (p.images && p.images.length > 0) ? p.images[0] : (p.documents?.[0]?.url || null);
+                const imgSrc = getImgUrl(p.images?.[0] || p.documents?.[0]);
                 
                 // Check if this property was sold by the current user
                 const currentUserId = user?._id || user?.id;
                 const propertyOwnerId = typeof p.ownerId === 'object' ? p.ownerId?._id : p.ownerId;
                 const isCurrentOwner = currentUserId && propertyOwnerId && currentUserId === propertyOwnerId;
                 const isSold = !isCurrentOwner && p.previousOwners?.includes(currentUserId);
-                
-                const getImgUrl = (img) => {
-                  if (!img) return null;
-                  const url = typeof img === 'object' ? img.url : img;
-                  if (!url || typeof url !== 'string') return null;
-                  if (url.startsWith('http')) return url;
-                  if (url.startsWith('uploads/') || url.startsWith('uploads\\')) return `/${url.replace(/\\/g, '/')}`;
-                  return `/uploads/images/${url.replace(/\\/g, '/')}`;
-                };
 
                 return (
                 <tr key={p._id} className={`hover:bg-gray-50 transition-colors animate-fade-in-up ${isSold ? 'opacity-70' : ''}`} style={{ animationDelay: `${i * 50}ms` }}>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center overflow-hidden shrink-0">
-                        {image ? <img src={getImgUrl(image)} alt="" className="h-full w-full object-cover" /> : '🏠'}
+                        {imgSrc ? <img src={imgSrc} alt="" className="h-full w-full object-cover" /> : '🏠'}
                       </div>
                       <div className="min-w-0">
                         <p className="font-medium text-gray-800 truncate max-w-[180px]">{p.location?.district || p.location?.surveyNumber}, {p.location?.city}</p>

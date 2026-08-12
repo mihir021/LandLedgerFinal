@@ -17,6 +17,32 @@ export const formatCurrency = (amount) => {
 };
 
 /**
+ * Safely extract an image or document URL regardless of whether input is a Cloudinary object,
+ * string path, or null/undefined. Guarantees no runtime type errors.
+ * @param {string|object} img
+ * @returns {string|null}
+ */
+export const getImgUrl = (img) => {
+  if (!img) return null;
+  const url = typeof img === 'object' ? (img?.url || img?.path) : img;
+  if (!url || typeof url !== 'string') return null;
+  if (url.startsWith('http')) return url;
+  if (url.startsWith('uploads/') || url.startsWith('uploads\\')) return `/${url.replace(/\\/g, '/')}`;
+  if (!url.startsWith('#')) return `/uploads/images/${url.replace(/\\/g, '/')}`;
+  return null;
+};
+
+/**
+ * Truncate a wallet address or tx hash for display.
+ * @param {string} addr
+ * @returns {string}
+ */
+export const truncateAddress = (addr) => {
+  if (!addr) return '';
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+};
+
+/**
  * Format a price smartly (Crores, Lakhs, or native formatting).
  * @param {number} amount
  * @returns {string}
