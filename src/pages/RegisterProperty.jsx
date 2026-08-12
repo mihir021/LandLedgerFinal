@@ -207,7 +207,13 @@ export default function RegisterProperty() {
         ],
         ...feeOverrides,
       });
-      toast.info('Registration submitted on-chain. Saving the property record...');
+
+      toast.info('Registration submitted. Waiting for blockchain confirmation...');
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+      if (receipt.status !== 'success') {
+        throw new Error('On-chain land registration transaction failed or reverted.');
+      }
+      toast.info('On-chain registration confirmed! Saving property record...');
 
       formData.append('walletAddress', walletAddress);
       formData.append('txHash', txHash);

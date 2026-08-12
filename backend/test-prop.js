@@ -1,7 +1,12 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 dotenv.config();
-mongoose.connect(process.env.MONGO_URI || 'mongodb+srv://dhameliyavivek04:sR2WvY3RDBj4yUq8@cluster0.v8q52.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0');
+
+const dbUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+if (!dbUri) {
+  throw new Error('MONGODB_URI or MONGO_URI must be set in environment');
+}
+mongoose.connect(dbUri);
 const schema = new mongoose.Schema({}, { strict: false });
 const Property = mongoose.model('Property', schema);
 async function run() {

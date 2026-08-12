@@ -18,7 +18,15 @@ const STATUS_CONFIG = {
   ownership_updated:  { label: 'Ownership Updated', cls: 'status-transfer'  },
   chain_processing:   { label: 'Processing',        cls: 'status-pending'   },
   completed:          { label: 'Completed',         cls: 'status-completed' },
-  // Transfer statuses as stored in the DB (camelCase)
+  // Transfer statuses as stored in the DB
+  pendingRequest:     { label: 'Pending Confirmation', cls: 'status-pending' },
+  pending_request:    { label: 'Pending Confirmation', cls: 'status-pending' },
+  Initiated:          { label: 'Transfer Requested',   cls: 'status-transfer'  },
+  'Pending Verification': { label: 'Pending Verification', cls: 'status-pending' },
+  Approved:           { label: 'Approved',          cls: 'status-verified'  },
+  Rejected:           { label: 'Rejected',          cls: 'status-rejected'  },
+  failed:             { label: 'Failed',            cls: 'status-rejected'  },
+  Failed:             { label: 'Failed',            cls: 'status-rejected'  },
   sellerApproved:     { label: 'Seller Approved',   cls: 'status-transfer'  },
   buyerApproved:      { label: 'Buyer Signed',      cls: 'status-transfer'  },
   officerApproved:    { label: 'Officer Approved',  cls: 'status-transfer'  },

@@ -107,7 +107,12 @@ export default function OfficerDashboard() {
           args: [parcelId],
           ...feeOverrides,
         });
-        toast.info(`Verification submitted on-chain: ${txHash}. Syncing with database...`);
+        toast.info(`Verification submitted: ${txHash}. Waiting for on-chain confirmation...`);
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+        if (receipt.status !== 'success') {
+          throw new Error('On-chain land verification transaction reverted or failed.');
+        }
+        toast.info('On-chain verification confirmed! Syncing with database...');
         
         await verifyProperty(propModal.id, 'Verified', txHash);
       } else {
@@ -147,7 +152,12 @@ export default function OfficerDashboard() {
         args: [parcelId],
         ...feeOverrides,
       });
-      toast.info(`Transfer submitted on-chain: ${txHash}. Syncing with database...`);
+      toast.info(`Transfer submitted: ${txHash}. Waiting for on-chain confirmation...`);
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+      if (receipt.status !== 'success') {
+        throw new Error('On-chain transfer finalization transaction reverted or failed.');
+      }
+      toast.info('On-chain transfer confirmed! Updating ownership in database...');
 
       await officerApprove(transferModal.id, txHash);
       await completeTransfer(transferModal.id);

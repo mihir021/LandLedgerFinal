@@ -38,6 +38,8 @@ export default function BuyerPurchases() {
   const statusToLifecycle = (status) => {
     const map = {
       pending: 'seller_approved',
+      pendingRequest: 'seller_approved',
+      pending_request: 'seller_approved',
       Initiated: 'seller_approved',
       seller_approved: 'buyer_signed',
       sellerApproved: 'buyer_signed',

@@ -4,13 +4,14 @@ import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 import ApiError from '../utils/ApiError.js';
 import logAudit from '../utils/auditLogger.js';
+import { getTransactionReceipt, syncTransferStatus } from '../services/blockchainService.js';
 
 // Helper to append a timeline entry
 const pushTimeline = (transfer, stage, actor, note = '') => {
   transfer.timeline.push({
     stage,
     actor: actor?._id,
-    actorName: actor?.fullName || '',
+    actorName: actor?.fullName || actor?.name || '',
     note,
     timestamp: new Date(),
   });
@@ -31,10 +32,11 @@ const requestTransfer = async (req, res, next) => {
     if (!property) {
       return next(new ApiError(404, 'Property not found'));
     }
-    if (property.verification.status !== 'Verified') {
+    const isVerified = property.verification?.status === 'Verified' || property.verificationStatus === 'verified' || property.verificationStatus === 'Verified';
+    if (!isVerified) {
       return next(new ApiError(400, 'Property must be verified before transfer'));
     }
-    if (property.ownerId.toString() !== sellerId) {
+    if (property.ownerId?.toString() !== sellerId && property.owner?.toString() !== sellerId) {
       return next(new ApiError(400, 'Seller does not own this property'));
     }
 
@@ -42,50 +44,70 @@ const requestTransfer = async (req, res, next) => {
     const existingTransfer = await Transfer.findOne({
       propertyId: propertyId,
       toUserId: buyerId,
-      status: { $nin: ['Completed', 'Rejected'] },
+      status: { $nin: ['Completed', 'completed', 'Rejected', 'failed', 'Failed'] },
     });
     if (existingTransfer) {
       return next(new ApiError(409, 'A transfer request already exists for this property'));
     }
 
+    // Initialize transfer in pendingRequest status — DO NOT instantly delist the property
     const transfer = await Transfer.create({
       propertyId: propertyId,
       fromUserId: sellerId,
       toUserId: buyerId,
       transferType: 'Sale',
-      status: 'Initiated',
+      status: 'pendingRequest',
       buyerWallet,
       buyerRequestTxHash: txHash,
+      blockchainTxHash: txHash,
     });
 
     pushTimeline(transfer, 'Transfer Requested', req.user, 'Buyer initiated the transfer request');
+
+    // If txHash was supplied, check receipt on-chain
+    if (txHash) {
+      const check = await getTransactionReceipt(txHash);
+
+      if (check.status === 'success') {
+        transfer.status = 'Initiated';
+        pushTimeline(transfer, 'On-Chain Confirmed', null, 'Purchase request confirmed on blockchain');
+
+        // Confirmed on-chain: safely delist property so other buyers cannot purchase
+        property.isListed = false;
+        await property.save();
+
+        // Notify seller
+        await Notification.create({
+          receiver: sellerId,
+          title: 'New Transfer Request',
+          message: `A buyer has requested to purchase property ${property.propertyId}.`,
+          type: 'Transfer Update',
+          relatedEntityType: 'Transfer',
+          relatedEntityId: transfer._id,
+        });
+      } else if (check.status === 'reverted') {
+        transfer.status = 'Rejected';
+        pushTimeline(transfer, 'Transaction Failed', null, 'On-chain transaction reverted or failed');
+        // Leave property listed for other buyers
+      }
+      // If status is 'pending', keep transfer as 'pendingRequest' and property stays listed until confirmed!
+    }
+
     await transfer.save();
-
-    // Mark the property as in-transfer so it stops being publicly purchasable
-    property.isListed = false;
-    await property.save();
-
-    // Notify the seller
-    await Notification.create({
-      receiver: sellerId,
-      title: 'New Transfer Request',
-      message: `A buyer has requested to purchase property ${property.propertyId}.`,
-      type: 'Transfer Update',
-      relatedEntityType: 'Transfer',
-      relatedEntityId: transfer._id,
-    });
 
     await logAudit({
       req,
       action: 'transfer.request',
       targetType: 'Transfer',
       targetId: transfer._id,
-      details: { propertyId, sellerId },
+      details: { propertyId, sellerId, txHash, status: transfer.status },
     });
 
     res.status(201).json({
       success: true,
-      message: 'Transfer request created',
+      message: transfer.status === 'Initiated'
+        ? 'Transfer request created and confirmed on-chain'
+        : 'Transfer request submitted, pending on-chain confirmation',
       data: transfer,
     });
   } catch (error) {
@@ -377,10 +399,18 @@ const getTransfers = async (req, res, next) => {
     }
 
     const transfers = await Transfer.find(filter)
-      .populate('propertyId', 'propertyId location pricing blockchain')
+      .populate('propertyId', 'propertyId location pricing blockchain isListed')
       .populate('fromUserId', 'name email walletAddress')
       .populate('toUserId', 'name email walletAddress')
       .sort({ createdAt: -1 });
+
+    // Sync-on-read: check pending transfers on-chain
+    const pendingTransfers = transfers.filter(
+      (t) => t.status === 'pendingRequest' || t.status === 'pending'
+    );
+    if (pendingTransfers.length > 0) {
+      await Promise.allSettled(pendingTransfers.map((t) => syncTransferStatus(t)));
+    }
 
     res.status(200).json({
       success: true,

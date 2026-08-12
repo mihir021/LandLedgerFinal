@@ -1,6 +1,10 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET is not defined. Set it in your environment variables before starting the server.');
+}
+
 import dns from 'dns';
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 

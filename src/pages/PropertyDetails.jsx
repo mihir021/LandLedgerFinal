@@ -16,7 +16,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import StatusBadge from '../components/StatusBadge';
 import PropertyMap from '../components/PropertyMap';
 import { getPropertyById, getPropertyHistory } from '../services/propertyService';
-import { requestTransfer } from '../services/transferService';
+import { requestTransfer, getTransfers } from '../services/transferService';
 import { createInquiry } from '../services/inquiryService';
 import { createDispute } from '../services/disputeService';
 import { useAuth } from '../context/AuthContext';
@@ -38,6 +38,8 @@ export default function PropertyDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [purchasing, setPurchasing] = useState(false);
+  const [purchaseStep, setPurchaseStep] = useState(null);
+  const [existingTransfer, setExistingTransfer] = useState(null);
 
   // History state
   const [history, setHistory] = useState([]);
@@ -93,7 +95,26 @@ export default function PropertyDetails() {
       }
     };
     fetchHistory();
-  }, [id]);
+
+    const fetchExistingTransfer = async () => {
+      if (isAuthenticated && user?.role === 'buyer') {
+        try {
+          const transfers = await getTransfers();
+          const match = Array.isArray(transfers)
+            ? transfers.find(
+                (t) =>
+                  (t.propertyId?._id === id || t.propertyId === id) &&
+                  !['Rejected', 'failed', 'Failed'].includes(t.status)
+              )
+            : null;
+          setExistingTransfer(match);
+        } catch {
+          // ignore
+        }
+      }
+    };
+    fetchExistingTransfer();
+  }, [id, isAuthenticated, user]);
 
   const parcelId = property?.blockchain?.parcelId || property?.blockchainPropertyId || property?.location?.surveyNumber || property?.surveyNumber;
   const { data: onChainData, isLoading: onChainLoading } = useReadContract({
@@ -118,6 +139,7 @@ export default function PropertyDetails() {
       return;
     }
     setPurchasing(true);
+    setPurchaseStep('signing');
     try {
       const ownerId = property.ownerId && typeof property.ownerId === 'object' ? property.ownerId._id : property.ownerId;
       if (!parcelId) throw new Error('This property does not have an on-chain parcel ID.');
@@ -127,14 +149,46 @@ export default function PropertyDetails() {
       toast.info('Confirm the purchase request in your wallet...');
       const feeOverrides = await getSafeFeeOverrides(publicClient);
       const txHash = await writeContractAsync({
-        address: CONTRACT_ADDRESS, abi: LandLedgerABI, functionName: 'requestPurchase', args: [parcelId], ...feeOverrides,
+        address: CONTRACT_ADDRESS,
+        abi: LandLedgerABI,
+        functionName: 'requestPurchase',
+        args: [parcelId],
+        ...feeOverrides,
       });
-      await requestTransfer({ propertyId: property._id, sellerId: ownerId, txHash, buyerWallet: walletAddress });
-      toast.success('Purchase request recorded on-chain and sent to the seller.');
+
+      // Wait for on-chain confirmation before promoting to success
+      setPurchaseStep('confirming');
+      toast.info('Transaction submitted. Waiting for blockchain confirmation...');
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+      if (receipt.status !== 'success') {
+        throw new Error('On-chain purchase transaction reverted or failed.');
+      }
+
+      setPurchaseStep('syncing');
+      toast.info('On-chain purchase confirmed! Syncing with database...');
+      const created = await requestTransfer({
+        propertyId: property._id,
+        sellerId: ownerId,
+        txHash,
+        buyerWallet: walletAddress,
+      });
+
+      setExistingTransfer(created);
+      toast.success('Purchase request confirmed on-chain and sent to the seller.');
+
+      // Refresh property state to reflect updated listing status
+      try {
+        const refreshedProp = await getPropertyById(id);
+        setProperty(refreshedProp);
+      } catch {
+        // ignore
+      }
     } catch (err) {
       toast.error(err.message || 'Failed to submit purchase request');
     } finally {
       setPurchasing(false);
+      setPurchaseStep(null);
     }
   };
 
@@ -531,20 +585,51 @@ export default function PropertyDetails() {
               </div>
             )}
 
-            {/* CTA Button */}
-            {isAuthenticated && user?.role === 'buyer' && status === 'Verified' && (
-              <button
-                onClick={handlePurchase}
-                disabled={purchasing}
-                className="mt-6 flex w-full items-center justify-center gap-2 btn-primary py-3.5 text-sm"
-              >
-                {purchasing ? (
-                  <FiLoader className="h-4 w-4 animate-spin" />
-                ) : (
-                  <FiShoppingCart className="h-4 w-4" />
-                )}
-                {purchasing ? 'Submitting...' : 'Request to Purchase'}
-              </button>
+            {/* CTA Button / Transfer Status */}
+            {isAuthenticated && user?.role === 'buyer' && (
+              existingTransfer ? (
+                <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50/80 p-4 text-center">
+                  <div className="flex items-center justify-center gap-2 text-blue-900 font-semibold text-sm">
+                    <FiClock className="h-4 w-4 text-blue-700" />
+                    {existingTransfer.status === 'pendingRequest'
+                      ? 'Purchase request pending confirmation...'
+                      : 'Purchase Request In Progress'}
+                  </div>
+                  <div className="mt-2 flex items-center justify-center gap-2 text-xs text-blue-700">
+                    <span>Status:</span>
+                    <StatusBadge status={existingTransfer.status || 'pendingRequest'} />
+                  </div>
+                  <Link
+                    to="/buyer/purchases"
+                    className="mt-3 inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-blue-900 hover:text-blue-700 hover:underline"
+                  >
+                    View in My Purchases <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              ) : status === 'Verified' && (property.isListed !== false) ? (
+                <button
+                  onClick={handlePurchase}
+                  disabled={purchasing}
+                  className="mt-6 flex w-full items-center justify-center gap-2 btn-primary py-3.5 text-sm"
+                >
+                  {purchasing ? (
+                    <FiLoader className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FiShoppingCart className="h-4 w-4" />
+                  )}
+                  {purchasing
+                    ? purchaseStep === 'signing'
+                      ? 'Confirm in Wallet...'
+                      : purchaseStep === 'confirming'
+                      ? 'Confirming on Blockchain...'
+                      : 'Syncing with Ledger...'
+                    : 'Request to Purchase'}
+                </button>
+              ) : (
+                <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-center text-xs text-gray-500">
+                  This property is currently not listed for purchase.
+                </div>
+              )
             )}
 
             {/* Inquiry Button */}

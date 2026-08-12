@@ -2,6 +2,7 @@ import Property from '../models/Property.js';
 import Transfer from '../models/Transfer.js';
 import ApiError from '../utils/ApiError.js';
 import logAudit from '../utils/auditLogger.js';
+import { syncTransferStatus } from '../services/blockchainService.js';
 
 // =====================================================
 // @desc    Get all properties (with optional filters)
@@ -118,6 +119,15 @@ const getProperties = async (req, res, next) => {
 // =====================================================
 const getPropertyById = async (req, res, next) => {
   try {
+    // Sync-on-read for any pending transfers on this property
+    const pendingTransfer = await Transfer.findOne({
+      propertyId: req.params.id,
+      status: { $in: ['pendingRequest', 'pending'] },
+    });
+    if (pendingTransfer) {
+      await syncTransferStatus(pendingTransfer);
+    }
+
     const property = await Property.findById(req.params.id).populate(
       'ownerId',
       'name email phone walletAddress'

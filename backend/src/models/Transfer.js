@@ -11,6 +11,7 @@ const transferSchema = new mongoose.Schema(
       type: String,
       enum: [
         'pending',
+        'pendingRequest',
         'sellerApproved',
         'buyerApproved',
         'officerApproved',
@@ -19,6 +20,8 @@ const transferSchema = new mongoose.Schema(
         'Pending Verification',
         'Approved',
         'Rejected',
+        'failed',
+        'Failed',
       ],
       default: 'pending',
     },
