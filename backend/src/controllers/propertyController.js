@@ -79,6 +79,7 @@ const getProperties = async (req, res, next) => {
           { owner: owner },
           { ownerId: owner },
           { currentOwnerWallet: owner },
+          { previousOwners: owner },
         ],
       });
     }
