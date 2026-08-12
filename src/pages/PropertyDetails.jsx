@@ -302,7 +302,8 @@ export default function PropertyDetails() {
   const images = (property.images && property.images.length > 0)
     ? property.images
     : documents.map(d => d.url).filter(Boolean);
-  const hasRealImages = images.length > 0 && images[0] && !images[0].startsWith('#');
+  const firstImgUrl = typeof images[0] === 'object' ? images[0]?.url : images[0];
+  const hasRealImages = images.length > 0 && firstImgUrl && typeof firstImgUrl === 'string' && !firstImgUrl.startsWith('#');
   const propertyTxHash = property?.blockchain?.txHash || property?.blockchainTx;
   const hasBlockchain = !!(propertyTxHash || property?.blockchain?.parcelId || property?.blockchain?.propertyIdOnChain);
   const propType = property.landDetails?.landType || property.landType || property.type || 'residential';
@@ -312,7 +313,7 @@ export default function PropertyDetails() {
   const getImgUrl = (img) => {
     if (!img) return null;
     const url = typeof img === 'object' ? img.url : img;
-    if (!url) return null;
+    if (!url || typeof url !== 'string') return null;
     if (url.startsWith('http')) return url;
     if (url.startsWith('uploads/') || url.startsWith('uploads\\')) return `/${url.replace(/\\/g, '/')}`;
     return `/uploads/images/${url.replace(/\\/g, '/')}`;

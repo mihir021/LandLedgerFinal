@@ -54,7 +54,7 @@ export default function PropertyCard({ property, delay = 0 }) {
   const getImgUrl = (img) => {
     if (!img) return null;
     const url = typeof img === 'object' ? img.url : img;
-    if (!url) return null;
+    if (!url || typeof url !== 'string') return null;
     if (url.startsWith('http')) return url;
     if (url.startsWith('uploads/') || url.startsWith('uploads\\')) return `/${url.replace(/\\/g, '/')}`;
     if (!url.startsWith('#')) return `/uploads/images/${url.replace(/\\/g, '/')}`;

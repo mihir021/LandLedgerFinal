@@ -140,7 +140,7 @@ export default function SellerDashboard() {
                 <Link key={p._id} to={`/property/${p._id}`}
                   className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
                   <div className="h-14 w-14 rounded-xl bg-gray-100 flex items-center justify-center text-xl shrink-0 overflow-hidden border border-gray-200">
-                    {image ? (
+                    {typeof image === 'string' && image ? (
                       <img
                         src={image.startsWith('http') ? image : (image.startsWith('uploads/') || image.startsWith('uploads\\') ? `/${image.replace(/\\/g, '/')}` : `/uploads/images/${image.replace(/\\/g, '/')}`)}
                         className="h-full w-full object-cover"
