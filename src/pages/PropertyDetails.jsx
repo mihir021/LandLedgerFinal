@@ -562,11 +562,6 @@ export default function PropertyDetails() {
                     const isPdf = rawUrl.toLowerCase().endsWith('.pdf') || docType.toLowerCase().includes('deed') || docType.toLowerCase().includes('tax');
                     const isImg = rawUrl.toLowerCase().match(/\.(jpg|jpeg|png|webp|gif)$/);
 
-                    // Cloudinary blocks PDF delivery by default for security, we must force attachment
-                    if (isCloudinary && isPdf && docUrl.includes('/upload/') && !docUrl.includes('fl_attachment')) {
-                      docUrl = docUrl.replace('/upload/', '/upload/fl_attachment/');
-                    }
-
                     return (
                       <div key={i} className="flex flex-col justify-between rounded-xl bg-gray-50/80 p-4 border border-gray-200/80 hover:border-blue-300 hover:shadow-sm transition-all">
                         <div>
