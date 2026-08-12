@@ -277,6 +277,26 @@ const officerApprove = async (req, res, next) => {
           'blockchain.chainNetwork': 'Arbitrum Sepolia',
         });
       }
+
+      // The frontend already waited for the receipt before calling this endpoint,
+      // so the tx is almost always already confirmed. Auto-complete immediately.
+      try {
+        const check = await getTransactionReceipt(txHash);
+        if (check.status === 'success') {
+          await executeTransferCompletion(transfer._id, req.user);
+          await logAudit({
+            req,
+            action: 'transfer.auto_complete',
+            targetType: 'Transfer',
+            targetId: transfer._id,
+            details: { txHash, autoCompleted: true },
+          });
+        }
+      } catch (receiptErr) {
+        // If receipt check fails, transfer stays in pendingConfirmation
+        // and sync-on-read will pick it up on the next GET /transfers call.
+        console.warn('[officerApprove] Auto-complete receipt check failed, will retry via sync-on-read:', receiptErr.message);
+      }
     }
 
     // Notify both parties
@@ -293,10 +313,15 @@ const officerApprove = async (req, res, next) => {
       targetId: transfer._id,
     });
 
+    // Refetch to return the latest status (may be 'completed' now)
+    const updatedTransfer = await Transfer.findById(transfer._id);
+
     res.status(200).json({
       success: true,
-      message: 'Officer approval recorded, pending on-chain confirmation',
-      data: transfer,
+      message: updatedTransfer.status === 'completed'
+        ? 'Transfer approved and ownership transferred successfully'
+        : 'Officer approval recorded, pending on-chain confirmation',
+      data: updatedTransfer,
     });
   } catch (error) {
     next(error);
