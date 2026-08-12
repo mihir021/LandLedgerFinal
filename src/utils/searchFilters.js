@@ -69,6 +69,9 @@ export const filterProperties = (properties, { search, type, state, minPrice, ma
     const matchMin = !minPrice || price >= Number(minPrice) * 100000;
     const matchMax = !maxPrice || price <= Number(maxPrice) * 100000;
 
-    return matchSearch && matchState && matchType && matchStatus && matchMin && matchMax;
+    // 6. Exclude sold properties (transferred & unlisted)
+    const isSold = Array.isArray(p.previousOwners) && p.previousOwners.length > 0 && !p.isListed;
+
+    return matchSearch && matchState && matchType && matchStatus && matchMin && matchMax && !isSold;
   });
 };

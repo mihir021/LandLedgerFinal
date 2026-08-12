@@ -84,6 +84,20 @@ const getProperties = async (req, res, next) => {
       });
     }
 
+    // Exclude sold properties from public search results.
+    // A property is "sold" when it has been transferred (previousOwners is
+    // non-empty) AND is no longer listed.  Owner-specific queries skip this
+    // filter so that buyers can still see their purchased properties.
+    if (!owner) {
+      andConditions.push({
+        $or: [
+          { previousOwners: { $exists: false } },
+          { previousOwners: { $size: 0 } },
+          { isListed: true },              // still listed = not yet sold
+        ],
+      });
+    }
+
     if (andConditions.length > 0) {
       filter.$and = andConditions;
     }
