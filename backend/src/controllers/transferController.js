@@ -31,7 +31,7 @@ const pushTimeline = (transfer, stage, actor, note = '') => {
 // =====================================================
 const requestTransfer = async (req, res, next) => {
   try {
-    const { propertyId, sellerId, txHash, buyerWallet } = req.body;
+    const { propertyId, sellerId, txHash, buyerWallet, paymentMode, transferAmountEth, displayPriceEth, paymentTxHash } = req.body;
     const buyerId = req.user._id;
 
     // Ensure property exists and is verified + listed
@@ -68,6 +68,11 @@ const requestTransfer = async (req, res, next) => {
       buyerWallet,
       buyerRequestTxHash: txHash,
       blockchainTxHash: txHash,
+      // Crypto payment tracking (only set when buyer uses Crypto mode)
+      ...(paymentMode && { paymentMode }),
+      ...(transferAmountEth != null && { transferAmountEth }),
+      ...(displayPriceEth != null && { displayPriceEth }),
+      ...(paymentTxHash && { paymentTxHash }),
     });
 
     pushTimeline(transfer, 'Transfer Requested', req.user, 'Buyer initiated the transfer request');

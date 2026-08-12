@@ -78,6 +78,13 @@ const transferSchema = new mongoose.Schema(
     sellerApprovalTxHash: String,
     buyerApprovalTxHash: String,
     officerApprovalTxHash: String,
+
+    // Crypto payment tracking (optional — only set for crypto-mode purchases)
+    paymentMode: { type: String, enum: ['INR', 'Crypto', 'inr', 'crypto'], default: 'INR' },
+    transferAmountEth: Number,
+    displayPriceEth: Number,
+    paymentTxHash: String,
+
     initiatedAt: { type: Date, default: Date.now },
     completedAt: Date,
   },

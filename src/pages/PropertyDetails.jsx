@@ -22,16 +22,23 @@ import { createDispute } from '../services/disputeService';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency, formatPrice, formatDate } from '../utils/helpers';
-import { useReadContract, useWriteContract, useAccount, usePublicClient } from 'wagmi';
+import { useReadContract, useWriteContract, useAccount, usePublicClient, useSendTransaction } from 'wagmi';
+import { parseEther, formatEther, isAddress } from 'viem';
 import { CONTRACT_ADDRESS, getSafeFeeOverrides, BLOCK_EXPLORER_TX_URL } from '../config/web3';
 import { LandLedgerABI } from '../config/LandLedgerABI.js';
+import {
+  ACTUAL_TRANSFER_ETH_AMOUNT,
+  MIN_BALANCE_REQUIRED_ETH,
+  calculateDemoEthPrice,
+} from '../config/cryptoConfig.js';
 
 export default function PropertyDetails() {
   const { id } = useParams();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, canBuy } = useAuth();
   const toast = useToast();
   const { address: walletAddress, isConnected } = useAccount();
   const { writeContractAsync } = useWriteContract();
+  const { sendTransactionAsync } = useSendTransaction();
   const publicClient = usePublicClient();
 
   const [property, setProperty] = useState(null);
@@ -40,6 +47,9 @@ export default function PropertyDetails() {
   const [purchasing, setPurchasing] = useState(false);
   const [purchaseStep, setPurchaseStep] = useState(null);
   const [existingTransfer, setExistingTransfer] = useState(null);
+
+  // INR / Crypto toggle — session-only, defaults to INR
+  const [paymentMode, setPaymentMode] = useState('INR');
 
   // History state
   const [history, setHistory] = useState([]);
@@ -131,7 +141,7 @@ export default function PropertyDetails() {
     onChainData?.[0] && onChainData[0] !== '0x0000000000000000000000000000000000000000'
   );
 
-  /** Handle purchase request */
+  /** Handle purchase request — supports both INR and Crypto modes */
   const handlePurchase = async () => {
     if (!isAuthenticated || !property) return;
     if (!isConnected || !walletAddress) {
@@ -140,12 +150,63 @@ export default function PropertyDetails() {
     }
     setPurchasing(true);
     setPurchaseStep('signing');
+
+    // Shared identifiers
+    const ownerId = property.ownerId && typeof property.ownerId === 'object' ? property.ownerId._id : property.ownerId;
+    const sellerWallet = property.currentOwnerWallet
+      || (typeof property.ownerId === 'object' ? property.ownerId.walletAddress : null);
+
     try {
-      const ownerId = property.ownerId && typeof property.ownerId === 'object' ? property.ownerId._id : property.ownerId;
       if (!parcelId) throw new Error('This property does not have an on-chain parcel ID.');
       if (!isRegisteredOnCurrentContract) {
         throw new Error('This older property is not registered in the current blockchain contract. Register a new property with the seller wallet before requesting a purchase.');
       }
+
+      let ethPaymentTxHash = null;
+      let demoEthPrice = null;
+
+      // ── Crypto mode: real wallet-to-wallet ETH transfer ──
+      if (paymentMode === 'Crypto') {
+        // 1. Validate seller wallet
+        if (!sellerWallet || !isAddress(sellerWallet) || sellerWallet === '0x0000000000000000000000000000000000000000') {
+          throw new Error('The seller\'s wallet address is missing or invalid. Cannot process a crypto payment for this property.');
+        }
+
+        // 2. Pre-flight balance check
+        const balance = await publicClient.getBalance({ address: walletAddress });
+        const minRequired = parseEther(MIN_BALANCE_REQUIRED_ETH.toString());
+        if (balance < minRequired) {
+          const balanceEth = formatEther(balance);
+          toast.error(
+            `Insufficient Test ETH — Your wallet has ${Number(balanceEth).toFixed(6)} ETH but needs at least ${MIN_BALANCE_REQUIRED_ETH} ETH (transfer + gas). Please add test ETH and try again.`
+          );
+          setPurchasing(false);
+          setPurchaseStep(null);
+          return;
+        }
+
+        // 3. Execute real ETH transfer to seller
+        toast.info('Confirm the ETH payment to the seller in your wallet...');
+        const feeOverrides = await getSafeFeeOverrides(publicClient);
+        ethPaymentTxHash = await sendTransactionAsync({
+          to: sellerWallet,
+          value: parseEther(ACTUAL_TRANSFER_ETH_AMOUNT.toString()),
+          ...feeOverrides,
+        });
+
+        setPurchaseStep('confirming');
+        toast.info(`Payment submitted (${ACTUAL_TRANSFER_ETH_AMOUNT} ETH). Waiting for confirmation...`);
+        const paymentReceipt = await publicClient.waitForTransactionReceipt({ hash: ethPaymentTxHash });
+
+        if (paymentReceipt.status !== 'success') {
+          throw new Error('ETH payment transaction reverted or failed. No purchase request was created.');
+        }
+
+        toast.success(`Payment of ${ACTUAL_TRANSFER_ETH_AMOUNT} ETH sent to seller! View on Arbiscan.`);
+        demoEthPrice = calculateDemoEthPrice(price);
+      }
+
+      // ── Smart contract purchase request (both INR and Crypto modes) ──
       toast.info('Confirm the purchase request in your wallet...');
       const feeOverrides = await getSafeFeeOverrides(publicClient);
       const txHash = await writeContractAsync({
@@ -156,7 +217,6 @@ export default function PropertyDetails() {
         ...feeOverrides,
       });
 
-      // Wait for on-chain confirmation before promoting to success
       setPurchaseStep('confirming');
       toast.info('Transaction submitted. Waiting for blockchain confirmation...');
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -165,6 +225,7 @@ export default function PropertyDetails() {
         throw new Error('On-chain purchase transaction reverted or failed.');
       }
 
+      // ── Sync with backend ──
       setPurchaseStep('syncing');
       toast.info('On-chain purchase confirmed! Syncing with database...');
       const created = await requestTransfer({
@@ -172,10 +233,22 @@ export default function PropertyDetails() {
         sellerId: ownerId,
         txHash,
         buyerWallet: walletAddress,
+        // Crypto payment tracking
+        ...(paymentMode === 'Crypto' && {
+          paymentMode: 'Crypto',
+          paymentTxHash: ethPaymentTxHash,
+          transferAmountEth: ACTUAL_TRANSFER_ETH_AMOUNT,
+          displayPriceEth: demoEthPrice?.eth || 0,
+        }),
       });
 
       setExistingTransfer(created);
-      toast.success('Purchase request confirmed on-chain and sent to the seller.');
+
+      if (paymentMode === 'Crypto') {
+        toast.success(`Purchase request confirmed! ${ACTUAL_TRANSFER_ETH_AMOUNT} ETH transferred to seller on Arbitrum Sepolia.`);
+      } else {
+        toast.success('Purchase request confirmed on-chain and sent to the seller.');
+      }
 
       // Refresh property state to reflect updated listing status
       try {
@@ -571,11 +644,63 @@ export default function PropertyDetails() {
         <div className="space-y-6 sticky top-20 self-start">
           {/* Price Card */}
           <div className="ll-card p-6 animate-fade-in-up delay-100">
+            {/* INR / Crypto toggle */}
+            {isAuthenticated && (user?.role === 'buyer' || user?.role === 'both' || canBuy) && !existingTransfer && (
+              <div className="mb-4">
+                <div className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" role="tablist" aria-label="Payment mode">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={paymentMode === 'INR'}
+                    onClick={() => setPaymentMode('INR')}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
+                      paymentMode === 'INR'
+                        ? 'bg-white text-blue-900 shadow-sm border border-blue-100'
+                        : 'text-gray-500 hover:text-gray-800'
+                    }`}
+                  >
+                    ₹ INR
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={paymentMode === 'Crypto'}
+                    onClick={() => setPaymentMode('Crypto')}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
+                      paymentMode === 'Crypto'
+                        ? 'bg-white text-indigo-900 shadow-sm border border-indigo-100'
+                        : 'text-gray-500 hover:text-gray-800'
+                    }`}
+                  >
+                    ◆ Crypto (ETH)
+                  </button>
+                </div>
+              </div>
+            )}
+
             <p className="text-sm text-gray-500">Listed Price</p>
-            <p className="mt-1 text-3xl font-bold font-serif text-gray-900">{formatPrice(price)}</p>
+
+            {paymentMode === 'Crypto' ? (
+              <>
+                <p className="mt-1 text-3xl font-bold font-serif text-indigo-900">
+                  ◆ {calculateDemoEthPrice(price).formatted} ETH
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  ≈ {formatPrice(price)} <span className="text-gray-400">(demo conversion rate)</span>
+                </p>
+                <div className="mt-2 rounded-lg bg-indigo-50 border border-indigo-100 px-3 py-2">
+                  <p className="text-[11px] text-indigo-700 leading-relaxed">
+                    <span className="font-semibold">Testnet Pilot:</span> The display price is for demonstration.
+                    The actual on-chain transfer is <span className="font-mono font-semibold">{ACTUAL_TRANSFER_ETH_AMOUNT} ETH</span> on Arbitrum Sepolia.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <p className="mt-1 text-3xl font-bold font-serif text-gray-900">{formatPrice(price)}</p>
+            )}
 
             {/* Verification badge */}
-            {status === 'Verified' && (
+            {(status?.toLowerCase() === 'verified' || property?.verification?.status?.toLowerCase() === 'verified' || property?.verificationStatus?.toLowerCase() === 'verified') && (
               <div className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
                 <FiShield className="h-5 w-5 text-emerald-700" />
                 <div>
@@ -586,19 +711,31 @@ export default function PropertyDetails() {
             )}
 
             {/* CTA Button / Transfer Status */}
-            {isAuthenticated && user?.role === 'buyer' && (
+            {isAuthenticated && (user?.role === 'buyer' || user?.role === 'both' || canBuy) && (
               existingTransfer ? (
                 <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50/80 p-4 text-center">
                   <div className="flex items-center justify-center gap-2 text-blue-900 font-semibold text-sm">
                     <FiClock className="h-4 w-4 text-blue-700" />
                     {existingTransfer.status === 'pendingRequest'
                       ? 'Purchase request pending confirmation...'
+                      : existingTransfer.status === 'completed'
+                      ? 'You own this property!'
                       : 'Purchase Request In Progress'}
                   </div>
                   <div className="mt-2 flex items-center justify-center gap-2 text-xs text-blue-700">
                     <span>Status:</span>
                     <StatusBadge status={existingTransfer.status || 'pendingRequest'} />
                   </div>
+                  {existingTransfer.paymentTxHash && (
+                    <a
+                      href={`${BLOCK_EXPLORER_TX_URL}${existingTransfer.paymentTxHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 text-[11px] text-indigo-600 hover:text-indigo-800 hover:underline"
+                    >
+                      View ETH Payment on Arbiscan <ArrowRight className="h-3 w-3" />
+                    </a>
+                  )}
                   <Link
                     to="/buyer/purchases"
                     className="mt-3 inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-blue-900 hover:text-blue-700 hover:underline"
@@ -606,11 +743,15 @@ export default function PropertyDetails() {
                     View in My Purchases <ArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
-              ) : status === 'Verified' && (property.isListed !== false) ? (
+              ) : (status?.toLowerCase() === 'verified' || property?.verification?.status?.toLowerCase() === 'verified' || property?.verificationStatus?.toLowerCase() === 'verified') && (property.isListed !== false) ? (
                 <button
                   onClick={handlePurchase}
                   disabled={purchasing}
-                  className="mt-6 flex w-full items-center justify-center gap-2 btn-primary py-3.5 text-sm"
+                  className={`mt-6 flex w-full items-center justify-center gap-2 py-3.5 text-sm font-semibold rounded-xl transition-all ${
+                    paymentMode === 'Crypto'
+                      ? 'bg-gradient-to-r from-indigo-700 to-purple-700 text-white hover:from-indigo-800 hover:to-purple-800 shadow-md'
+                      : 'btn-primary'
+                  }`}
                 >
                   {purchasing ? (
                     <FiLoader className="h-4 w-4 animate-spin" />
@@ -619,10 +760,12 @@ export default function PropertyDetails() {
                   )}
                   {purchasing
                     ? purchaseStep === 'signing'
-                      ? 'Confirm in Wallet...'
+                      ? paymentMode === 'Crypto' ? 'Confirm ETH Payment...' : 'Confirm in Wallet...'
                       : purchaseStep === 'confirming'
                       ? 'Confirming on Blockchain...'
                       : 'Syncing with Ledger...'
+                    : paymentMode === 'Crypto'
+                    ? `Pay ${ACTUAL_TRANSFER_ETH_AMOUNT} ETH & Request`
                     : 'Request to Purchase'}
                 </button>
               ) : (

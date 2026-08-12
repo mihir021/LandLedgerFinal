@@ -4,7 +4,7 @@
  * and classic institutional buttons.
  */
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, LogOut, User, ChevronDown, ArrowRight, ShieldCheck, Bell } from 'lucide-react';
 import { useAuth, ROLE_ROUTES, ROLE_LABELS } from '../context/AuthContext';
 import { ConnectButton } from '@rainbow-me/rainbowkit';

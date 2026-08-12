@@ -23,8 +23,15 @@ export const getTransfers = async (opts = {}) => {
  * @param {{ propertyId: string, sellerId: string }} payload
  * @returns {Object} Created transfer document.
  */
-export const requestTransfer = async ({ propertyId, sellerId, txHash, buyerWallet }) => {
-  const { data } = await api.post('/transfers/request', { propertyId, sellerId, txHash, buyerWallet });
+export const requestTransfer = async ({ propertyId, sellerId, txHash, buyerWallet, paymentMode, transferAmountEth, displayPriceEth, paymentTxHash }) => {
+  const { data } = await api.post('/transfers/request', {
+    propertyId, sellerId, txHash, buyerWallet,
+    // Crypto payment tracking (only sent when buyer uses Crypto mode)
+    ...(paymentMode && { paymentMode }),
+    ...(transferAmountEth != null && { transferAmountEth }),
+    ...(displayPriceEth != null && { displayPriceEth }),
+    ...(paymentTxHash && { paymentTxHash }),
+  });
   return data.data;
 };
 
