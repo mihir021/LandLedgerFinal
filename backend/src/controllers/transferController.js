@@ -253,17 +253,22 @@ const officerApprove = async (req, res, next) => {
     const transfer = await Transfer.findById(transferId);
     if (!transfer) return next(new ApiError(404, 'Transfer not found'));
 
-    if (!transfer.sellerApproved && transfer.status === 'Initiated') {
-      return next(new ApiError(400, 'Seller must approve before the officer'));
+    if (!transfer.sellerApproved || !transfer.buyerApproved || transfer.status !== 'buyerApproved') {
+      return next(new ApiError(400, 'Seller and buyer approvals must be completed before officer finalization'));
     }
-    if (!transfer.buyerApproved) {
-      return next(new ApiError(400, 'Buyer must sign before the officer can approve the transfer'));
+    if (!txHash || !/^0x[a-fA-F0-9]{64}$/.test(txHash)) {
+      return next(new ApiError(400, 'A valid finalization transaction hash is required'));
+    }
+    const receiptCheck = await getTransactionReceipt(txHash);
+    if (receiptCheck.status !== 'success') {
+      return next(new ApiError(400, 'Finalization is not confirmed on-chain; database approval was not recorded'));
     }
 
     transfer.officerApproved = true;
     transfer.status = 'pendingConfirmation';
     transfer.officerApprovalTxHash = txHash;
     transfer.blockchainTxHash = txHash;
+    if (transfer.paymentMode?.toLowerCase() === 'crypto') transfer.paymentTxHash = txHash;
     pushTimeline(transfer, 'Officer Approved', req.user, 'Government officer approved the transfer');
     await transfer.save();
     
@@ -331,7 +336,10 @@ export const executeTransferCompletion = async (transferId, actorUser) => {
   if (!transfer) throw new Error('Transfer not found');
   
   if (transfer.status === 'completed') {
-    return transfer; // Idempotent return
+    return transfer;
+  }
+  if (!transfer.officerApproved || transfer.status !== 'pendingConfirmation' || !transfer.officerApprovalTxHash) {
+    throw new Error('A confirmed officer finalization is required before completing a transfer');
   }
 
   const targetPropertyId = transfer.propertyId?._id || transfer.propertyId || transfer.property?._id || transfer.property;
@@ -383,6 +391,10 @@ const completeTransfer = async (req, res, next) => {
       return next(new ApiError(403, 'Only officers or admins can complete transfers'));
     }
 
+    const pendingTransfer = await Transfer.findById(transferId);
+    if (!pendingTransfer) return next(new ApiError(404, 'Transfer not found'));
+    const receiptCheck = await getTransactionReceipt(pendingTransfer.officerApprovalTxHash);
+    if (receiptCheck.status !== 'success') return next(new ApiError(400, 'Confirmed on-chain finalization required'));
     const transfer = await executeTransferCompletion(transferId, req.user);
 
     await logAudit({
@@ -469,12 +481,7 @@ const getTransfers = async (req, res, next) => {
             await transferDoc.save();
             stateMutated = true;
           }
-          // If 'pending' or 'unknown', leave it for the next poll
-        } else if (t.officerApproved && t.sellerApproved && t.buyerApproved) {
-          // All parties approved but no txHash recorded — auto-complete
-          // This handles legacy transfers that got stuck
-          await executeTransferCompletion(t._id, req.user);
-          stateMutated = true;
+          // If .pending. or .unknown., leave it for the next poll
         }
       } catch (err) {
         console.error(`[Sync-on-Read] Error checking transfer ${t._id}:`, err.message);

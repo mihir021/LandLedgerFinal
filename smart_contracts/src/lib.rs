@@ -5,6 +5,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use alloy_primitives::{Address, B256, U256, U64, keccak256};
 use stylus_sdk::{prelude::*};
+use stylus_sdk::call::transfer::transfer_eth;
 
 sol_storage! {
     #[entrypoint]
@@ -14,6 +15,7 @@ sol_storage! {
         mapping(bytes32 => address) proposed_buyer;
         mapping(bytes32 => bool) seller_approved;
         mapping(bytes32 => bool) buyer_approved;
+        mapping(bytes32 => uint256) escrow_amount;
         address admin; // deployer wallet — only address allowed to call verify_land
     }
 
@@ -77,6 +79,7 @@ impl LandLedger {
         Ok(())
     }
 
+    #[payable]
     pub fn request_purchase(&mut self, parcel_id: String) -> Result<(), Vec<u8>> {
         let key = keccak256(parcel_id.as_bytes());
         if !self.exists.get(key) { return Err(b"Parcel not found".to_vec()); }
@@ -85,6 +88,8 @@ impl LandLedger {
         let buyer = self.vm().msg_sender();
         if buyer == self.records.get(key).owner.get() { return Err(b"Owner cannot buy own parcel".to_vec()); }
         self.proposed_buyer.setter(key).set(buyer);
+        let escrowed = self.vm().msg_value();
+        self.escrow_amount.setter(key).set(escrowed);
         Ok(())
     }
 
@@ -109,11 +114,18 @@ impl LandLedger {
         if self.vm().msg_sender() != self.admin.get() { return Err(b"Only registry admin can finalize".to_vec()); }
         let key = keccak256(parcel_id.as_bytes());
         if !self.seller_approved.get(key) || !self.buyer_approved.get(key) { return Err(b"Both parties must approve".to_vec()); }
+        let seller = self.records.get(key).owner.get();
+        let buyer = self.proposed_buyer.get(key);
+        let escrowed = self.escrow_amount.get(key);
         let mut record = self.records.setter(key);
-        record.owner.set(self.proposed_buyer.get(key));
+        record.owner.set(buyer);
         self.proposed_buyer.setter(key).set(Address::ZERO);
         self.seller_approved.setter(key).set(false);
         self.buyer_approved.setter(key).set(false);
+        self.escrow_amount.setter(key).set(U256::ZERO);
+        if escrowed > U256::ZERO {
+            transfer_eth(self.vm(), seller, escrowed)?;
+        }
         Ok(())
     }
 

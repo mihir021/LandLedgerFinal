@@ -11,7 +11,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getProperties, verifyProperty } from '../services/propertyService';
-import { getTransfers, officerApprove, completeTransfer } from '../services/transferService';
+import { getTransfers, officerApprove } from '../services/transferService';
 import { getUsers } from '../services/userService';
 import { getInquiries, updateInquiryStatus } from '../services/inquiryService';
 import { getDisputes, updateDispute } from '../services/disputeService';
@@ -19,7 +19,7 @@ import { deepSearchProperty } from '../utils/searchFilters';
 import { getImgUrl } from '../utils/helpers';
 
 import { useWriteContract, useAccount, usePublicClient } from 'wagmi';
-import { CONTRACT_ADDRESS, getSafeFeeOverrides } from '../config/web3';
+import { CONTRACT_ADDRESS, REGISTRY_ADMIN_ADDRESS, getSafeFeeOverrides } from '../config/web3';
 import { LandLedgerABI } from '../config/LandLedgerABI.js';
 
 export default function OfficerDashboard() {
@@ -141,33 +141,23 @@ export default function OfficerDashboard() {
     setActionLoading(transferModal.id);
     try {
       const transfer = pendingTransfers.find(t => t._id === transferModal.id);
-      const parcelId = transfer?.property?.blockchain?.parcelId || transfer?.property?.blockchainPropertyId || transfer?.property?.surveyNumber || transfer?.property?.propertyId;
-      let txHash = null;
-      
-      if (isConnected && walletAddress && parcelId) {
-        try {
-          toast.info('Confirm the transfer transaction in your wallet...');
-          const feeOverrides = await getSafeFeeOverrides(publicClient);
-          txHash = await writeContractAsync({
-            address: CONTRACT_ADDRESS,
-            abi: LandLedgerABI,
-            functionName: 'finalizeTransfer',
-            args: [parcelId],
-            ...feeOverrides,
-          });
-          toast.info(`Transfer submitted: ${txHash}. Waiting for on-chain confirmation...`);
-          await publicClient.waitForTransactionReceipt({ hash: txHash });
-        } catch (contractErr) {
-          console.warn('On-chain transfer finalization bypassed:', contractErr.message);
-          toast.info('On-chain transfer bypassed. Approving transfer in database...');
-        }
-      }
+      if (!transfer) throw new Error("Transfer not found. Refresh and try again.");
+      const parcelId = transfer.property?.blockchain?.parcelId || transfer.property?.blockchainPropertyId || transfer.property?.surveyNumber || transfer.property?.propertyId;
+      if (!isConnected || !walletAddress) throw new Error("Connect the registry-admin wallet that deployed this contract.");
+      if (REGISTRY_ADMIN_ADDRESS && walletAddress.toLowerCase() !== REGISTRY_ADMIN_ADDRESS) throw new Error("Wrong officer wallet. Switch MetaMask to the contract deployer wallet.");
+      if (!parcelId) throw new Error("This transfer has no on-chain parcel ID.");
+
+      toast.info("Confirm finalization with the registry-admin wallet...");
+      const feeOverrides = await getSafeFeeOverrides(publicClient);
+      const txHash = await writeContractAsync({ address: CONTRACT_ADDRESS, abi: LandLedgerABI, functionName: "finalizeTransfer", args: [parcelId], ...feeOverrides });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+      if (receipt.status !== "success") throw new Error("Finalization reverted. Use the wallet that deployed the registry contract.");
 
       await officerApprove(transferModal.id, txHash);
-      toast.success('Transfer approved successfully');
+      toast.success("Transfer finalized on-chain. Escrowed ETH, if any, was released to the seller.");
       setPendingTransfers(prev => prev.filter(t => t._id !== transferModal.id));
     } catch (err) {
-      toast.error(err.message || 'Failed to approve transfer.');
+      toast.error(err.shortMessage || err.message || "Failed to approve transfer.");
     } finally {
       setActionLoading(null);
       setTransferModal({ open: false, id: null });

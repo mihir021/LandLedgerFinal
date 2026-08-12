@@ -5,6 +5,7 @@ import { http } from 'wagmi';
 // Set VITE_CONTRACT_ADDRESS after deploying the current Stylus contract.
 export const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0xdf7f1c05ce7380019f0f8fbd8cce6a6a41aa3b50';
 export const BLOCK_EXPLORER_TX_URL = 'https://sepolia.arbiscan.io/tx/';
+export const REGISTRY_ADMIN_ADDRESS = import.meta.env.VITE_REGISTRY_ADMIN_ADDRESS?.toLowerCase();
 
 export const WALLETCONNECT_PROJECT_ID =
   import.meta.env.VITE_WC_PROJECT_ID ||

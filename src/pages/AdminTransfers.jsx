@@ -7,11 +7,11 @@ import { ArrowLeft, CheckCircle, Loader2, ArrowLeftRight, ExternalLink } from 'l
 import StatusBadge from '../components/StatusBadge';
 import LifecycleTracker from '../components/LifecycleTracker';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { getTransfers, officerApprove, completeTransfer } from '../services/transferService';
+import { getTransfers, officerApprove } from '../services/transferService';
 import { useToast } from '../context/ToastContext';
 import { formatPrice } from '../utils/helpers';
 import { useAccount, usePublicClient, useWriteContract } from 'wagmi';
-import { CONTRACT_ADDRESS, getSafeFeeOverrides } from '../config/web3';
+import { CONTRACT_ADDRESS, REGISTRY_ADMIN_ADDRESS, getSafeFeeOverrides } from '../config/web3';
 import { LandLedgerABI } from '../config/LandLedgerABI.js';
 
 export default function AdminTransfers() {
@@ -49,69 +49,32 @@ export default function AdminTransfers() {
   const completed= transfers.filter(t => t.status === 'completed');
 
   const finalizeOnChain = async (transfer) => {
-    const parcelId = transfer?.property?.blockchain?.parcelId
-      || transfer?.property?.blockchainPropertyId
-      || transfer?.property?.surveyNumber
-      || transfer?.property?.propertyId;
-
-    if (!isConnected || !walletAddress) {
-      console.warn('Connect the registry-admin wallet in the top bar before completing this transfer.');
-      return null;
-    }
-    if (!parcelId) {
-      console.warn('This transfer is missing its on-chain parcel ID.');
-      return null;
-    }
-
-    try {
-      toast.info('Confirm the final transfer transaction in your wallet...');
-      const feeOverrides = await getSafeFeeOverrides(publicClient);
-      const txHash = await writeContractAsync({
-        address: CONTRACT_ADDRESS,
-        abi: LandLedgerABI,
-        functionName: 'finalizeTransfer',
-        args: [parcelId],
-        ...feeOverrides,
-      });
-      toast.info(`Transfer submitted on-chain: ${txHash}. Background monitoring started...`);
-      return txHash;
-    } catch (contractErr) {
-      console.warn('On-chain transfer finalization bypassed:', contractErr.message);
-      toast.info('On-chain transfer bypassed. Approving transfer in database...');
-      return null;
-    }
+    const parcelId = transfer?.property?.blockchain?.parcelId || transfer?.property?.blockchainPropertyId || transfer?.property?.surveyNumber || transfer?.property?.propertyId;
+    if (!isConnected || !walletAddress) throw new Error("Connect the registry-admin wallet that deployed this contract.");
+    if (REGISTRY_ADMIN_ADDRESS && walletAddress.toLowerCase() !== REGISTRY_ADMIN_ADDRESS) throw new Error("Wrong officer wallet. Switch MetaMask to the contract deployer wallet.");
+    if (!parcelId) throw new Error("This transfer is missing its on-chain parcel ID.");
+    toast.info("Confirm finalization with the registry-admin wallet...");
+    const feeOverrides = await getSafeFeeOverrides(publicClient);
+    const txHash = await writeContractAsync({ address: CONTRACT_ADDRESS, abi: LandLedgerABI, functionName: "finalizeTransfer", args: [parcelId], ...feeOverrides });
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+    if (receipt.status !== "success") throw new Error("Finalization reverted. Use the wallet that deployed the registry contract.");
+    return txHash;
   };
 
   const handleApprove = async () => {
     setActionLoading(true);
     try {
       const transfer = transfers.find(t => t._id === modal.id);
-      if (!transfer) throw new Error('Transfer not found. Refresh and try again.');
+      if (!transfer) throw new Error("Transfer not found. Refresh and try again.");
       const txHash = await finalizeOnChain(transfer);
       await officerApprove(modal.id, txHash);
-      toast.success('Transfer approved. Background job is monitoring the blockchain.');
-      setTransfers(prev => prev.map(t =>
-        t._id === modal.id ? { ...t, officerApproved: true, status: 'pendingConfirmation', blockchainTxHash: txHash } : t
-      ));
+      toast.success("Transfer finalized on-chain. Escrowed ETH, if any, was released to the seller.");
+      setTransfers(prev => prev.map(t => t._id === modal.id ? { ...t, officerApproved: true, status: "completed", blockchainTxHash: txHash } : t));
     } catch (err) {
-      toast.error(err.message || 'Failed to approve');
+      toast.error(err.shortMessage || err.message || "Failed to approve");
     } finally {
       setActionLoading(false);
       setModal({ open: false, id: null });
-    }
-  };
-
-  const handleComplete = async (transfer) => {
-    setActionLoading(transfer._id);
-    try {
-      await finalizeOnChain(transfer);
-      await officerApprove(transfer._id, '0x...'); // Fallback manual trigger, tx already exists
-      toast.success('Transfer completed manually');
-      setTransfers(prev => prev.map(t => t._id === transfer._id ? { ...t, status: 'pendingConfirmation' } : t));
-    } catch (err) {
-      toast.error(err.message || 'Failed to complete transfer');
-    } finally {
-      setActionLoading(false);
     }
   };
 
@@ -147,16 +110,6 @@ export default function AdminTransfers() {
                 className="flex items-center gap-1.5 rounded-lg bg-green-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-800"
               >
                 <CheckCircle className="h-3.5 w-3.5" /> Approve
-              </button>
-            )}
-            {t.officerApproved && t.status !== 'completed' && (
-              <button
-                disabled={actionLoading === t._id}
-                onClick={e => { e.stopPropagation(); handleComplete(t); }}
-                className="flex items-center gap-1.5 rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-800 disabled:opacity-60"
-              >
-                {actionLoading === t._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
-                Complete on-chain
               </button>
             )}
           </div>

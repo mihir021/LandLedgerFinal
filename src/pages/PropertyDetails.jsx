@@ -22,13 +22,12 @@ import { createDispute } from '../services/disputeService';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency, formatPrice, formatDate, getImgUrl } from '../utils/helpers';
-import { useReadContract, useWriteContract, useAccount, usePublicClient, useSendTransaction } from 'wagmi';
-import { parseEther, formatEther, isAddress } from 'viem';
+import { useReadContract, useWriteContract, useAccount, usePublicClient } from 'wagmi';
+import { parseEther } from 'viem';
 import { CONTRACT_ADDRESS, getSafeFeeOverrides, BLOCK_EXPLORER_TX_URL } from '../config/web3';
 import { LandLedgerABI } from '../config/LandLedgerABI.js';
 import {
   ACTUAL_TRANSFER_ETH_AMOUNT,
-  MIN_BALANCE_REQUIRED_ETH,
   calculateDemoEthPrice,
 } from '../config/cryptoConfig.js';
 
@@ -38,7 +37,6 @@ export default function PropertyDetails() {
   const toast = useToast();
   const { address: walletAddress, isConnected } = useAccount();
   const { writeContractAsync } = useWriteContract();
-  const { sendTransactionAsync } = useSendTransaction();
   const publicClient = usePublicClient();
 
   const [property, setProperty] = useState(null);
@@ -153,8 +151,6 @@ export default function PropertyDetails() {
 
     // Shared identifiers
     const ownerId = property.ownerId && typeof property.ownerId === 'object' ? property.ownerId._id : property.ownerId;
-    const sellerWallet = property.currentOwnerWallet
-      || (typeof property.ownerId === 'object' ? property.ownerId.walletAddress : null);
 
     try {
       if (!parcelId) throw new Error('This property does not have an on-chain parcel ID.');
@@ -162,47 +158,11 @@ export default function PropertyDetails() {
         throw new Error('This older property is not registered in the current blockchain contract. Register a new property with the seller wallet before requesting a purchase.');
       }
 
-      let ethPaymentTxHash = null;
       let demoEthPrice = null;
 
-      // ── Crypto mode: real wallet-to-wallet ETH transfer ──
+      // Crypto deposits the small amount into contract escrow. It is released
+      // only by the registry-admin finalization transaction.
       if (paymentMode === 'Crypto') {
-        // 1. Validate seller wallet
-        if (!sellerWallet || !isAddress(sellerWallet) || sellerWallet === '0x0000000000000000000000000000000000000000') {
-          throw new Error('The seller\'s wallet address is missing or invalid. Cannot process a crypto payment for this property.');
-        }
-
-        // 2. Pre-flight balance check
-        const balance = await publicClient.getBalance({ address: walletAddress });
-        const minRequired = parseEther(MIN_BALANCE_REQUIRED_ETH.toString());
-        if (balance < minRequired) {
-          const balanceEth = formatEther(balance);
-          toast.error(
-            `Insufficient Test ETH — Your wallet has ${Number(balanceEth).toFixed(6)} ETH but needs at least ${MIN_BALANCE_REQUIRED_ETH} ETH (transfer + gas). Please add test ETH and try again.`
-          );
-          setPurchasing(false);
-          setPurchaseStep(null);
-          return;
-        }
-
-        // 3. Execute real ETH transfer to seller
-        toast.info('Confirm the ETH payment to the seller in your wallet...');
-        const feeOverrides = await getSafeFeeOverrides(publicClient);
-        ethPaymentTxHash = await sendTransactionAsync({
-          to: sellerWallet,
-          value: parseEther(ACTUAL_TRANSFER_ETH_AMOUNT.toString()),
-          ...feeOverrides,
-        });
-
-        setPurchaseStep('confirming');
-        toast.info(`Payment submitted (${ACTUAL_TRANSFER_ETH_AMOUNT} ETH). Waiting for confirmation...`);
-        const paymentReceipt = await publicClient.waitForTransactionReceipt({ hash: ethPaymentTxHash });
-
-        if (paymentReceipt.status !== 'success') {
-          throw new Error('ETH payment transaction reverted or failed. No purchase request was created.');
-        }
-
-        toast.success(`Payment of ${ACTUAL_TRANSFER_ETH_AMOUNT} ETH sent to seller! View on Arbiscan.`);
         demoEthPrice = calculateDemoEthPrice(price);
       }
 
@@ -214,6 +174,7 @@ export default function PropertyDetails() {
         abi: LandLedgerABI,
         functionName: 'requestPurchase',
         args: [parcelId],
+        ...(paymentMode === 'Crypto' && { value: parseEther(ACTUAL_TRANSFER_ETH_AMOUNT.toString()) }),
         ...feeOverrides,
       });
 
@@ -236,7 +197,6 @@ export default function PropertyDetails() {
         // Crypto payment tracking
         ...(paymentMode === 'Crypto' && {
           paymentMode: 'Crypto',
-          paymentTxHash: ethPaymentTxHash,
           transferAmountEth: ACTUAL_TRANSFER_ETH_AMOUNT,
           displayPriceEth: demoEthPrice?.eth || 0,
         }),
@@ -245,7 +205,7 @@ export default function PropertyDetails() {
       setExistingTransfer(created);
 
       if (paymentMode === 'Crypto') {
-        toast.success(`Purchase request confirmed! ${ACTUAL_TRANSFER_ETH_AMOUNT} ETH transferred to seller on Arbitrum Sepolia.`);
+        toast.success(`Purchase request confirmed. ${ACTUAL_TRANSFER_ETH_AMOUNT} ETH is held in contract escrow and releases only after officer approval.`);
       } else {
         toast.success('Purchase request confirmed on-chain and sent to the seller.');
       }
@@ -812,12 +772,12 @@ export default function PropertyDetails() {
                       )}
                       {purchasing
                         ? purchaseStep === 'signing'
-                          ? paymentMode === 'Crypto' ? 'Confirm ETH Payment...' : 'Confirm in Wallet...'
+                          ? paymentMode === 'Crypto' ? 'Deposit to Escrow...' : 'Confirm in Wallet...'
                           : purchaseStep === 'confirming'
                           ? 'Confirming on Blockchain...'
                           : 'Syncing with Ledger...'
                         : paymentMode === 'Crypto'
-                        ? `Pay ${ACTUAL_TRANSFER_ETH_AMOUNT} ETH & Request`
+                        ? `Escrow ${ACTUAL_TRANSFER_ETH_AMOUNT} ETH & Request`
                         : 'Request to Purchase'}
                     </button>
                   );
