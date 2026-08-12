@@ -53,6 +53,15 @@ export default function AdminTransfers() {
     if (!isConnected || !walletAddress) throw new Error("Connect the registry-admin wallet that deployed this contract.");
     if (REGISTRY_ADMIN_ADDRESS && walletAddress.toLowerCase() !== REGISTRY_ADMIN_ADDRESS) throw new Error("Wrong officer wallet. Switch MetaMask to the contract deployer wallet.");
     if (!parcelId) throw new Error("This transfer is missing its on-chain parcel ID.");
+    const land = await publicClient.readContract({
+      address: CONTRACT_ADDRESS,
+      abi: LandLedgerABI,
+      functionName: 'getLand',
+      args: [parcelId],
+    });
+    if (!land?.[0] || land[0].toLowerCase() === '0x0000000000000000000000000000000000000000') {
+      throw new Error(`Parcel "${parcelId}" is not registered on the current contract. This is a legacy database transfer; create a new transfer after registering the property on this contract.`);
+    }
     toast.info("Confirm finalization with the registry-admin wallet...");
     const feeOverrides = await getSafeFeeOverrides(publicClient);
     const txHash = await writeContractAsync({ address: CONTRACT_ADDRESS, abi: LandLedgerABI, functionName: "finalizeTransfer", args: [parcelId], ...feeOverrides });
