@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronDown, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import RoleSwitcher from './RoleSwitcher';
 
 export default function Sidebar({ navItems = [] }) {
   const [isHovered, setIsHovered] = useState(false);
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -21,6 +22,7 @@ export default function Sidebar({ navItems = [] }) {
       style={{ boxShadow: '1px 0 4px rgba(30,58,95,0.04)' }}
     >
       <div className={`flex flex-col flex-1 overflow-y-auto ${isHovered ? 'px-3' : 'px-2'} py-4 overflow-x-hidden`}>
+        {user?.role === 'both' && <RoleSwitcher isHovered={isHovered} />}
         {navItems.map((group, gIdx) => (
           <div key={gIdx} className="mb-6">
             {/* Group Header */}
@@ -45,7 +47,6 @@ export default function Sidebar({ navItems = [] }) {
           </div>
         ))}
       </div>
-
       {/* Footer */}
       <div className={`border-t border-gray-100 p-2 flex flex-col gap-1`}>
         <button

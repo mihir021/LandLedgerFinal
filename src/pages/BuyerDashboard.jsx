@@ -2,7 +2,7 @@
  * BuyerDashboard — stat cards + recent notifications + quick actions
  */
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Search, FileText, Home, ArrowRight, ShieldCheck, Clock, CheckCircle } from 'lucide-react';
 import DashboardCard from '../components/DashboardCard';
 import StatusBadge from '../components/StatusBadge';
@@ -13,7 +13,8 @@ import { getNotifications } from '../services/notificationService';
 import { formatPrice } from '../utils/helpers';
 
 export default function BuyerDashboard() {
-  const { user } = useAuth();
+  const { user, canSell, setMode } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [properties, setProperties] = useState([]);
@@ -30,7 +31,7 @@ export default function BuyerDashboard() {
       try {
         const [props, transfers, notifs] = await Promise.all([
           getProperties({ verificationStatus: 'verified', limit: 6 }).catch(() => getProperties({ status: 'Verified', limit: 1000 }).catch(() => ({ properties: [] }))),
-          getTransfers().catch(() => []),
+          getTransfers({ view: 'buyer' }).catch(() => []),
           getNotifications().catch(() => []),
         ]);
         setProperties(props.properties || []);
@@ -57,9 +58,20 @@ export default function BuyerDashboard() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="animate-fade-in">
-        <h1 className="font-serif text-3xl font-bold text-gray-900">Welcome back, {firstName} 👋</h1>
-        <p className="text-gray-500 mt-1">Your property dashboard — everything in one place.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3 animate-fade-in">
+        <div>
+          <h1 className="font-serif text-3xl font-bold text-gray-900">Welcome back, {firstName} 👋</h1>
+          <p className="text-gray-500 mt-1">Your property dashboard — everything in one place.</p>
+        </div>
+        {canSell && (
+          <button
+            onClick={() => { setMode('seller'); navigate('/seller'); }}
+            className="text-xs font-medium text-blue-700 hover:underline flex items-center gap-1"
+          >
+            <ArrowRight className="h-3.5 w-3.5 rotate-180" />
+            Switch to Seller mode
+          </button>
+        )}
       </div>
 
       {error && (

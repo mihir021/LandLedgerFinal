@@ -162,18 +162,6 @@ const createProperty = async (req, res, next) => {
     } = req.body;
 
     // Collect uploaded file paths into documents array
-    let documentsArray = [];
-    if (req.files?.images) {
-      documentsArray = documentsArray.concat(
-        req.files.images.map((f) => ({ type: 'Other', url: f.path }))
-      );
-    }
-    if (req.files?.documents) {
-      documentsArray = documentsArray.concat(
-        req.files.documents.map((f) => ({ type: 'Other', url: f.path }))
-      );
-    }
-
     const imagePaths = req.files?.images ? req.files.images.map((f) => f.path) : [];
     const docObjects = req.files?.documents
       ? req.files.documents.map((f) => ({ type: 'Other', url: f.path }))
@@ -267,8 +255,10 @@ const updateProperty = async (req, res, next) => {
     }
 
     // Only the owner or an admin can update
+    const ownerId =
+      property.ownerId || property.owner;
     if (
-      property.ownerId.toString() !== req.user._id.toString() &&
+      (!ownerId || ownerId.toString() !== req.user._id.toString()) &&
       req.user.role !== 'admin'
     ) {
       return next(
@@ -307,8 +297,10 @@ const deleteProperty = async (req, res, next) => {
       return next(new ApiError(404, 'Property not found'));
     }
 
+    const ownerId =
+      property.ownerId || property.owner;
     if (
-      property.ownerId.toString() !== req.user._id.toString() &&
+      (!ownerId || ownerId.toString() !== req.user._id.toString()) &&
       req.user.role !== 'admin'
     ) {
       return next(
@@ -394,14 +386,15 @@ const toggleListing = async (req, res, next) => {
     const property = await Property.findById(req.params.id);
     if (!property) return next(new ApiError(404, 'Property not found'));
 
+    const ownerId = property.ownerId || property.owner;
     if (
-      property.owner.toString() !== req.user._id.toString() &&
+      (!ownerId || ownerId.toString() !== req.user._id.toString()) &&
       req.user.role !== 'admin'
     ) {
       return next(new ApiError(403, 'Not authorized to update this property'));
     }
 
-    if (isListed && property.verificationStatus !== 'verified') {
+    if (isListed && (property.verificationStatus || property.verification?.status)?.toLowerCase() !== 'verified') {
       return next(
         new ApiError(400, 'Only verified properties can be listed for sale')
       );
@@ -441,10 +434,10 @@ const getPropertyHistory = async (req, res, next) => {
 
     if (!property) return next(new ApiError(404, 'Property not found'));
 
-    // All transfers tied to this property, newest first
-    const transfers = await Transfer.find({ property: req.params.id })
-      .populate('seller', 'fullName email')
-      .populate('buyer', 'fullName email')
+    // All transfers tied to this property, oldest first
+    const transfers = await Transfer.find({ propertyId: req.params.id })
+      .populate('fromUserId', 'name email fullName')
+      .populate('toUserId', 'name email fullName')
       .sort({ createdAt: 1 });
 
     // Build a title-chain timeline: registration -> verification -> transfers
@@ -471,9 +464,9 @@ const getPropertyHistory = async (req, res, next) => {
       ...transfers.map((t) => ({
         stage: 'Ownership Transferred',
         label: 'Transfer',
-        actor: t.seller?.fullName || 'Unknown',
+        actor: t.fromUserId?.fullName || t.fromUserId?.name || 'Unknown',
         timestamp: t.createdAt,
-        details: `Ownership transferred from ${t.seller?.fullName || 'seller'} to ${t.buyer?.fullName || 'buyer'}. Status: ${t.status}.`,
+        details: `Ownership transferred from ${t.fromUserId?.fullName || t.fromUserId?.name || 'seller'} to ${t.toUserId?.fullName || t.toUserId?.name || 'buyer'}. Status: ${t.status}.`,
         transactionHash: t.transactionHash,
         status: t.status,
       })),

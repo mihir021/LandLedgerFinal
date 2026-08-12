@@ -24,7 +24,7 @@ export default function BuyerPurchases() {
     const load = async () => {
       setError('');
       try {
-        const data = await getTransfers();
+        const data = await getTransfers({ view: 'buyer' });
         setPurchases(Array.isArray(data) ? data : []);
       } catch (err) {
         setError(err.message || 'Failed to load purchase requests.');

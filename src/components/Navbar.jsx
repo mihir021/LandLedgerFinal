@@ -4,27 +4,19 @@
  * and classic institutional buttons.
  */
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, User, LayoutDashboard, ChevronDown, ArrowRight, ArrowLeft, ShieldCheck, Bell } from 'lucide-react';
-import { useAuth, ROLE_ROUTES } from '../context/AuthContext';
+import { Link, useNavigate } from 'react-router-dom';
+import { Menu, X, LogOut, User, ChevronDown, ArrowRight, ShieldCheck, Bell } from 'lucide-react';
+import { useAuth, ROLE_ROUTES, ROLE_LABELS } from '../context/AuthContext';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useNotifications } from '../context/NotificationContext';
-
-const ROLE_LABELS = {
-  buyer: 'Buyer',
-  seller: 'Seller',
-  officer: 'Govt. Officer',
-  admin: 'Administrator',
-};
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, mode } = useAuth();
   const { unreadCount } = useNotifications();
   const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -48,7 +40,12 @@ export default function Navbar() {
   const dashboardRoute = user ? (ROLE_ROUTES[user.role] || '/') : '/';
   const displayName = user?.fullName || user?.name || 'User';
   const initials = displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-  const isHomePage = location.pathname === '/';
+
+  const notificationRoute = user?.role === 'both'
+    ? `/${mode === 'seller' ? 'seller' : 'buyer'}/notifications`
+    : user
+      ? `/${user.role}/notifications`
+      : '/';
 
   return (
     <nav
@@ -79,8 +76,21 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-2">
-          {/* Links for authenticated users have been moved to the Sidebar */}
+        <div className="hidden md:flex items-center gap-1">
+          {!isAuthenticated ? (
+            <>
+              <NavLink to="/" label="Home" />
+              <NavLink to="/search" label="Search Properties" />
+            </>
+          ) : (
+            <>
+              <NavLink to={dashboardRoute} label="Dashboard" />
+              <NavLink to="/search" label="Search" />
+              {(user?.role === 'seller' || user?.role === 'both' || user?.role === 'admin') && (
+                <NavLink to="/register-property" label="Register Property" />
+              )}
+            </>
+          )}
         </div>
 
         {/* Desktop Auth */}
@@ -104,9 +114,9 @@ export default function Navbar() {
           ) : (
             <div className="flex items-center gap-3">
               <ConnectButton />
-              {(user?.role === 'buyer' || user?.role === 'seller') && (
+              {(user?.role === 'buyer' || user?.role === 'seller' || user?.role === 'both') && (
                 <Link
-                  to={`/${user.role}/notifications`}
+                  to={notificationRoute}
                   className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-blue-800 transition-colors"
                   title="Notifications"
                 >
@@ -198,6 +208,11 @@ export default function Navbar() {
                 <div className="px-1 mb-3">
                   <ConnectButton />
                 </div>
+                <MobileLink to={dashboardRoute} label="Dashboard" onClick={() => setMobileOpen(false)} />
+                <MobileLink to="/search" label="Search Properties" onClick={() => setMobileOpen(false)} />
+                {(user?.role === 'seller' || user?.role === 'both' || user?.role === 'admin') && (
+                  <MobileLink to="/register-property" label="Register Property" onClick={() => setMobileOpen(false)} />
+                )}
                 <hr className="border-gray-100 my-3" />
                 <button
                   onClick={handleLogout}

@@ -2,7 +2,7 @@
  * SellerDashboard — stat cards + properties list + incoming requests
  */
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Home, FilePlus, ArrowLeftRight, CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
 import DashboardCard from '../components/DashboardCard';
 import StatusBadge from '../components/StatusBadge';
@@ -12,7 +12,8 @@ import { getTransfers } from '../services/transferService';
 import { formatPrice } from '../utils/helpers';
 
 export default function SellerDashboard() {
-  const { user } = useAuth();
+  const { user, canBuy, setMode } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [properties, setProperties] = useState([]);
@@ -28,7 +29,7 @@ export default function SellerDashboard() {
       try {
         const [propsRes, transfersRes] = await Promise.all([
           getProperties(user?._id ? { owner: user._id, limit: 100 } : { limit: 100 }).catch(() => ({ properties: [] })),
-          getTransfers().catch(() => []),
+          getTransfers({ view: 'seller' }).catch(() => []),
         ]);
 
         let fetchedProps = propsRes.properties || [];
@@ -62,9 +63,20 @@ export default function SellerDashboard() {
 
   return (
     <div className="space-y-8">
-      <div className="animate-fade-in">
-        <h1 className="font-serif text-3xl font-bold text-gray-900">Seller Dashboard</h1>
-        <p className="text-gray-500 mt-1">Welcome back, {firstName} — manage your properties and listings.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3 animate-fade-in">
+        <div>
+          <h1 className="font-serif text-3xl font-bold text-gray-900">Seller Dashboard</h1>
+          <p className="text-gray-500 mt-1">Welcome back, {firstName} — manage your properties and listings.</p>
+        </div>
+        {canBuy && (
+          <button
+            onClick={() => { setMode('buyer'); navigate('/buyer'); }}
+            className="text-xs font-medium text-blue-700 hover:underline flex items-center gap-1"
+          >
+            <ArrowRight className="h-3.5 w-3.5 rotate-180" />
+            Switch to Buyer mode
+          </button>
+        )}
       </div>
 
       {error && (

@@ -41,8 +41,8 @@ const validateRegister = [
   body('aadhaarNumber').optional().trim(),
   body('role')
     .optional()
-    .isIn(['buyer', 'seller'])
-    .withMessage('Only buyer and seller roles can self-register'),
+    .isIn(['buyer', 'seller', 'both'])
+    .withMessage('Only buyer, seller, or both roles can self-register'),
   handleValidationErrors,
 ];
 

@@ -142,7 +142,9 @@ export default function AdminUsers() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-4 hidden sm:table-cell capitalize text-gray-600">{u.role}</td>
+                    <td className="px-5 py-4 hidden sm:table-cell text-gray-600">
+                      {u.role === 'both' ? 'Buyer & Seller' : (u.role ? u.role[0].toUpperCase() + u.role.slice(1) : '—')}
+                    </td>
                     <td className="px-5 py-4 hidden md:table-cell text-gray-400 text-xs">
                       {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN') : '—'}
                     </td>

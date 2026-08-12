@@ -3,15 +3,15 @@
  */
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogIn, Eye, EyeOff, AlertCircle, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { LogIn, Eye, EyeOff, AlertCircle, ShieldCheck } from 'lucide-react';
 import { useAuth, ROLE_ROUTES } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
 const DEMO_CREDENTIALS = [
-  { role: 'Admin',    email: 'admin@landledger.com',   password: 'Admin@123' },
-  { role: 'Officer',  email: 'officer@landledger.com', password: 'Officer@123' },
-  { role: 'Seller',   email: 'seller@landledger.com',  password: 'Seller@123' },
-  { role: 'Buyer',    email: 'buyer@landledger.com',   password: 'Buyer@123' },
+  { role: 'Admin',           email: 'admin@landledger.com',   password: 'Admin@123' },
+  { role: 'Officer',         email: 'officer@landledger.com', password: 'Officer@123' },
+  { role: 'Seller & Buyer',  email: 'seller@landledger.com',  password: 'Seller@123' },
+  { role: 'Buyer & Seller',  email: 'buyer@landledger.com',   password: 'Buyer@123' },
 ];
 
 export default function Login() {
