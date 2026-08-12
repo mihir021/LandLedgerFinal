@@ -71,16 +71,7 @@ const transferSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
-    documents: [
-      {
-        name: String,
-        type: { type: String, default: 'Other' },
-        url: String,
-        public_id: String,
-        uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        uploadedAt: { type: Date, default: Date.now }
-      }
-    ],
+    documents: [{ type: String, url: String }],
     blockchainTxHash: String,
     buyerWallet: String,
     buyerRequestTxHash: String,

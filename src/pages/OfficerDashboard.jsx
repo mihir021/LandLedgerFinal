@@ -496,7 +496,7 @@ export default function OfficerDashboard() {
         </>
       )}
 
-      {/* Confirmation Modals with Cloudinary Document Audit */}
+      {/* Confirmation Modals */}
       <ConfirmationModal
         isOpen={propModal.open}
         onClose={() => setPropModal({ open: false, id: null, status: null, name: '' })}
@@ -505,70 +505,11 @@ export default function OfficerDashboard() {
         variant={propModal.status?.toLowerCase() === 'verified' ? 'approve' : 'reject'}
         title={propModal.status?.toLowerCase() === 'verified' ? 'Approve Property Verification' : 'Reject Property Verification'}
         message={propModal.status?.toLowerCase() === 'verified'
-          ? 'Review all attached Cloudinary deeds and legal documents before confirming government verification on-chain.'
+          ? 'This property will be marked as government-verified and listed on the marketplace.'
           : 'This property will be rejected. The seller must resubmit with corrected documents.'}
         details={propModal.name ? { 'Property': propModal.name } : undefined}
         confirmLabel={propModal.status?.toLowerCase() === 'verified' ? 'Approve Verification' : 'Reject Verification'}
-      >
-        {(() => {
-          const prop = pendingProperties.find(p => p._id === propModal.id);
-          if (!prop) return null;
-          const docs = prop.documents || [];
-          const images = prop.images || [];
-
-          return (
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-2 text-xs">
-              <p className="font-semibold text-gray-800 flex items-center gap-1.5">
-                <FileText className="h-3.5 w-3.5 text-blue-700" />
-                Cloudinary Document Audit ({docs.length + images.length} files attached)
-              </p>
-              {docs.length === 0 && images.length === 0 ? (
-                <p className="text-gray-400 italic">No files attached to this property.</p>
-              ) : (
-                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                  {docs.map((doc, idx) => {
-                    const docUrl = typeof doc === 'object' ? doc.url : doc;
-                    return (
-                      <div key={idx} className="flex items-center justify-between bg-white border border-gray-200 rounded p-2">
-                        <span className="truncate max-w-[200px] font-medium text-gray-700">📄 {doc.type || 'Legal Deed'}</span>
-                        {docUrl && (
-                          <a
-                            href={docUrl.startsWith('http') ? docUrl : `/${docUrl}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline font-semibold text-[11px] shrink-0"
-                          >
-                            Inspect Document ↗
-                          </a>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {images.map((img, idx) => {
-                    const imgUrl = typeof img === 'object' ? img.url : img;
-                    return (
-                      <div key={idx} className="flex items-center justify-between bg-white border border-gray-200 rounded p-2">
-                        <span className="truncate max-w-[200px] font-medium text-gray-700">🖼️ Property Photo {idx + 1}</span>
-                        {imgUrl && (
-                          <a
-                            href={imgUrl.startsWith('http') ? imgUrl : `/${imgUrl}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline font-semibold text-[11px] shrink-0"
-                          >
-                            View Photo ↗
-                          </a>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })()}
-      </ConfirmationModal>
-
+      />
       <ConfirmationModal
         isOpen={transferModal.open}
         onClose={() => setTransferModal({ open: false, id: null })}
@@ -576,74 +517,9 @@ export default function OfficerDashboard() {
         loading={actionLoading !== null}
         variant="approve"
         title="Approve Transfer — Final Officer Compliance"
-        message="Review all buyer and property Cloudinary verification documents before executing final on-chain ownership transfer."
+        message="This is the final officer compliance check. The smart contract will execute the ownership transfer and record it immutably on the blockchain."
         confirmLabel="Approve Transfer"
-      >
-        {(() => {
-          const t = pendingTransfers.find(tr => tr._id === transferModal.id);
-          if (!t) return null;
-          const propDocs = t.property?.documents || [];
-          const buyerDocs = t.documents || [];
-
-          return (
-            <div className="rounded-xl border border-purple-200 bg-purple-50/50 p-3 space-y-3 text-xs">
-              <div>
-                <p className="font-semibold text-purple-900 flex items-center gap-1.5">
-                  <ShieldCheck className="h-3.5 w-3.5 text-purple-700" />
-                  Buyer & Property Document Compliance Checklist
-                </p>
-                <p className="text-[11px] text-purple-700 mt-0.5">
-                  Buyer: <span className="font-semibold">{t.buyer?.fullName || t.buyer?.name || 'Buyer'}</span> · Seller: <span className="font-semibold">{t.seller?.fullName || t.seller?.name || 'Seller'}</span>
-                </p>
-              </div>
-
-              {/* Property Legal Documents */}
-              <div className="space-y-1">
-                <span className="font-semibold text-gray-700 text-[11px]">Property Legal Deeds ({propDocs.length})</span>
-                {propDocs.length === 0 ? (
-                  <p className="text-gray-400 italic text-[11px]">No original deed documents attached.</p>
-                ) : (
-                  propDocs.map((doc, idx) => {
-                    const docUrl = typeof doc === 'object' ? doc.url : doc;
-                    return (
-                      <div key={idx} className="flex items-center justify-between bg-white border border-gray-200 rounded p-1.5 text-[11px]">
-                        <span className="truncate max-w-[200px] text-gray-700">📄 {doc.type || 'Property Deed'}</span>
-                        {docUrl && (
-                          <a href={docUrl.startsWith('http') ? docUrl : `/${docUrl}`} target="_blank" rel="noopener noreferrer" className="text-purple-700 font-semibold hover:underline">
-                            Inspect ↗
-                          </a>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* Buyer Uploaded Transfer Documents */}
-              <div className="space-y-1">
-                <span className="font-semibold text-gray-700 text-[11px]">Buyer Transfer Uploads ({buyerDocs.length})</span>
-                {buyerDocs.length === 0 ? (
-                  <p className="text-gray-400 italic text-[11px]">No buyer verification documents attached.</p>
-                ) : (
-                  buyerDocs.map((doc, idx) => {
-                    const docUrl = typeof doc === 'object' ? doc.url : doc;
-                    return (
-                      <div key={idx} className="flex items-center justify-between bg-white border border-purple-200 rounded p-1.5 text-[11px]">
-                        <span className="truncate max-w-[200px] text-purple-950 font-medium">📑 {doc.name || doc.type || 'Buyer Document'}</span>
-                        {docUrl && (
-                          <a href={docUrl.startsWith('http') ? docUrl : `/${docUrl}`} target="_blank" rel="noopener noreferrer" className="text-purple-700 font-semibold hover:underline">
-                            Open Doc ↗
-                          </a>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          );
-        })()}
-      </ConfirmationModal>
+      />
       <ConfirmationModal
         isOpen={disputeModal.open}
         onClose={() => setDisputeModal({ open: false, id: null, status: null })}

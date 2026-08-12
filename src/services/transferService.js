@@ -67,16 +67,3 @@ export const completeTransfer = async (transferId) => {
   const { data } = await api.post('/transfers/complete', { transferId });
   return data.data;
 };
-
-/**
- * Upload supporting transfer documents (PDF, images, etc.) to Cloudinary.
- * @param {string} transferId
- * @param {FormData} formData
- * @returns {Object} Updated transfer document.
- */
-export const uploadTransferDocument = async (transferId, formData) => {
-  const { data } = await api.post(`/transfers/${transferId}/documents`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  return data.data;
-};

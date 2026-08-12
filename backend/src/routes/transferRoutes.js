@@ -6,7 +6,6 @@ import {
   officerApprove,
   completeTransfer,
   getTransfers,
-  uploadTransferDocument,
 } from '../controllers/transferController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { authorize } from '../middleware/roleMiddleware.js';
@@ -14,15 +13,11 @@ import {
   validateTransferRequest,
   validateTransferAction,
 } from '../middleware/validationMiddleware.js';
-import { uploadDocuments } from '../middleware/uploadMiddleware.js';
 
 const router = Router();
 
 // All transfer routes are protected
 router.use(protect);
-
-// Upload supporting documents for a transfer
-router.post('/:id/documents', uploadDocuments, uploadTransferDocument);
 
 // Buyer requests a transfer
 router.post('/request', authorize('buyer'), validateTransferRequest, requestTransfer);
