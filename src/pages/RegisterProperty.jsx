@@ -15,7 +15,7 @@ import { INDIA_LOCATION_DATA, STATES_LIST } from '../data/indiaStatesDistrictsCi
 import SearchableSelect from '../components/SearchableSelect';
 import { createProperty } from '../services/propertyService';
 import { useToast } from '../context/ToastContext';
-import { useWriteContract, useAccount, usePublicClient } from 'wagmi';
+import { useWriteContract, useAccount, usePublicClient, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESS, getSafeFeeOverrides } from '../config/web3';
 import { LandLedgerABI } from '../config/LandLedgerABI.js';
 
@@ -59,9 +59,62 @@ export default function RegisterProperty() {
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
+  // Pending on-chain registration state. The property is only written to the
+  // DB after the transaction is MINED (receipt.status === 'success'), never
+  // when it merely enters the mempool.
+  const [txHash, setTxHash] = useState(null);
+  const [pendingRecord, setPendingRecord] = useState(null); // { formData }
+  const [recordSaved, setRecordSaved] = useState(false);
+
   const { writeContractAsync } = useWriteContract();
   const { address: walletAddress, isConnected } = useAccount();
   const publicClient = usePublicClient();
+
+  // Poll the chain until the registration transaction is confirmed.
+  const { data: receipt, isError: receiptError } = useWaitForTransactionReceipt({
+    hash: txHash,
+    confirmations: 1,
+  });
+
+  // Persist the property only once the on-chain transaction has confirmed.
+  // A reverted/dropped transaction means nothing is written — no phantom
+  // property record survives a failed broadcast.
+  useEffect(() => {
+    if (!txHash || !pendingRecord || recordSaved) return;
+
+    if (receiptError) {
+      setSubmitError('Could not confirm the transaction on-chain. The property was NOT saved. Please try again.');
+      toast.error('Transaction confirmation failed — property not saved.');
+      setTxHash(null);
+      setPendingRecord(null);
+      setLoading(false);
+      return;
+    }
+
+    if (!receipt) return; // still polling
+
+    if (receipt.status !== 'success') {
+      setSubmitError('The blockchain transaction was reverted. The property was NOT saved. Please try again.');
+      toast.error('Transaction reverted — property not saved.');
+      setTxHash(null);
+      setPendingRecord(null);
+      setLoading(false);
+      return;
+    }
+
+    // 2. Backend storage (only after on-chain confirmation)
+    setRecordSaved(true);
+    createProperty(pendingRecord.formData)
+      .then(() => {
+        toast.success('Property registered successfully!');
+        navigate('/seller');
+      })
+      .catch((err) => {
+        setSubmitError(err.message || 'Property confirmed on-chain but failed to save in the registry.');
+        toast.error(err.message || 'Property confirmed on-chain but failed to save in the registry.');
+        setLoading(false);
+      });
+  }, [txHash, pendingRecord, receipt, receiptError, recordSaved, navigate, toast]);
 
   // Create image object URLs for live preview thumbnails
   useEffect(() => {
@@ -196,7 +249,7 @@ export default function RegisterProperty() {
 
       toast.info('Confirm the property registration in your wallet...');
       const feeOverrides = await getSafeFeeOverrides(publicClient);
-      const txHash = await writeContractAsync({
+      const hash = await writeContractAsync({
         address: CONTRACT_ADDRESS,
         abi: LandLedgerABI,
         functionName: 'registerLand',
@@ -207,20 +260,19 @@ export default function RegisterProperty() {
         ],
         ...feeOverrides,
       });
-      toast.info('Registration submitted on-chain. Saving the property record...');
 
+      // The tx is now in the mempool — do NOT save the property yet. It is
+      // only persisted once the receipt confirms (see the receipt effect).
       formData.append('walletAddress', walletAddress);
-      formData.append('txHash', txHash);
+      formData.append('txHash', hash);
       formData.append('blockchainParcelId', uniqueParcelId);
 
-      // 2. Backend Storage
-      await createProperty(formData);
-      toast.success('Property registered successfully!');
-      navigate('/seller');
+      setPendingRecord({ formData });
+      setTxHash(hash);
+      toast.info('Transaction submitted. Waiting for on-chain confirmation...');
     } catch (err) {
       setSubmitError(err.message || 'Failed to register property.');
       toast.error(err.message || 'Failed to register property.');
-    } finally {
       setLoading(false);
     }
   };
@@ -565,7 +617,7 @@ export default function RegisterProperty() {
             {loading ? (
               <>
                 <FiLoader className="h-4 w-4 animate-spin" />
-                <span>Registering Property...</span>
+                <span>{txHash ? 'Waiting for blockchain confirmation...' : 'Registering Property...'}</span>
               </>
             ) : (
               <>
