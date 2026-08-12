@@ -9,10 +9,13 @@ import ApiError from '../utils/ApiError.js';
 
 const cloudinaryPropertyStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: {
-    folder: 'landledger/properties',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-    transformation: [{ width: 1600, crop: 'limit' }],
+  params: async (req, file) => {
+    const isPdf = file.mimetype === 'application/pdf' || file.originalname.toLowerCase().endsWith('.pdf');
+    return {
+      folder: 'landledger/properties',
+      allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
+      transformation: isPdf ? [] : [{ width: 1600, crop: 'limit' }],
+    };
   },
 });
 
