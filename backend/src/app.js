@@ -29,6 +29,9 @@ const app = express();
 // Global Middleware
 // =====================================================
 
+// Trust proxy required for Railway/Render environments with express-rate-limit
+app.set('trust proxy', 1);
+
 // Security headers
 app.use(helmet());
 
