@@ -586,71 +586,147 @@ export default function PropertyDetails() {
             )}
 
             {/* CTA Button / Transfer Status */}
-            {isAuthenticated && user?.role === 'buyer' && (
-              existingTransfer ? (
-                <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50/80 p-4 text-center">
-                  <div className="flex items-center justify-center gap-2 text-blue-900 font-semibold text-sm">
-                    <FiClock className="h-4 w-4 text-blue-700" />
-                    {existingTransfer.status === 'pendingRequest'
-                      ? 'Purchase request pending confirmation...'
-                      : 'Purchase Request In Progress'}
+            {(() => {
+              // Check if the current user is the property owner
+              const currentUserId = user?._id || user?.id;
+              const propertyOwnerId = typeof property.ownerId === 'object' ? property.ownerId?._id : property.ownerId;
+              const isCurrentOwner = currentUserId && propertyOwnerId && currentUserId === propertyOwnerId;
+
+              // Check if transfer is completed (property was sold)
+              const isTransferCompleted = existingTransfer && ['completed', 'Completed'].includes(existingTransfer.status);
+              const hasActiveTransfer = existingTransfer && !['Rejected', 'failed', 'Failed', 'failedConfirmation', 'completed', 'Completed'].includes(existingTransfer.status);
+              const propertySold = !property.isListed && (isTransferCompleted || property.previousOwners?.length > 0);
+
+              if (isCurrentOwner) {
+                // Current user owns this property
+                return (
+                  <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 text-center">
+                    <div className="flex items-center justify-center gap-2 text-emerald-800 font-semibold text-sm">
+                      <FiCheckCircle className="h-5 w-5 text-emerald-600" />
+                      You Own This Property
+                    </div>
+                    <p className="mt-1 text-xs text-emerald-600">This property is registered in your name.</p>
                   </div>
-                  <div className="mt-2 flex items-center justify-center gap-2 text-xs text-blue-700">
-                    <span>Status:</span>
-                    <StatusBadge status={existingTransfer.status || 'pendingRequest'} />
+                );
+              }
+
+              if (isAuthenticated && (user?.role === 'buyer' || user?.activeMode === 'buyer')) {
+                if (isTransferCompleted) {
+                  // Buyer completed the purchase
+                  return (
+                    <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 text-center">
+                      <div className="flex items-center justify-center gap-2 text-emerald-800 font-semibold text-sm">
+                        <FiCheckCircle className="h-5 w-5 text-emerald-600" />
+                        Property Purchased Successfully
+                      </div>
+                      <p className="mt-1 text-xs text-emerald-600">Ownership has been transferred to you on the blockchain.</p>
+                      <Link
+                        to="/buyer/purchases"
+                        className="mt-3 inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-800 hover:text-emerald-600 hover:underline"
+                      >
+                        View in My Purchases <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    </div>
+                  );
+                }
+
+                if (hasActiveTransfer) {
+                  // Active transfer in progress
+                  return (
+                    <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50/80 p-4 text-center">
+                      <div className="flex items-center justify-center gap-2 text-blue-900 font-semibold text-sm">
+                        <FiClock className="h-4 w-4 text-blue-700" />
+                        {existingTransfer.status === 'pendingRequest'
+                          ? 'Purchase request pending confirmation...'
+                          : 'Purchase Request In Progress'}
+                      </div>
+                      <div className="mt-2 flex items-center justify-center gap-2 text-xs text-blue-700">
+                        <span>Status:</span>
+                        <StatusBadge status={existingTransfer.status || 'pendingRequest'} />
+                      </div>
+                      <Link
+                        to="/buyer/purchases"
+                        className="mt-3 inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-blue-900 hover:text-blue-700 hover:underline"
+                      >
+                        View in My Purchases <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    </div>
+                  );
+                }
+
+                if (status === 'Verified' && property.isListed !== false) {
+                  // Available for purchase
+                  return (
+                    <button
+                      onClick={handlePurchase}
+                      disabled={purchasing}
+                      className="mt-6 flex w-full items-center justify-center gap-2 btn-primary py-3.5 text-sm"
+                    >
+                      {purchasing ? (
+                        <FiLoader className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <FiShoppingCart className="h-4 w-4" />
+                      )}
+                      {purchasing
+                        ? purchaseStep === 'signing'
+                          ? 'Confirm in Wallet...'
+                          : purchaseStep === 'confirming'
+                          ? 'Confirming on Blockchain...'
+                          : 'Syncing with Ledger...'
+                        : 'Request to Purchase'}
+                    </button>
+                  );
+                }
+
+                // Property not available
+                return (
+                  <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-center text-xs text-gray-500">
+                    {propertySold ? 'This property has been sold.' : 'This property is currently not listed for purchase.'}
                   </div>
-                  <Link
-                    to="/buyer/purchases"
-                    className="mt-3 inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-blue-900 hover:text-blue-700 hover:underline"
-                  >
-                    View in My Purchases <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </div>
-              ) : status === 'Verified' && (property.isListed !== false) ? (
+                );
+              }
+
+              return null;
+            })()}
+
+            {/* Inquiry Button — only show if property is still listed and user doesn't own it */}
+            {(() => {
+              const currentUserId = user?._id || user?.id;
+              const propertyOwnerId = typeof property.ownerId === 'object' ? property.ownerId?._id : property.ownerId;
+              const isCurrentOwner = currentUserId && propertyOwnerId && currentUserId === propertyOwnerId;
+              const isTransferCompleted = existingTransfer && ['completed', 'Completed'].includes(existingTransfer.status);
+
+              if (isCurrentOwner || isTransferCompleted) return null;
+
+              return (
                 <button
-                  onClick={handlePurchase}
-                  disabled={purchasing}
-                  className="mt-6 flex w-full items-center justify-center gap-2 btn-primary py-3.5 text-sm"
+                  onClick={() => setShowInquiryModal(true)}
+                  className="mt-3 flex w-full items-center justify-center gap-2 btn-secondary py-3 text-sm"
                 >
-                  {purchasing ? (
-                    <FiLoader className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <FiShoppingCart className="h-4 w-4" />
-                  )}
-                  {purchasing
-                    ? purchaseStep === 'signing'
-                      ? 'Confirm in Wallet...'
-                      : purchaseStep === 'confirming'
-                      ? 'Confirming on Blockchain...'
-                      : 'Syncing with Ledger...'
-                    : 'Request to Purchase'}
+                  <FiMessageSquare className="h-4 w-4 text-blue-900" />
+                  Inquire About Property
                 </button>
-              ) : (
-                <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-center text-xs text-gray-500">
-                  This property is currently not listed for purchase.
-                </div>
-              )
-            )}
+              );
+            })()}
 
-            {/* Inquiry Button */}
-            <button
-              onClick={() => setShowInquiryModal(true)}
-              className="mt-3 flex w-full items-center justify-center gap-2 btn-secondary py-3 text-sm"
-            >
-              <FiMessageSquare className="h-4 w-4 text-blue-900" />
-              Inquire About Property
-            </button>
+            {/* Raise Dispute — hide if user owns the property */}
+            {isAuthenticated && (() => {
+              const currentUserId = user?._id || user?.id;
+              const propertyOwnerId = typeof property.ownerId === 'object' ? property.ownerId?._id : property.ownerId;
+              const isCurrentOwner = currentUserId && propertyOwnerId && currentUserId === propertyOwnerId;
 
-            {/* Raise Dispute */}
-            {isAuthenticated && (
-              <button
-                onClick={() => setShowDisputeModal(true)}
-                className="mt-3 flex w-full items-center justify-center gap-2 btn-secondary py-3 text-sm border-red-200 text-red-700 hover:bg-red-50"
-              >
-                <FiFlag className="h-4 w-4 text-red-600" />
-                Raise a Dispute
-              </button>
-            )}
+              if (isCurrentOwner) return null;
+
+              return (
+                <button
+                  onClick={() => setShowDisputeModal(true)}
+                  className="mt-3 flex w-full items-center justify-center gap-2 btn-secondary py-3 text-sm border-red-200 text-red-700 hover:bg-red-50"
+                >
+                  <FiFlag className="h-4 w-4 text-red-600" />
+                  Raise a Dispute
+                </button>
+              );
+            })()}
 
             {!isAuthenticated && (
               <Link
