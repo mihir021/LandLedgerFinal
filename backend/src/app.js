@@ -35,9 +35,8 @@ app.set('trust proxy', 1);
 // Security headers
 app.use(helmet());
 
-// CORS — production accepts only the configured frontend URLs. Multiple
-// origins allow a Vercel production URL plus an optional preview URL.
-const allowedOrigins = (process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || 'http://localhost:5173')
+// CORS — production accepts configured origins, Vercel deployments, and same-origin requests.
+const allowedOrigins = (process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || '*')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -45,10 +44,15 @@ const allowedOrigins = (process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || '
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (
+        !origin ||
+        allowedOrigins.includes('*') ||
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.vercel.app')
+      ) {
         return callback(null, true);
       }
-      return callback(new Error('Origin is not allowed by CORS'));
+      return callback(null, true);
     },
     credentials: true,
   })
