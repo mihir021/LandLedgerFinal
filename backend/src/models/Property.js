@@ -119,6 +119,43 @@ const propertySchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: {
+      transform(_doc, ret) {
+        // Normalize images: old seeded data stores plain strings, Cloudinary stores {url, public_id}.
+        // Mongoose may cast old strings into empty subdocuments {_id: ...} with no url.
+        // Always return clean string URLs to prevent frontend t.startsWith crashes.
+        if (Array.isArray(ret.images)) {
+          ret.images = ret.images
+            .map((img) => {
+              if (typeof img === 'string') return img;
+              if (img && typeof img === 'object' && img.url) return img.url;
+              return null;
+            })
+            .filter(Boolean);
+        }
+        if (Array.isArray(ret.documents)) {
+          ret.documents = ret.documents.map((doc) => {
+            if (typeof doc === 'string') return { type: 'Other', url: doc };
+            return doc;
+          });
+        }
+        return ret;
+      },
+    },
+    toObject: {
+      transform(_doc, ret) {
+        if (Array.isArray(ret.images)) {
+          ret.images = ret.images
+            .map((img) => {
+              if (typeof img === 'string') return img;
+              if (img && typeof img === 'object' && img.url) return img.url;
+              return null;
+            })
+            .filter(Boolean);
+        }
+        return ret;
+      },
+    },
   }
 );
 
