@@ -6,9 +6,14 @@ import { http } from 'wagmi';
 export const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0xdf7f1c05ce7380019f0f8fbd8cce6a6a41aa3b50';
 export const BLOCK_EXPLORER_TX_URL = 'https://sepolia.arbiscan.io/tx/';
 
+export const WALLETCONNECT_PROJECT_ID =
+  import.meta.env.VITE_WC_PROJECT_ID ||
+  import.meta.env.VITE_REOWN_PROJECT_ID ||
+  '3a40073b6199731d4726d66c024b6528';
+
 export const web3Config = getDefaultConfig({
   appName: 'LandLedger',
-  projectId: 'a0280ebdb26c11b1bfbe9c3b838c64bb', // Required for WalletConnect (using a public template ID for now, user can change later if needed)
+  projectId: WALLETCONNECT_PROJECT_ID,
   chains: [arbitrumSepolia],
   transports: {
     [arbitrumSepolia.id]: http('https://sepolia-rollup.arbitrum.io/rpc'),

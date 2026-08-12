@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { getProperties } from '../services/propertyService';
 import { getTransfers } from '../services/transferService';
 import { getNotifications } from '../services/notificationService';
-import { formatPrice } from '../utils/helpers';
+import { formatPrice, getImgUrl } from '../utils/helpers';
 
 export default function BuyerDashboard() {
   const { user, canSell, setMode } = useAuth();
@@ -167,12 +167,12 @@ export default function BuyerDashboard() {
         ) : (
           <div className="divide-y divide-gray-50">
             {properties.slice(0, 5).map(prop => {
-              const image = prop.documents?.[0]?.url || null;
+              const imgSrc = getImgUrl(prop.images?.[0] || prop.documents?.[0]);
               return (
               <Link key={prop._id} to={`/property/${prop._id}`}
                 className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
                 <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-lg shrink-0 overflow-hidden">
-                  {image ? <img src={image.startsWith('http') ? image : `/${image.replace(/\\/g, '/')}`} className="h-full w-full object-cover" alt="" /> : '🏠'}
+                  {imgSrc ? <img src={imgSrc} className="h-full w-full object-cover" alt="" /> : '🏠'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-800 truncate">

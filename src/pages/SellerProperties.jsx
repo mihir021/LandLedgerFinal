@@ -11,7 +11,7 @@ import { getProperties, toggleListing } from '../services/propertyService';
 import { deepSearchProperty } from '../utils/searchFilters';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { formatPrice } from '../utils/helpers';
+import { formatPrice, getImgUrl } from '../utils/helpers';
 
 export default function SellerProperties() {
   const { user } = useAuth();
@@ -136,21 +136,21 @@ export default function SellerProperties() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filtered.map((p, i) => {
-                const status = p.verification?.status || 'Pending';
-                const image = (p.images && p.images.length > 0) ? p.images[0] : (p.documents?.[0]?.url || null);
-                const getImgUrl = (img) => {
-                  if (!img) return null;
-                  if (img.startsWith('http')) return img;
-                  if (img.startsWith('uploads/') || img.startsWith('uploads\\')) return `/${img.replace(/\\/g, '/')}`;
-                  return `/uploads/images/${img.replace(/\\/g, '/')}`;
-                };
+                const status = p.verification?.status || p.verificationStatus || 'Pending';
+                const imgSrc = getImgUrl(p.images?.[0] || p.documents?.[0]);
+                
+                // Check if this property was sold by the current user
+                const currentUserId = user?._id || user?.id;
+                const propertyOwnerId = typeof p.ownerId === 'object' ? p.ownerId?._id : p.ownerId;
+                const isCurrentOwner = currentUserId && propertyOwnerId && currentUserId === propertyOwnerId;
+                const isSold = !isCurrentOwner && p.previousOwners?.includes(currentUserId);
 
                 return (
-                <tr key={p._id} className="hover:bg-gray-50 transition-colors animate-fade-in-up" style={{ animationDelay: `${i * 50}ms`, opacity: 0 }}>
+                <tr key={p._id} className={`hover:bg-gray-50 transition-colors animate-fade-in-up ${isSold ? 'opacity-70' : ''}`} style={{ animationDelay: `${i * 50}ms` }}>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center overflow-hidden shrink-0">
-                        {image ? <img src={getImgUrl(image)} alt="" className="h-full w-full object-cover" /> : '🏠'}
+                        {imgSrc ? <img src={imgSrc} alt="" className="h-full w-full object-cover" /> : '🏠'}
                       </div>
                       <div className="min-w-0">
                         <p className="font-medium text-gray-800 truncate max-w-[180px]">{p.location?.district || p.location?.surveyNumber}, {p.location?.city}</p>
@@ -170,11 +170,17 @@ export default function SellerProperties() {
                     />
                   </td>
                   <td className="px-5 py-4">
-                    <StatusBadge status={p.isListed ? 'listed' : p.verificationStatus === 'pending' ? 'pending_verify' : 'draft'} />
+                    {isSold ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-md bg-purple-50 px-2 py-1 text-xs font-semibold text-purple-700 ring-1 ring-inset ring-purple-600/20">
+                        Sold
+                      </span>
+                    ) : (
+                      <StatusBadge status={p.isListed ? 'listed' : status === 'Pending' ? 'pending_verify' : 'draft'} />
+                    )}
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center justify-end gap-2">
-                      {p.verificationStatus === 'verified' && (
+                      {!isSold && (status === 'Verified' || status === 'verified') && (
                         <button
                           onClick={() => setToggleModal({ id: p._id, isListed: !p.isListed, name: `${p.address}, ${p.city}` })}
                           disabled={actionLoading}

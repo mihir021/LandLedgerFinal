@@ -3,6 +3,7 @@ import Transfer from '../models/Transfer.js';
 import ApiError from '../utils/ApiError.js';
 import logAudit from '../utils/auditLogger.js';
 import { syncTransferStatus } from '../services/blockchainService.js';
+import cloudinary from '../config/cloudinary.js';
 
 // =====================================================
 // @desc    Get all properties (with optional filters)
@@ -78,6 +79,7 @@ const getProperties = async (req, res, next) => {
           { owner: owner },
           { ownerId: owner },
           { currentOwnerWallet: owner },
+          { previousOwners: owner },
         ],
       });
     }
@@ -171,8 +173,14 @@ const createProperty = async (req, res, next) => {
       walletAddress
     } = req.body;
 
-    // Collect uploaded file paths into documents array
-    const imagePaths = req.files?.images ? req.files.images.map((f) => f.path) : [];
+    // Collect uploaded Cloudinary image objects ({ url, public_id })
+    const imageObjects = req.files?.images
+      ? req.files.images.map((f) => ({
+          url: f.path,
+          public_id: f.filename || f.public_id,
+        }))
+      : [];
+
     const docObjects = req.files?.documents
       ? req.files.documents.map((f) => ({ type: 'Other', url: f.path }))
       : [];
@@ -228,7 +236,7 @@ const createProperty = async (req, res, next) => {
       },
       isListed: true,
 
-      images: imagePaths,
+      images: imageObjects,
       documents: docObjects,
       currentOwnerWallet: walletAddress || req.user.walletAddress || null,
       blockchainTx: txHash || null,
@@ -276,10 +284,41 @@ const updateProperty = async (req, res, next) => {
       );
     }
 
-    // Since req.body might be flat from an old frontend or nested,
-    // we should ideally expect the frontend to send the nested structure.
-    // For now we just pass req.body directly to findByIdAndUpdate.
-    property = await Property.findByIdAndUpdate(req.params.id, req.body, {
+    let imageObjects = [...(property.images || [])];
+
+    // Delete removed images from Cloudinary if requested
+    if (req.body.removedImageIds) {
+      const idsToRemove = Array.isArray(req.body.removedImageIds)
+        ? req.body.removedImageIds
+        : [req.body.removedImageIds];
+
+      for (const publicId of idsToRemove) {
+        if (publicId) {
+          try {
+            await cloudinary.uploader.destroy(publicId);
+          } catch (err) {
+            console.error(`Failed to destroy Cloudinary image ${publicId}:`, err);
+          }
+        }
+      }
+
+      imageObjects = imageObjects.filter(
+        (img) => typeof img === 'object' && !idsToRemove.includes(img.public_id)
+      );
+    }
+
+    // Append new uploaded Cloudinary images
+    if (req.files?.images && req.files.images.length > 0) {
+      const newImages = req.files.images.map((f) => ({
+        url: f.path,
+        public_id: f.filename || f.public_id,
+      }));
+      imageObjects = [...imageObjects, ...newImages];
+    }
+
+    const updatePayload = { ...req.body, images: imageObjects };
+
+    property = await Property.findByIdAndUpdate(req.params.id, updatePayload, {
       new: true,
       runValidators: true,
     });
@@ -316,6 +355,20 @@ const deleteProperty = async (req, res, next) => {
       return next(
         new ApiError(403, 'Not authorized to delete this property')
       );
+    }
+
+    // Delete all associated Cloudinary images
+    if (property.images && property.images.length > 0) {
+      for (const img of property.images) {
+        const publicId = typeof img === 'object' ? img.public_id : null;
+        if (publicId) {
+          try {
+            await cloudinary.uploader.destroy(publicId);
+          } catch (err) {
+            console.error(`Failed to delete Cloudinary image ${publicId}:`, err);
+          }
+        }
+      }
     }
 
     await Property.findByIdAndDelete(req.params.id);

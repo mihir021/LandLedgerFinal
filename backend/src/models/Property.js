@@ -110,7 +110,12 @@ const propertySchema = new mongoose.Schema(
       },
     ],
 
-    images: [String],
+    images: [
+      {
+        url: { type: String },
+        public_id: { type: String },
+      },
+    ],
   },
   {
     timestamps: true,

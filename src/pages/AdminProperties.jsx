@@ -9,6 +9,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import { getProperties, verifyProperty } from '../services/propertyService';
 import { useToast } from '../context/ToastContext';
 import { deepSearchProperty } from '../utils/searchFilters';
+import { getImgUrl } from '../utils/helpers';
 
 export default function AdminProperties() {
   const toast = useToast();
@@ -96,13 +97,14 @@ export default function AdminProperties() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filtered.map((p, i) => {
-                const image = (p.images && p.images.length > 0) ? p.images[0] : (p.documents?.[0]?.url || null);
+                const imgSrc = getImgUrl(p.images?.[0] || p.documents?.[0]);
+
                 return (
                 <tr key={p._id} className="hover:bg-gray-50 transition-colors animate-fade-in-up" style={{ animationDelay: `${i * 40}ms`, opacity: 0 }}>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center overflow-hidden shrink-0">
-                        {image ? <img src={image.startsWith('http') ? image : `/${image.replace(/\\/g, '/')}`} alt="" className="h-full w-full object-cover" /> : '🏠'}
+                        {imgSrc ? <img src={imgSrc} alt="" className="h-full w-full object-cover" /> : '🏠'}
                       </div>
                       <div className="min-w-0">
                         <p className="font-medium text-gray-800 truncate max-w-[160px]">{p.location?.district || p.location?.surveyNumber}, {p.location?.city}</p>

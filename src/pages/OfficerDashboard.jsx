@@ -16,6 +16,7 @@ import { getUsers } from '../services/userService';
 import { getInquiries, updateInquiryStatus } from '../services/inquiryService';
 import { getDisputes, updateDispute } from '../services/disputeService';
 import { deepSearchProperty } from '../utils/searchFilters';
+import { getImgUrl } from '../utils/helpers';
 
 import { useWriteContract, useAccount, usePublicClient } from 'wagmi';
 import { CONTRACT_ADDRESS, getSafeFeeOverrides } from '../config/web3';
@@ -266,11 +267,11 @@ export default function OfficerDashboard() {
             ) : (
               <div className="divide-y divide-gray-50">
                 {pendingProperties.filter(p => deepSearchProperty(p, searchProp)).map(p => {
-                  const image = p.documents?.[0]?.url;
+                  const imgSrc = getImgUrl(p.images?.[0] || p.documents?.[0]);
                   return (
                   <div key={p._id} className="flex items-center gap-4 px-5 py-4">
                     <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-lg overflow-hidden shrink-0">
-                      {image ? <img src={image.startsWith('http') ? image : `/${image.replace(/\\/g, '/')}`} alt="" className="h-full w-full object-cover" /> : '🏠'}
+                      {imgSrc ? <img src={imgSrc} alt="" className="h-full w-full object-cover" /> : '🏠'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-800">{p.propertyId || p._id?.slice(-8)} — {p.location?.district || p.location?.surveyNumber}, {p.location?.city}</p>
