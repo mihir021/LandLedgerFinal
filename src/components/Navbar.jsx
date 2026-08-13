@@ -77,12 +77,7 @@ export default function Navbar() {
 
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-1">
-          {!isAuthenticated ? (
-            <>
-              <NavLink to="/" label="Home" />
-              <NavLink to="/search" label="Search Properties" />
-            </>
-          ) : (
+          {isAuthenticated && (
             <>
               <NavLink to={dashboardRoute} label="Dashboard" />
               <NavLink to="/search" label="Search" />
