@@ -33,15 +33,24 @@ export default function BuyerWallet() {
         const transferList = Array.isArray(rawTransfers) ? rawTransfers : [];
         setTransfers(transferList);
         
-        const completed = transferList.filter(t => t.status === 'completed' || t.status === 'Completed');
-        const txs = completed.map(t => ({
-          id: t._id,
-          type: 'purchase',
-          description: t.property?.propertyId || t.property?.title || t.property?.location?.district || 'Property Purchase',
-          amount: -(t.agreedPrice || t.property?.price || t.property?.pricing?.priceINR || 0),
-          txHash: t.transactionHash || t.blockchainTxHash || `${t._id}`.slice(0, 18),
-          date: t.createdAt,
-        }));
+        const completed = transferList.filter(t => ['completed', 'Completed', 'Approved', 'Approved/Completed'].includes(t.status));
+        const txs = completed.map(t => {
+          // Find the best price to display
+          let amount = t.transferAmount || t.transferAmountEth;
+          if (!amount && t.property?.pricing?.priceINR) amount = t.property.pricing.priceINR;
+          if (!amount && t.property?.price) amount = t.property.price;
+          if (!amount && t.agreedPrice) amount = t.agreedPrice;
+
+          return {
+            id: t._id,
+            type: 'purchase',
+            description: t.property?.propertyId || t.property?.title || t.property?.location?.district || 'Property Purchase',
+            amount: -(amount || 0),
+            txHash: t.transactionHash || t.blockchainTxHash || t.buyerRequestTxHash || t.paymentTxHash || `${t._id}`.slice(0, 18),
+            date: t.completedAt || t.createdAt,
+            status: t.status
+          };
+        });
         setTransactions(txs);
       } catch (err) {
         setError(err.message || 'Failed to load wallet transactions.');
@@ -99,7 +108,7 @@ export default function BuyerWallet() {
         <div className="grid grid-cols-2 gap-4">
           {[
             { label: 'Total Invested', value: formatINR(totalInvested), sub: 'in properties' },
-            { label: 'Transactions',   value: transfers.length.toString(), sub: 'total tx' },
+            { label: 'Transactions',   value: transactions.length.toString(), sub: 'completed tx' },
           ].map(s => (
             <div key={s.label} className="rounded-xl bg-white/10 border border-white/15 px-3 py-3">
               <p className="text-xs text-white/60">{s.label}</p>
