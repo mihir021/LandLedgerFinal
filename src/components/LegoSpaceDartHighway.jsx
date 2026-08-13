@@ -1,21 +1,37 @@
 /**
  * LegoSpaceDartHighway — LEGO Space Dart runway, fixed top-down view
  */
-import React, { useRef, useMemo, useEffect } from 'react';
+import React, { useRef, useMemo, useEffect, Component } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame, invalidate } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import dartModelUrl from '../assets/models/lego_space_dart_i.glb?url';
 
 gsap.registerPlugin(ScrollTrigger);
-useGLTF.preload('/models/lego_space_dart_i.glb');
+useGLTF.preload(dartModelUrl);
+
+// Error boundary to prevent white-box crashes if WebGL is unsupported or model fails
+class WebGLErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) return null; // Fallback to transparent/empty
+    return this.props.children;
+  }
+}
 
 function LegoPlane({ progressRef, directionRef }) {
   const groupRef    = useRef();
   const flipRef     = useRef();
   const innerRef    = useRef();
-  const { scene }   = useGLTF('/models/lego_space_dart_i.glb');
+  const { scene }   = useGLTF(dartModelUrl);
 
   const model = useMemo(() => {
     const clone = scene.clone(true);
@@ -127,24 +143,26 @@ export default function LegoSpaceDartHighway({ containerRef }) {
         className="absolute z-40 pointer-events-none"
         style={{ width: '260px', height: '260px', left: '50%', top: '0%', transform: 'translate(-50%,-50%)' }}
       >
-        <Canvas
-          camera={{ position: [0, 0, 5], fov: 42, near: 0.1, far: 100 }}
-          gl={{ alpha: true, antialias: true, premultipliedAlpha: false }}
-          dpr={[1, 1.5]}
-          style={{ width: '100%', height: '100%', background: 'transparent' }}
-          frameloop="always"
-          onCreated={({ gl, scene }) => {
-            scene.background = null;
-            gl.setClearColor(0x000000, 0);
-          }}
-        >
-          <ambientLight intensity={3.5} />
-          <directionalLight position={[5, 10, 8]}  intensity={5.0} color="#FFFAF0" />
-          <directionalLight position={[-4, -4, -5]} intensity={2.5} color="#D4AF37" />
-          <pointLight       position={[0, 4, 4]}    intensity={4.0} color="#F5B800" distance={14} />
+        <WebGLErrorBoundary>
+          <Canvas
+            camera={{ position: [0, 0, 5], fov: 42, near: 0.1, far: 100 }}
+            gl={{ alpha: true, antialias: true, premultipliedAlpha: false }}
+            dpr={[1, 1.5]}
+            style={{ width: '100%', height: '100%', background: 'transparent' }}
+            frameloop="always"
+            onCreated={({ gl, scene }) => {
+              scene.background = null;
+              gl.setClearColor(0x000000, 0);
+            }}
+          >
+            <ambientLight intensity={3.5} />
+            <directionalLight position={[5, 10, 8]}  intensity={5.0} color="#FFFAF0" />
+            <directionalLight position={[-4, -4, -5]} intensity={2.5} color="#D4AF37" />
+            <pointLight       position={[0, 4, 4]}    intensity={4.0} color="#F5B800" distance={14} />
 
-          <LegoPlane progressRef={progressRef} directionRef={directionRef} />
-        </Canvas>
+            <LegoPlane progressRef={progressRef} directionRef={directionRef} />
+          </Canvas>
+        </WebGLErrorBoundary>
       </div>
     </>
   );

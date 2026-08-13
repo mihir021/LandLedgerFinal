@@ -2,15 +2,14 @@ import React, { useMemo, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Sparkles, OrbitControls, Float, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-
-const GLB_MODEL_PATH = '/models/land_parcel.glb';
+import landParcelModelUrl from '../assets/models/land_parcel.glb?url';
 
 // Preload GLB model
-useGLTF.preload(GLB_MODEL_PATH);
+useGLTF.preload(landParcelModelUrl);
 
 // ── 3D GLB Hexagon Land Model Component ──
 function GLBModelInstance() {
-  const { scene } = useGLTF(GLB_MODEL_PATH);
+  const { scene } = useGLTF(landParcelModelUrl);
 
   // Normalize, center, and scale GLB model to fill scene cleanly
   const normalizedWrapper = useMemo(() => {
