@@ -7,7 +7,7 @@ import path from 'path'
 export default defineConfig({
   resolve: {
     alias: {
-      '@rainbow-me/rainbowkit/styles.css': path.resolve(__dirname, 'node_modules/@rainbow-me/rainbowkit/dist/index.css'),
+      '@rainbow-me/rainbowkit/styles.css': path.resolve(import.meta.dirname, 'node_modules/@rainbow-me/rainbowkit/dist/index.css'),
     },
   },
   plugins: [
