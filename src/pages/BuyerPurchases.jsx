@@ -7,7 +7,7 @@ import { FileText, CheckCircle, ExternalLink, Loader2, ArrowLeft, PenLine } from
 import StatusBadge from '../components/StatusBadge';
 import LifecycleTracker from '../components/LifecycleTracker';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { getTransfers, buyerApprove } from '../services/transferService';
+import { getTransfers, buyerApprove, rejectTransfer } from '../services/transferService';
 import { useToast } from '../context/ToastContext';
 import { formatPrice } from '../utils/helpers';
 import { useAccount, usePublicClient, useWriteContract } from 'wagmi';
@@ -22,6 +22,7 @@ export default function BuyerPurchases() {
   const [expanded, setExpanded] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [signModal, setSignModal] = useState(null);
+  const [cancelModal, setCancelModal] = useState(null);
   const { address: walletAddress, isConnected } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
@@ -100,6 +101,20 @@ export default function BuyerPurchases() {
     } finally {
       setActionLoading(false);
       setSignModal(null);
+    }
+  };
+
+  const handleCancel = async () => {
+    setActionLoading(true);
+    try {
+      await rejectTransfer(cancelModal.transferId, "Cancelled by buyer");
+      toast.success('Transfer request cancelled successfully.');
+      setPurchases(prev => prev.map(p => (p._id === cancelModal.transferId || p.id === cancelModal.transferId) ? { ...p, status: 'Rejected' } : p));
+    } catch (err) {
+      toast.error(err.message || 'Failed to cancel request');
+    } finally {
+      setActionLoading(false);
+      setCancelModal(null);
     }
   };
 
@@ -203,14 +218,34 @@ export default function BuyerPurchases() {
                             <p className="text-xs text-blue-700 mt-1">
                               The seller has approved this transfer. You must now cryptographically sign the agreement to proceed to officer verification.
                             </p>
-                            <button
-                              onClick={() => setSignModal({ open: true, transferId: req._id || req.id, propTitle })}
-                              className="mt-3 btn-primary text-xs py-1.5 px-3"
-                            >
-                              Sign Transfer Agreement
-                            </button>
+                            <div className="flex gap-2 mt-3">
+                              <button
+                                onClick={() => setSignModal({ open: true, transferId: req._id || req.id, propTitle })}
+                                className="btn-primary text-xs py-1.5 px-3"
+                              >
+                                Sign Transfer Agreement
+                              </button>
+                              <button
+                                onClick={() => setCancelModal({ open: true, transferId: req._id || req.id, propTitle })}
+                                className="btn-danger text-xs py-1.5 px-3"
+                              >
+                                Cancel Request
+                              </button>
+                            </div>
                           </div>
                         </div>
+                      </div>
+                    )}
+
+                    {/* Pending Request / Initiated - allow cancellation */}
+                    {(status === 'pendingRequest' || status === 'pending' || status === 'Initiated') && (
+                      <div className="mt-5 flex justify-end">
+                        <button
+                          onClick={() => setCancelModal({ open: true, transferId: req._id || req.id, propTitle })}
+                          className="btn-danger text-xs py-1.5 px-3"
+                        >
+                          Cancel Request
+                        </button>
                       </div>
                     )}{/* Timeline */}
                     {req.timeline && req.timeline.length > 0 && (
@@ -246,6 +281,18 @@ export default function BuyerPurchases() {
         message="By signing, you confirm the agreed price and terms for this property transfer. Your digital signature will be recorded in the immutable title chain."
         details={signModal ? { 'Property': signModal.propertyTitle, 'Action': 'Digitally Sign Transfer' } : undefined}
         confirmLabel="Sign & Approve"
+      />
+
+      <ConfirmationModal
+        isOpen={!!cancelModal}
+        onClose={() => setCancelModal(null)}
+        onConfirm={handleCancel}
+        loading={actionLoading}
+        variant="reject"
+        title="Cancel Transfer Request"
+        message="Are you sure you want to cancel this transfer request? This action cannot be undone."
+        details={cancelModal ? { 'Property': cancelModal.propTitle } : undefined}
+        confirmLabel="Cancel Request"
       />
     </div>
   );

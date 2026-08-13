@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, XCircle, Loader2, ArrowLeftRight, ExternalLink } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { getTransfers, sellerApprove } from '../services/transferService';
+import { getTransfers, sellerApprove, rejectTransfer } from '../services/transferService';
 import { useToast } from '../context/ToastContext';
 import { formatPrice } from '../utils/helpers';
 import { useAccount, usePublicClient, useWriteContract } from 'wagmi';
@@ -73,8 +73,11 @@ export default function SellerRequests() {
           (r._id === modal.id || r.id === modal.id) ? { ...r, status: 'seller_approved', sellerApproved: true } : r
         ));
       } else {
+        await rejectTransfer(modal.id, 'Seller rejected the request');
         toast.success('Request rejected.');
-        setRequests(prev => prev.filter(r => r._id !== modal.id && r.id !== modal.id));
+        setRequests(prev => prev.map(r =>
+          (r._id === modal.id || r.id === modal.id) ? { ...r, status: 'Rejected' } : r
+        ));
       }
     } catch (err) {
       toast.error(err.message || 'Action failed');

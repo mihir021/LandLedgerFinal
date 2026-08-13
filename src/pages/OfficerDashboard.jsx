@@ -11,7 +11,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getProperties, verifyProperty } from '../services/propertyService';
-import { getTransfers, officerApprove } from '../services/transferService';
+import { getTransfers, officerApprove, rejectTransfer } from '../services/transferService';
 import { getUsers } from '../services/userService';
 import { getInquiries, updateInquiryStatus } from '../services/inquiryService';
 import { getDisputes, updateDispute } from '../services/disputeService';
@@ -50,7 +50,7 @@ export default function OfficerDashboard() {
 
   // Confirmation modals
   const [propModal, setPropModal] = useState({ open: false, id: null, status: null, name: '' });
-  const [transferModal, setTransferModal] = useState({ open: false, id: null });
+  const [transferModal, setTransferModal] = useState({ open: false, id: null, type: 'approve' });
   const [disputeModal, setDisputeModal] = useState({ open: false, id: null, status: null });
 
   const displayName = user?.fullName || user?.name || 'Officer';
@@ -183,7 +183,21 @@ export default function OfficerDashboard() {
       toast.error(err.shortMessage || err.message || "Failed to approve transfer.");
     } finally {
       setActionLoading(null);
-      setTransferModal({ open: false, id: null });
+      setTransferModal({ open: false, id: null, type: 'approve' });
+    }
+  };
+
+  const handleRejectTransfer = async () => {
+    setActionLoading(transferModal.id);
+    try {
+      await rejectTransfer(transferModal.id, "Compliance rejected by Officer");
+      toast.success("Transfer rejected for compliance reasons.");
+      setPendingTransfers(prev => prev.filter(t => t._id !== transferModal.id));
+    } catch (err) {
+      toast.error(err.message || "Failed to reject transfer.");
+    } finally {
+      setActionLoading(null);
+      setTransferModal({ open: false, id: null, type: 'approve' });
     }
   };
 
@@ -344,11 +358,18 @@ export default function OfficerDashboard() {
                     <div className="flex items-center gap-2 shrink-0">
                       <StatusBadge status="seller_approved" />
                       <button
-                        onClick={() => setTransferModal({ open: true, id: t._id })}
+                        onClick={() => setTransferModal({ open: true, id: t._id, type: 'approve' })}
                         disabled={actionLoading === t._id}
                         className="btn-success text-xs py-1 px-2.5"
                       >
                         <Check className="h-3 w-3" /> Approve
+                      </button>
+                      <button
+                        onClick={() => setTransferModal({ open: true, id: t._id, type: 'reject' })}
+                        disabled={actionLoading === t._id}
+                        className="btn-danger text-xs py-1 px-2.5 ml-1"
+                      >
+                        <X className="h-3 w-3" /> Reject
                       </button>
                     </div>
                   </div>
@@ -532,13 +553,16 @@ export default function OfficerDashboard() {
       />
       <ConfirmationModal
         isOpen={transferModal.open}
-        onClose={() => setTransferModal({ open: false, id: null })}
-        onConfirm={handleApproveTransfer}
+        onClose={() => setTransferModal({ open: false, id: null, type: 'approve' })}
+        onConfirm={transferModal.type === 'approve' ? handleApproveTransfer : handleRejectTransfer}
         loading={actionLoading !== null}
-        variant="approve"
-        title="Approve Transfer — Final Officer Compliance"
-        message="This is the final officer compliance check. The smart contract will execute the ownership transfer and record it immutably on the blockchain."
-        confirmLabel="Approve Transfer"
+        variant={transferModal.type === 'approve' ? 'approve' : 'reject'}
+        title={transferModal.type === 'approve' ? "Approve Transfer — Final Officer Compliance" : "Reject Transfer — Compliance Failure"}
+        message={transferModal.type === 'approve'
+          ? "This is the final officer compliance check. The smart contract will execute the ownership transfer and record it immutably on the blockchain."
+          : "Are you sure you want to reject this transfer? This will cancel the transfer process and return the property to the seller's active listings."
+        }
+        confirmLabel={transferModal.type === 'approve' ? "Approve Transfer" : "Reject Transfer"}
       />
       <ConfirmationModal
         isOpen={disputeModal.open}

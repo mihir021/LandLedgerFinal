@@ -242,6 +242,84 @@ const buyerApprove = async (req, res, next) => {
 };
 
 // =====================================================
+// @desc    Reject or cancel a transfer (buyer, seller, or officer)
+// @route   POST /api/transfers/reject
+// @access  Private
+// =====================================================
+const rejectTransfer = async (req, res, next) => {
+  try {
+    const { transferId, note } = req.body;
+
+    const transfer = await Transfer.findById(transferId).populate('propertyId');
+    if (!transfer) return next(new ApiError(404, 'Transfer not found'));
+
+    if (transfer.status === 'completed') {
+      return next(new ApiError(400, 'Cannot reject a completed transfer'));
+    }
+    if (transfer.status === 'Rejected') {
+      return next(new ApiError(400, 'Transfer is already rejected'));
+    }
+
+    // Verify permissions: buyer (cancelling), seller (rejecting), or officer/admin (compliance rejection)
+    const isBuyer = transfer.toUserId.toString() === req.user._id.toString();
+    const isSeller = transfer.fromUserId.toString() === req.user._id.toString();
+    const isOfficer = ['admin', 'officer', 'registrar'].includes(req.user.role);
+
+    if (!isBuyer && !isSeller && !isOfficer) {
+      return next(new ApiError(403, 'Not authorized to reject this transfer'));
+    }
+
+    let rejectStage = 'Rejected';
+    if (isBuyer) rejectStage = 'Cancelled by Buyer';
+    else if (isSeller) rejectStage = 'Rejected by Seller';
+    else if (isOfficer) rejectStage = 'Rejected by Officer';
+
+    transfer.status = 'Rejected';
+    pushTimeline(transfer, rejectStage, req.user, note || 'Transfer was rejected or cancelled.');
+    await transfer.save();
+
+    // Re-list the property if it was unlisted during the transfer request
+    if (transfer.propertyId && !transfer.propertyId.isListed) {
+      transfer.propertyId.isListed = true;
+      await transfer.propertyId.save();
+    }
+
+    // Notify parties
+    const notifyIds = [];
+    if (!isBuyer) notifyIds.push(transfer.toUserId);
+    if (!isSeller) notifyIds.push(transfer.fromUserId);
+
+    if (notifyIds.length > 0) {
+      await Notification.insertMany(notifyIds.map((id) => ({
+        receiver: id,
+        userId: id,
+        title: `Transfer ${rejectStage}`,
+        message: `The property transfer has been ${rejectStage.toLowerCase()}.`,
+        type: 'Transfer Update',
+        relatedEntityType: 'Transfer',
+        relatedEntityId: transfer._id,
+      })));
+    }
+
+    await logAudit({
+      req,
+      action: 'transfer.reject',
+      targetType: 'Transfer',
+      targetId: transfer._id,
+      details: { note, rejectStage },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Transfer rejected successfully',
+      data: transfer,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// =====================================================
 // @desc    Officer approves the transfer
 // @route   POST /api/transfers/officer-approve
 // @access  Private (officer, admin)
@@ -525,4 +603,5 @@ export {
   officerApprove,
   completeTransfer,
   getTransfers,
+  rejectTransfer,
 };

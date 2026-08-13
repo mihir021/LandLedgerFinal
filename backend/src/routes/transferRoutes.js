@@ -6,6 +6,7 @@ import {
   officerApprove,
   completeTransfer,
   getTransfers,
+  rejectTransfer,
 } from '../controllers/transferController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { authorize } from '../middleware/roleMiddleware.js';
@@ -42,6 +43,13 @@ router.post(
   authorize('officer', 'admin', 'registrar'),
   validateTransferAction,
   completeTransfer
+);
+
+// Reject / Cancel transfer (any authorized party)
+router.post(
+  '/reject',
+  validateTransferAction,
+  rejectTransfer
 );
 
 // Get all transfers (scoped per role in controller)

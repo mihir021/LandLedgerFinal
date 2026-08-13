@@ -74,3 +74,14 @@ export const completeTransfer = async (transferId) => {
   const { data } = await api.post('/transfers/complete', { transferId });
   return data.data;
 };
+
+/**
+ * Reject or cancel a transfer (buyer, seller, or officer).
+ * @param {string} transferId
+ * @param {string} [note] - Optional rejection reason
+ * @returns {Object} Updated transfer document.
+ */
+export const rejectTransfer = async (transferId, note = '') => {
+  const { data } = await api.post('/transfers/reject', { transferId, note });
+  return data.data;
+};
