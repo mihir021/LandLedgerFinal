@@ -1,4 +1,4 @@
-import React, { useMemo, Suspense } from 'react';
+import React, { useEffect, useMemo, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Sparkles, OrbitControls, Float, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -8,7 +8,7 @@ import landParcelModelUrl from '../assets/models/land_parcel.glb?url';
 useGLTF.preload(landParcelModelUrl);
 
 // ── 3D GLB Hexagon Land Model Component ──
-function GLBModelInstance() {
+function GLBModelInstance({ onReady }) {
   const { scene } = useGLTF(landParcelModelUrl);
 
   // Normalize, center, and scale GLB model to fill scene cleanly
@@ -47,11 +47,13 @@ function GLBModelInstance() {
     return wrapper;
   }, [scene]);
 
+  useEffect(() => { onReady?.(); }, [onReady, normalizedWrapper]);
+
   return <primitive object={normalizedWrapper} position={[0, -0.2, 0]} />;
 }
 
 // ── Main HeroLandParcel Canvas Component ──
-export default function HeroLandParcel() {
+export default function HeroLandParcel({ onReady }) {
   return (
     <div className="relative w-full h-[480px] sm:h-[520px] lg:h-[580px] flex items-center justify-center cursor-grab active:cursor-grabbing">
       {/* Background Radial Glow */}
@@ -85,7 +87,7 @@ export default function HeroLandParcel() {
           <group>
             {/* GLB Model Only */}
             <Suspense fallback={null}>
-              <GLBModelInstance />
+              <GLBModelInstance onReady={onReady} />
             </Suspense>
 
             {/* Subtle Gold Dust Sparkles */}

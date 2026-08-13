@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
+import React, { useCallback, useEffect, useRef, useState, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ShieldCheck, Search, FileText, ArrowRight, Lock, Zap, Globe, 
@@ -9,11 +9,11 @@ import VerificationBadge from '../components/VerificationBadge';
 import Lenis from 'lenis';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { motion, useScroll, useSpring, useInView } from 'framer-motion';
+import { motion, useScroll, useSpring } from 'framer-motion';
 import { getProperties } from '../services/propertyService';
 
-const HeroLandParcel = lazy(() => import('../components/HeroLandParcel'));
-const LegoSpaceDartHighway = lazy(() => import('../components/LegoSpaceDartHighway'));
+import HeroLandParcel from '../components/HeroLandParcel';
+import LegoSpaceDartHighway from '../components/LegoSpaceDartHighway';
 
 const Hero3DFallback = () => (
   <div className="w-full h-[450px] sm:h-[500px] lg:h-[550px] flex items-center justify-center pointer-events-none">
@@ -307,23 +307,20 @@ const Counter = ({ value, suffix }) => {
   return <span ref={nodeRef} className="font-serif text-3xl font-bold text-white">0{suffix}</span>;
 };
 
-// Intersection-Observer wrapper for lazy loading the 3D Highway
-const LazyHighway = ({ containerRef }) => {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "600px 0px" });
-
-  return (
-    <div ref={ref} className="absolute inset-0 pointer-events-none">
-      {isInView && (
-        <Suspense fallback={null}>
-          <LegoSpaceDartHighway containerRef={containerRef} />
-        </Suspense>
-      )}
-    </div>
-  );
-};
-
 export default function Landing() {
+  const [heroModelReady, setHeroModelReady] = useState(false);
+  const [runwayModelReady, setRunwayModelReady] = useState(false);
+  const modelsReady = heroModelReady && runwayModelReady;
+  const markHeroReady = useCallback(() => setHeroModelReady(true), []);
+  const markRunwayReady = useCallback(() => setRunwayModelReady(true), []);
+
+  useEffect(() => {
+    if (modelsReady) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [modelsReady]);
+
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
     stiffness: 100,
@@ -572,7 +569,7 @@ export default function Landing() {
             {/* Right Column: 3D Floating Digital Land Parcel */}
             <div className="hidden lg:block lg:col-span-5 relative">
               <Suspense fallback={<Hero3DFallback />}>
-                <HeroLandParcel />
+                <HeroLandParcel onReady={markHeroReady} />
               </Suspense>
             </div>
           </div>
@@ -673,7 +670,7 @@ export default function Landing() {
 
           {/* Timeline Highway & 3D Space Dart Track */}
           <div className="relative pl-6 sm:pl-8 md:pl-0">
-            <LazyHighway containerRef={timelineRef} />
+            <LegoSpaceDartHighway containerRef={timelineRef} onReady={markRunwayReady} onError={markRunwayReady} />
 
             <div className="space-y-8 sm:space-y-12 md:space-y-24">
               {HOW_IT_WORKS.map((step, i) => (

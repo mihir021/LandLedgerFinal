@@ -1,7 +1,7 @@
 /**
  * LegoSpaceDartHighway — LEGO Space Dart runway, fixed top-down view
  */
-import React, { useRef, useMemo, useEffect, Component } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState, Component } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame, invalidate } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
@@ -18,8 +18,11 @@ class WebGLErrorBoundary extends Component {
     super(props);
     this.state = { hasError: false };
   }
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError() {
     return { hasError: true };
+  }
+  componentDidCatch() {
+    this.props.onError?.();
   }
   render() {
     if (this.state.hasError) return null; // Fallback to transparent/empty
@@ -27,7 +30,7 @@ class WebGLErrorBoundary extends Component {
   }
 }
 
-function LegoPlane({ progressRef, directionRef }) {
+function LegoPlane({ progressRef, directionRef, onReady }) {
   const groupRef    = useRef();
   const flipRef     = useRef();
   const innerRef    = useRef();
@@ -46,6 +49,10 @@ function LegoPlane({ progressRef, directionRef }) {
     }
     return clone;
   }, [scene]);
+
+  useEffect(() => {
+    onReady?.();
+  }, [onReady, model]);
 
   useFrame(({ clock }, delta) => {
     if (!groupRef.current || !flipRef.current || !innerRef.current) return;
@@ -98,13 +105,23 @@ function LegoPlane({ progressRef, directionRef }) {
   );
 }
 
-export default function LegoSpaceDartHighway({ containerRef }) {
+export default function LegoSpaceDartHighway({ containerRef, onReady, onError }) {
   const progressRef      = useRef(0);
   const directionRef     = useRef(1);
   const canvasWrapperRef = useRef();
+  const [modelState, setModelState] = useState('loading');
+  const isModelReady = modelState === 'ready';
+  const handleModelReady = useCallback(() => {
+    setModelState('ready');
+    onReady?.();
+  }, [onReady]);
+  const handleModelError = useCallback(() => {
+    setModelState('error');
+    onError?.();
+  }, [onError]);
 
   useEffect(() => {
-    if (!containerRef?.current || !canvasWrapperRef?.current) return;
+    if (!isModelReady || !containerRef?.current || !canvasWrapperRef?.current) return;
     const st = ScrollTrigger.create({
       trigger : containerRef.current,
       start   : 'top 60%',
@@ -119,8 +136,14 @@ export default function LegoSpaceDartHighway({ containerRef }) {
         invalidate();
       },
     });
+    // Sync the aircraft to the current scroll position before revealing it.
+    st.refresh();
+    progressRef.current = st.progress;
+    directionRef.current = st.direction || 1;
+    canvasWrapperRef.current.style.top = String(st.progress * 100) + '%';
+
     return () => st.kill();
-  }, [containerRef]);
+  }, [containerRef, isModelReady]);
 
   return (
     <>
@@ -141,14 +164,33 @@ export default function LegoSpaceDartHighway({ containerRef }) {
       <div
         ref={canvasWrapperRef}
         className="absolute z-40 pointer-events-none"
-        style={{ width: '260px', height: '260px', left: '50%', top: '0%', transform: 'translate(-50%,-50%)' }}
+        style={{
+          width: '260px',
+          height: '260px',
+          left: '50%',
+          top: '0%',
+          transform: 'translate(-50%,-50%)',
+        }}
       >
-        <WebGLErrorBoundary>
+        {modelState === 'loading' && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-sm border-2 border-amber-400/70 bg-[#080F1E] shadow-[4px_4px_0px_#020817]">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-400 border-t-transparent" />
+              <span className="font-pixel text-[10px] uppercase tracking-wider text-amber-300">Preparing aircraft</span>
+            </div>
+          </div>
+        )}
+        {modelState === 'error' && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-sm border-2 border-amber-500/50 bg-[#080F1E] p-4 text-center">
+            <span className="font-pixel text-[10px] uppercase tracking-wider text-amber-300">Aircraft unavailable</span>
+          </div>
+        )}
+        <WebGLErrorBoundary onError={handleModelError}>
           <Canvas
             camera={{ position: [0, 0, 5], fov: 42, near: 0.1, far: 100 }}
             gl={{ alpha: true, antialias: true, premultipliedAlpha: false }}
             dpr={[1, 1.5]}
-            style={{ width: '100%', height: '100%', background: 'transparent' }}
+            style={{ width: '100%', height: '100%', background: 'transparent', opacity: isModelReady ? 1 : 0, transition: 'opacity 220ms ease-out' }}
             frameloop="always"
             onCreated={({ gl, scene }) => {
               scene.background = null;
@@ -160,7 +202,9 @@ export default function LegoSpaceDartHighway({ containerRef }) {
             <directionalLight position={[-4, -4, -5]} intensity={2.5} color="#D4AF37" />
             <pointLight       position={[0, 4, 4]}    intensity={4.0} color="#F5B800" distance={14} />
 
-            <LegoPlane progressRef={progressRef} directionRef={directionRef} />
+            <Suspense fallback={null}>
+              <LegoPlane progressRef={progressRef} directionRef={directionRef} onReady={handleModelReady} />
+            </Suspense>
           </Canvas>
         </WebGLErrorBoundary>
       </div>
