@@ -685,12 +685,9 @@ export default function PropertyDetails() {
             <div className="mt-5 flex items-center gap-4 rounded-xl bg-gray-50 border border-gray-200 p-4">
               <QRCodeSVG
                 value={(() => {
-                  const tx = property.blockchainTx || property.blockchain?.transactionHash;
+                  const tx = property.blockchainTx || property.blockchain?.txHash || property.blockchain?.transactionHash;
                   if (tx) {
-                    const net = property.blockchain?.chainNetwork?.toLowerCase() || 'sepolia';
-                    return net.includes('polygon') 
-                      ? `https://amoy.polygonscan.com/tx/${tx}` 
-                      : `https://sepolia.etherscan.io/tx/${tx}`;
+                    return `https://sepolia.arbiscan.io/tx/${tx}`;
                   }
                   return window.location.href;
                 })()}
