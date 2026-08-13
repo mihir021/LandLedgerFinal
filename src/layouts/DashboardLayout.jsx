@@ -24,6 +24,7 @@ export const NAV_BY_ROLE = {
     {
       title: 'MANAGEMENT',
       items: [
+        { to: '/buyer/properties', icon: Home, label: 'My Properties', end: true },
         { to: '/buyer/purchases', icon: FileText, label: 'My Purchases', end: true },
         { to: '/buyer/wallet', icon: Wallet, label: 'Wallet', end: true },
         { to: '/buyer/notifications', icon: Bell, label: 'Notifications', end: true },

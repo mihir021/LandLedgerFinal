@@ -23,6 +23,7 @@ import NotFound from '../pages/NotFound';
 // Buyer Pages
 import BuyerDashboard from '../pages/BuyerDashboard';
 import BuyerPurchases from '../pages/BuyerPurchases';
+import BuyerProperties from '../pages/BuyerProperties';
 import BuyerWallet from '../pages/BuyerWallet';
 import NotificationsPage from '../pages/NotificationsPage';
 
@@ -81,6 +82,10 @@ const router = createBrowserRouter([
       {
         path: 'buyer/purchases',
         element: <ProtectedRoute allowedRoles={['buyer', 'both']}><BuyerPurchases /></ProtectedRoute>,
+      },
+      {
+        path: 'buyer/properties',
+        element: <ProtectedRoute allowedRoles={['buyer', 'both']}><BuyerProperties /></ProtectedRoute>,
       },
       {
         path: 'buyer/wallet',

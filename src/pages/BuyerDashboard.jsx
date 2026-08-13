@@ -18,6 +18,7 @@ export default function BuyerDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [properties, setProperties] = useState([]);
+  const [ownedProperties, setOwnedProperties] = useState([]);
   const [purchases, setPurchases] = useState([]);
   const [notifications, setNotifications] = useState([]);
 
@@ -29,12 +30,14 @@ export default function BuyerDashboard() {
       setLoading(true);
       setError('');
       try {
-        const [props, transfers, notifs] = await Promise.all([
+        const [props, transfers, notifs, owned] = await Promise.all([
           getProperties({ verificationStatus: 'verified', limit: 6 }).catch(() => getProperties({ status: 'Verified', limit: 1000 }).catch(() => ({ properties: [] }))),
           getTransfers({ view: 'buyer' }).catch(() => []),
           getNotifications().catch(() => []),
+          getProperties({ owner: user?._id || user?.id, limit: 200 }).catch(() => ({ properties: [] })),
         ]);
         setProperties(props.properties || []);
+        setOwnedProperties(owned.properties || []);
         setPurchases(Array.isArray(transfers) ? transfers : []);
         setNotifications(Array.isArray(notifs) ? notifs : []);
       } catch (err) {
@@ -47,8 +50,8 @@ export default function BuyerDashboard() {
   }, []);
 
   const stats = [
-    { icon: Home,        label: 'Available Properties', value: properties.length,                    color: 'navy' },
-    { icon: FileText,    label: 'My Purchases',         value: purchases.length,                     color: 'green' },
+    { icon: Home,        label: 'My Properties',        value: ownedProperties.length,               color: 'navy' },
+    { icon: FileText,    label: 'Purchase Requests',    value: purchases.length,                     color: 'green' },
     { icon: Clock,       label: 'Pending Requests',     value: purchases.filter(p => p.status === 'pending' || p.status === 'Initiated').length, color: 'amber' },
     { icon: CheckCircle, label: 'Completed',            value: purchases.filter(p => p.status === 'completed' || p.status === 'Completed').length, color: 'emerald' },
   ];
@@ -92,6 +95,16 @@ export default function BuyerDashboard() {
         <div className="ll-card p-5 animate-fade-in-up delay-300">
           <h2 className="font-serif text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
           <div className="space-y-2">
+            <Link to="/buyer/properties" className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 hover:bg-indigo-50 hover:border-indigo-200 transition-all group">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-100 group-hover:bg-indigo-200 transition-colors">
+                <Home className="h-4 w-4 text-indigo-800" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-800">My Properties</p>
+                <p className="text-xs text-gray-500">View owned properties</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-gray-400 ml-auto group-hover:text-indigo-700 transition-colors" />
+            </Link>
             <Link to="/search" className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 hover:bg-blue-50 hover:border-blue-200 transition-all group">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 group-hover:bg-blue-200 transition-colors">
                 <Search className="h-4 w-4 text-blue-800" />
