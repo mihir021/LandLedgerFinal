@@ -3,13 +3,10 @@
  */
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState, Component } from 'react';
 import * as THREE from 'three';
-import { Canvas, useFrame, invalidate } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import dartModelUrl from '../assets/models/lego_space_dart_i.glb?url';
 
-gsap.registerPlugin(ScrollTrigger);
 useGLTF.preload(dartModelUrl);
 
 // Error boundary to prevent white-box crashes if WebGL is unsupported or model fails
@@ -123,38 +120,33 @@ export default function LegoSpaceDartHighway({ containerRef, onReady, onError, p
   useEffect(() => {
     if (!isModelReady || !pageReady || !containerRef?.current || !canvasWrapperRef?.current) return undefined;
 
-    let scrollTrigger;
-    const animationFrame = requestAnimationFrame(() => {
-      // Wait one rendered frame after the page loader unlocks, then measure the timeline.
-      ScrollTrigger.refresh();
-      scrollTrigger = ScrollTrigger.create({
-      trigger : containerRef.current,
-      start   : 'top 60%',
-      end     : 'bottom 40%',
-      scrub   : 1,
-      onUpdate: (self) => {
-        progressRef.current  = self.progress;
-        directionRef.current = self.direction;
-        if (canvasWrapperRef.current) {
-          canvasWrapperRef.current.style.top = `${self.progress * 100}%`;
-        }
-        invalidate();
-      },
-      });
-      // Synchronize the aircraft immediately, even when the page opened mid-timeline.
-      scrollTrigger.refresh();
-      progressRef.current = scrollTrigger.progress;
-      directionRef.current = scrollTrigger.direction || 1;
-      if (canvasWrapperRef.current) {
-        canvasWrapperRef.current.style.top = String(scrollTrigger.progress * 100) + '%';
-      }
-      ScrollTrigger.update();
-    });
+    let animationFrame;
+    let previousTop = containerRef.current.getBoundingClientRect().top;
 
-    return () => {
-      cancelAnimationFrame(animationFrame);
-      scrollTrigger?.kill();
+    const syncToTimeline = () => {
+      const timeline = containerRef.current;
+      const aircraft = canvasWrapperRef.current;
+      if (!timeline || !aircraft) return;
+
+      const bounds = timeline.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      // Matches the old 60% → 40% ScrollTrigger span without depending on its lifecycle.
+      const travelDistance = Math.max(1, bounds.height + viewportHeight * 0.2);
+      const progress = THREE.MathUtils.clamp(
+        (viewportHeight * 0.6 - bounds.top) / travelDistance,
+        0,
+        1
+      );
+
+      directionRef.current = bounds.top <= previousTop ? 1 : -1;
+      previousTop = bounds.top;
+      progressRef.current = progress;
+      aircraft.style.top = String(progress * 100) + '%';
+      animationFrame = requestAnimationFrame(syncToTimeline);
     };
+
+    syncToTimeline();
+    return () => cancelAnimationFrame(animationFrame);
   }, [containerRef, isModelReady, pageReady]);
 
   return (
