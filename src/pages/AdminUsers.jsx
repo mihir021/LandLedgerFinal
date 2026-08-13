@@ -112,7 +112,7 @@ export default function AdminUsers() {
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 text-blue-800 animate-spin" /></div>
       ) : (
-        <div className="ll-card overflow-hidden animate-fade-in-up delay-200">
+        <div className="ll-card overflow-x-auto animate-fade-in-up delay-200">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">

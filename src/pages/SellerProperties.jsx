@@ -122,7 +122,7 @@ export default function SellerProperties() {
           <Link to="/register-property" className="btn-primary">Register Property</Link>
         </div>
       ) : (
-        <div className="rounded-xl border-2 border-slate-300 shadow-[4px_4px_0px_#CBD5E1] bg-white overflow-hidden animate-fade-in-up">
+        <div className="rounded-xl border-2 border-slate-300 shadow-[4px_4px_0px_#CBD5E1] bg-white overflow-x-auto animate-fade-in-up">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">

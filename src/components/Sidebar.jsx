@@ -4,35 +4,46 @@ import { ChevronDown, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import RoleSwitcher from './RoleSwitcher';
 
-export default function Sidebar({ navItems = [] }) {
+export default function Sidebar({ navItems = [], mobileMenuOpen = false, setMobileMenuOpen = () => {} }) {
   const [isHovered, setIsHovered] = useState(false);
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = () => { logout(); navigate('/'); };
+  const handleLogout = () => { logout(); navigate('/'); setMobileMenuOpen(false); };
+
+  // Determine if the sidebar is expanded. It is always expanded on mobile when open, and expands on hover on desktop.
+  const isExpanded = mobileMenuOpen || isHovered;
 
   return (
-    <aside
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className={`fixed left-0 top-16 z-50 flex h-[calc(100vh-4rem)] flex-col bg-white border-r border-gray-200 transition-all duration-200 ease-in-out ${
-        isHovered ? 'w-[260px]' : 'w-[64px]'
-      }`}
-      style={{ boxShadow: '1px 0 4px rgba(30,58,95,0.04)' }}
-    >
-      <div className={`flex flex-col flex-1 overflow-y-auto ${isHovered ? 'px-3' : 'px-2'} py-4 overflow-x-hidden`}>
-        {user?.role === 'both' && <RoleSwitcher isHovered={isHovered} />}
+    <>
+      {/* Mobile overlay */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-[#0A1628]/50 backdrop-blur-sm md:hidden animate-fade-in"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+      <aside
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={`fixed left-0 top-16 z-50 flex h-[calc(100vh-4rem)] flex-col bg-white border-r border-gray-200 transition-all duration-300 ease-in-out transform ${
+          mobileMenuOpen ? 'translate-x-0 w-[260px]' : '-translate-x-full md:translate-x-0'
+        } ${isHovered ? 'md:w-[260px]' : 'md:w-[64px]'}`}
+        style={{ boxShadow: '1px 0 4px rgba(30,58,95,0.04)' }}
+      >
+        <div className={`flex flex-col flex-1 overflow-y-auto ${isExpanded ? 'px-3' : 'px-2'} py-4 overflow-x-hidden`}>
+          {user?.role === 'both' && <RoleSwitcher isHovered={isExpanded} />}
         {navItems.map((group, gIdx) => (
           <div key={gIdx} className="mb-6">
             {/* Group Header */}
             {group.title && (
               <div 
                 className={`mb-2 transition-opacity duration-200 whitespace-nowrap h-4 ${
-                  isHovered ? 'opacity-100' : 'opacity-0'
+                  isExpanded ? 'opacity-100' : 'opacity-0'
                 }`}
               >
-                {isHovered && (
+                {isExpanded && (
                   <span className="px-3 text-xs font-bold text-gray-400 tracking-wider uppercase">
                     {group.title}
                   </span>
@@ -41,7 +52,13 @@ export default function Sidebar({ navItems = [] }) {
             )}
             <ul className="space-y-1">
               {group.items.map((item, iIdx) => (
-                <NavItem key={iIdx} item={item} isHovered={isHovered} currentPath={location.pathname} />
+                <NavItem 
+                  key={iIdx} 
+                  item={item} 
+                  isHovered={isExpanded} 
+                  currentPath={location.pathname} 
+                  onNav={() => setMobileMenuOpen(false)} 
+                />
               ))}
             </ul>
           </div>
@@ -52,10 +69,10 @@ export default function Sidebar({ navItems = [] }) {
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 rounded-lg p-2 text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors w-full"
-          title={!isHovered ? 'Sign Out' : ''}
+          title={!isExpanded ? 'Sign Out' : ''}
         >
-          <LogOut className={`h-5 w-5 shrink-0 ${!isHovered ? 'mx-auto' : 'ml-1'}`} />
-          {isHovered && (
+          <LogOut className={`h-5 w-5 shrink-0 ${!isExpanded ? 'mx-auto' : 'ml-1'}`} />
+          {isExpanded && (
             <span className="text-sm font-medium whitespace-nowrap animate-fade-in">
               Sign Out
             </span>
@@ -63,10 +80,11 @@ export default function Sidebar({ navItems = [] }) {
         </button>
       </div>
     </aside>
+    </>
   );
 }
 
-function NavItem({ item, isHovered, currentPath }) {
+function NavItem({ item, isHovered, currentPath, onNav }) {
   const [isOpen, setIsOpen] = useState(false);
   const Icon = item.icon;
 
@@ -137,6 +155,7 @@ function NavItem({ item, isHovered, currentPath }) {
       <NavLink
         to={item.to}
         end={item.end}
+        onClick={onNav}
         title={!isHovered ? item.label : ''}
         className={({ isActive }) =>
           `flex items-center gap-2.5 rounded-lg p-2 text-sm font-medium transition-colors border-l-4 ${

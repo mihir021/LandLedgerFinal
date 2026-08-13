@@ -103,6 +103,7 @@ export function navItemsForRole(user, mode) {
 
 export default function DashboardLayout() {
   const { initializing, user, mode } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   if (initializing) {
     return (
@@ -119,12 +120,19 @@ export default function DashboardLayout() {
       {/* Global Interactive Background for Admin, Officer, Buyer, Seller */}
       <DashboardLiveCanvas />
 
-      <Navbar />
-      <Sidebar navItems={navItems} />
+      <Navbar 
+        mobileMenuOpen={mobileMenuOpen} 
+        setMobileMenuOpen={setMobileMenuOpen} 
+      />
+      <Sidebar 
+        navItems={navItems} 
+        mobileMenuOpen={mobileMenuOpen} 
+        setMobileMenuOpen={setMobileMenuOpen} 
+      />
       
       {/* Main content layer */}
-      <main className="relative z-10 ml-[64px] pt-16 min-h-screen">
-        <div className="mx-auto max-w-6xl px-6 py-8">
+      <main className="relative z-10 md:ml-[64px] pt-16 min-h-screen pb-10">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 md:py-8">
           <Outlet />
         </div>
       </main>

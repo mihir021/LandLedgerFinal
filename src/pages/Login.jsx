@@ -184,7 +184,7 @@ export default function Login() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {DEMO_CREDENTIALS.map(cred => (
                 <button
                   key={cred.role}

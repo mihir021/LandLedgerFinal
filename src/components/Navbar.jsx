@@ -11,8 +11,12 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useNotifications } from '../context/NotificationContext';
 import NotificationDropdown from './NotificationDropdown';
 
-export default function Navbar() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+export default function Navbar({ mobileMenuOpen: externalMobileOpen, setMobileMenuOpen: externalSetMobileMenuOpen }) {
+  const [internalMobileOpen, setInternalMobileOpen] = useState(false);
+  const isControlled = externalMobileOpen !== undefined;
+  const mobileOpen = isControlled ? externalMobileOpen : internalMobileOpen;
+  const setMobileOpen = isControlled ? externalSetMobileMenuOpen : setInternalMobileOpen;
+  
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -207,8 +211,8 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Mobile Glassmorphism Dropdown */}
-      {mobileOpen && (
+      {/* Mobile Glassmorphism Dropdown - Only show for public pages or unauthenticated users. If authenticated and controlled, Sidebar handles mobile nav. */}
+      {mobileOpen && (!isAuthenticated || !isControlled) && (
         <div className={`md:hidden animate-fade-in shadow-xl ${
           isLanding
             ? 'border-t border-[#D4AF37]/30 bg-[#0A1628]/98 backdrop-blur-xl'
