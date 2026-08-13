@@ -41,7 +41,7 @@ export default function BuyerPurchases() {
     
     load();
     const interval = setInterval(() => {
-      getTransfers().then(data => {
+      getTransfers({ view: 'buyer' }).then(data => {
         if (Array.isArray(data)) setPurchases(data);
       }).catch(console.error);
     }, 10000);
