@@ -154,7 +154,7 @@ const HOW_IT_WORKS = [
   {
     step: '01',
     title: 'Register & Verify Identity',
-    desc: 'Create your account and complete KYC verification through government-issued credentials. Officers review and approve identity documents.',
+    desc: 'Before anyone can transact, both buyers and sellers must create an account and pass strict KYC verification using government-issued credentials. A government officer manually reviews and approves these documents.',
     actor: 'Seller / Buyer',
     actorStyle: 'bg-amber-50 text-amber-800 border-amber-200',
     icon: IdCard,
@@ -162,15 +162,15 @@ const HOW_IT_WORKS = [
   {
     step: '02',
     title: 'Register Your Property',
-    desc: 'Upload property documents, survey records, and title deed. Government officers verify authenticity against official land records.',
+    desc: 'Once a seller is verified, they register their land by uploading survey records and title deeds. A government officer cross-checks these against official physical records before the property is minted on-chain.',
     actor: 'Seller + Officer',
     actorStyle: 'bg-amber-100 text-amber-900 border-amber-300',
     icon: Building2,
   },
   {
     step: '03',
-    title: 'List & Discover',
-    desc: 'Verified properties appear on the public marketplace. Buyers search by location, type, and price range with full blockchain audit trail.',
+    title: 'Discover (The Marketplace)',
+    desc: 'Verified properties go live on the public marketplace. Buyers can seamlessly search by location, type, and price while viewing a complete, tamper-proof blockchain audit trail of the property history.',
     actor: 'Buyer',
     actorStyle: 'bg-yellow-50 text-yellow-800 border-yellow-200',
     icon: Search,
@@ -178,7 +178,7 @@ const HOW_IT_WORKS = [
   {
     step: '04',
     title: 'Request & Negotiate Transfer',
-    desc: 'Buyer submits a formal purchase request. Seller reviews and accepts. Both parties sign digital agreements stored on-chain.',
+    desc: 'A buyer submits a formal request and locks their funds into the smart contract escrow. The seller reviews and accepts, signing a digital agreement. The funds remain securely locked until final transfer.',
     actor: 'Buyer + Seller',
     actorStyle: 'bg-amber-100 text-amber-800 border-amber-200',
     icon: FileSignature,
@@ -186,7 +186,7 @@ const HOW_IT_WORKS = [
   {
     step: '05',
     title: 'Blockchain Ownership Transfer',
-    desc: 'Government officer performs final compliance check. Smart contract executes the transfer — ownership record updated immutably on the blockchain.',
+    desc: 'A government officer performs one last compliance check. Once approved, the Arbitrum smart contract automatically transfers digital ownership to the buyer and instantly releases the escrowed funds to the seller.',
     actor: 'Officer + Blockchain',
     actorStyle: 'bg-orange-50 text-orange-800 border-orange-200',
     icon: Layers,
