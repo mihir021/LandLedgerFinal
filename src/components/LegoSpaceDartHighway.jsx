@@ -105,7 +105,7 @@ function LegoPlane({ progressRef, directionRef, onReady }) {
   );
 }
 
-export default function LegoSpaceDartHighway({ containerRef, onReady, onError }) {
+export default function LegoSpaceDartHighway({ containerRef, onReady, onError, pageReady }) {
   const progressRef      = useRef(0);
   const directionRef     = useRef(1);
   const canvasWrapperRef = useRef();
@@ -121,8 +121,13 @@ export default function LegoSpaceDartHighway({ containerRef, onReady, onError })
   }, [onError]);
 
   useEffect(() => {
-    if (!isModelReady || !containerRef?.current || !canvasWrapperRef?.current) return;
-    const st = ScrollTrigger.create({
+    if (!isModelReady || !pageReady || !containerRef?.current || !canvasWrapperRef?.current) return undefined;
+
+    let scrollTrigger;
+    const animationFrame = requestAnimationFrame(() => {
+      // Wait one rendered frame after the page loader unlocks, then measure the timeline.
+      ScrollTrigger.refresh();
+      scrollTrigger = ScrollTrigger.create({
       trigger : containerRef.current,
       start   : 'top 60%',
       end     : 'bottom 40%',
@@ -135,15 +140,22 @@ export default function LegoSpaceDartHighway({ containerRef, onReady, onError })
         }
         invalidate();
       },
+      });
+      // Synchronize the aircraft immediately, even when the page opened mid-timeline.
+      scrollTrigger.refresh();
+      progressRef.current = scrollTrigger.progress;
+      directionRef.current = scrollTrigger.direction || 1;
+      if (canvasWrapperRef.current) {
+        canvasWrapperRef.current.style.top = String(scrollTrigger.progress * 100) + '%';
+      }
+      ScrollTrigger.update();
     });
-    // Sync the aircraft to the current scroll position before revealing it.
-    st.refresh();
-    progressRef.current = st.progress;
-    directionRef.current = st.direction || 1;
-    canvasWrapperRef.current.style.top = String(st.progress * 100) + '%';
 
-    return () => st.kill();
-  }, [containerRef, isModelReady]);
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      scrollTrigger?.kill();
+    };
+  }, [containerRef, isModelReady, pageReady]);
 
   return (
     <>

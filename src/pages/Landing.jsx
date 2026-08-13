@@ -670,7 +670,12 @@ export default function Landing() {
 
           {/* Timeline Highway & 3D Space Dart Track */}
           <div className="relative pl-6 sm:pl-8 md:pl-0">
-            <LegoSpaceDartHighway containerRef={timelineRef} onReady={markRunwayReady} onError={markRunwayReady} />
+            <LegoSpaceDartHighway
+              containerRef={timelineRef}
+              onReady={markRunwayReady}
+              onError={markRunwayReady}
+              pageReady={modelsReady}
+            />
 
             <div className="space-y-8 sm:space-y-12 md:space-y-24">
               {HOW_IT_WORKS.map((step, i) => (
