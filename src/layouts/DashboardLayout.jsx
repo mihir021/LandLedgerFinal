@@ -2,7 +2,7 @@
  * DashboardLayout — wraps authenticated dashboard pages.
  * Features an interactive full-page Live Canvas background across all Admin, Officer, Buyer, and Seller pages.
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
