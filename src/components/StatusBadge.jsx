@@ -51,7 +51,7 @@ export default function StatusBadge({ status, size = 'sm' }) {
   const cfg = STATUS_CONFIG[status] || { label: status, cls: 'status-draft' };
   const sizeClass = size === 'md' ? 'px-3 py-1 text-sm' : 'px-2.5 py-0.5 text-xs';
   return (
-    <span className={`${cfg.cls} ${sizeClass} inline-flex items-center rounded-sm border border-black/10 shadow-[1.5px_1.5px_0px_#0A1628] font-bold tracking-wide`}>
+    <span className={`${cfg.cls} ${sizeClass} inline-flex items-center rounded-sm border border-[#475569]/30 shadow-[1.5px_1.5px_0px_#475569] font-bold font-pixel uppercase tracking-widest`}>
       {cfg.label}
     </span>
   );

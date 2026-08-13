@@ -98,6 +98,10 @@ transferSchema.index({ propertyId: 1 });
 transferSchema.index({ fromUserId: 1 });
 transferSchema.index({ toUserId: 1 });
 transferSchema.index({ status: 1 });
+// Analytics aggregation indexes
+transferSchema.index({ createdAt: 1 });
+transferSchema.index({ completedAt: 1 });
+transferSchema.index({ initiatedAt: 1 });
 
 const Transfer = mongoose.model('Transfer', transferSchema);
 

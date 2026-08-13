@@ -17,6 +17,7 @@ import inquiryRoutes from './routes/inquiryRoutes.js';
 import disputeRoutes from './routes/disputeRoutes.js';
 import auditLogRoutes from './routes/auditLogRoutes.js';
 import settingRoutes from './routes/settingRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 
 // __dirname equivalent for ES Modules
@@ -108,6 +109,7 @@ app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/disputes', disputeRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/settings', settingRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // =====================================================
 // Error Handling

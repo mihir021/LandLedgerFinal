@@ -31,8 +31,9 @@ export default {
       },
       fontFamily: {
         pixel: ['Pixelify Sans', 'Silkscreen', 'Press Start 2P', 'monospace'],
-        sans: ['Pixelify Sans', 'Inter', 'sans-serif'],
-        serif: ['Pixelify Sans', 'Fraunces', 'serif'],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        serif: ['Fraunces', 'ui-serif', 'Georgia', 'serif'],
+        mono: ['JetBrains Mono', 'IBM Plex Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
         comic: ['Bangers', 'cursive', 'sans-serif'],
       },
       boxShadow: {

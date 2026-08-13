@@ -60,7 +60,7 @@ export default function HeroLandParcel() {
       
       <Canvas
         camera={{ position: [0, 2.5, 6.0], fov: 42 }}
-        dpr={[1, 2]}
+        dpr={[1, 1.5]}
         gl={{ alpha: true, antialias: true }}
         className="w-full h-full"
       >

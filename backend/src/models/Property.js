@@ -167,6 +167,11 @@ propertySchema.index({ ownerId: 1 });
 propertySchema.index({ owner: 1 });
 propertySchema.index({ verificationStatus: 1 });
 propertySchema.index({ isListed: 1 });
+// Analytics aggregation indexes
+propertySchema.index({ createdAt: 1 });
+propertySchema.index({ 'landDetails.landType': 1 });
+propertySchema.index({ city: 1 });
+propertySchema.index({ 'verification.verificationDate': 1 });
 
 const Property = mongoose.model('Property', propertySchema);
 

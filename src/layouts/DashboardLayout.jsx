@@ -1,15 +1,17 @@
 /**
  * DashboardLayout — wraps authenticated dashboard pages.
- * Light background, Navbar + collapsible hover-expand Sidebar.
+ * Features an interactive full-page Live Canvas background across all Admin, Officer, Buyer, and Seller pages.
  */
+import { useEffect, useRef } from 'react';
 import { Outlet } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
+import DashboardLiveCanvas from '../components/DashboardLiveCanvas';
 import { useAuth } from '../context/AuthContext';
-import { 
-  LoaderCircle, LayoutDashboard, Search, FileText, Wallet, Bell, 
-  Home, FilePlus, ArrowLeftRight, Users, ShieldCheck, MessageSquare, 
-  BookOpen, Settings 
+import {
+  LoaderCircle, LayoutDashboard, Search, FileText, Wallet, Bell,
+  Home, FilePlus, ArrowLeftRight, Users, ShieldCheck, MessageSquare,
+  Settings, BarChart3
 } from 'lucide-react';
 
 export const NAV_BY_ROLE = {
@@ -27,7 +29,6 @@ export const NAV_BY_ROLE = {
         { to: '/buyer/properties', icon: Home, label: 'My Properties', end: true },
         { to: '/buyer/purchases', icon: FileText, label: 'My Purchases', end: true },
         { to: '/buyer/wallet', icon: Wallet, label: 'Wallet', end: true },
-        { to: '/buyer/notifications', icon: Bell, label: 'Notifications', end: true },
       ]
     }
   ],
@@ -42,21 +43,9 @@ export const NAV_BY_ROLE = {
     {
       title: 'PROPERTIES',
       items: [
-        {
-          label: 'Properties',
-          icon: Home,
-          children: [
-            { to: '/seller/properties', label: 'My Properties', end: true },
-            { to: '/register-property', label: 'Register New', end: true },
-          ]
-        },
+        { to: '/seller/properties', icon: Home, label: 'My Properties', end: true },
+        { to: '/register-property', icon: FilePlus, label: 'Register New Property', end: true },
         { to: '/seller/requests', icon: ArrowLeftRight, label: 'Purchase Requests', end: true },
-      ]
-    },
-    {
-      title: 'ACCOUNT',
-      items: [
-        { to: '/seller/notifications', icon: Bell, label: 'Notifications', end: true },
       ]
     }
   ],
@@ -92,22 +81,18 @@ export const NAV_BY_ROLE = {
         { to: '/admin/users', icon: Users, label: 'Manage Users', end: true },
         { to: '/admin/properties', icon: ShieldCheck, label: 'Properties', end: true },
         { to: '/admin/transfers', icon: ArrowLeftRight, label: 'Transfers', end: true },
-        { to: '/admin/officers', icon: BookOpen, label: 'Officers', end: true },
       ]
     },
     {
       title: 'SYSTEM',
       items: [
         { to: '/admin/settings', icon: Settings, label: 'Settings', end: true },
+        { to: '/admin/analytics', icon: BarChart3, label: 'Analytics', end: true },
       ]
     }
   ]
 };
 
-/**
- * Pick the correct sidebar nav for an account.
- * 'both' accounts follow the active Buyer/Seller mode.
- */
 export function navItemsForRole(user, mode) {
   if (!user) return NAV_BY_ROLE.buyer;
   if (user.role === 'both') {
@@ -130,12 +115,15 @@ export default function DashboardLayout() {
   const navItems = navItemsForRole(user, mode);
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--color-surface-1)' }}>
+    <div className="relative min-h-screen dashboard-lego-bg overflow-x-hidden">
+      {/* Global Interactive Background for Admin, Officer, Buyer, Seller */}
+      <DashboardLiveCanvas />
+
       <Navbar />
       <Sidebar navItems={navItems} />
-      {/* Main content: offset for fixed navbar (h-16) + sidebar collapsed width (64px) */}
-      {/* The sidebar will overlay on hover without pushing the main content */}
-      <main className="ml-[64px] pt-16 min-h-screen">
+      
+      {/* Main content layer */}
+      <main className="relative z-10 ml-[64px] pt-16 min-h-screen">
         <div className="mx-auto max-w-6xl px-6 py-8">
           <Outlet />
         </div>

@@ -9,10 +9,11 @@ import VerificationBadge from '../components/VerificationBadge';
 import Lenis from 'lenis';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { motion, useScroll, useSpring } from 'framer-motion';
+import { motion, useScroll, useSpring, useInView } from 'framer-motion';
 import { getProperties } from '../services/propertyService';
 
 const HeroLandParcel = lazy(() => import('../components/HeroLandParcel'));
+const LegoSpaceDartHighway = lazy(() => import('../components/LegoSpaceDartHighway'));
 
 const Hero3DFallback = () => (
   <div className="w-full h-[450px] sm:h-[500px] lg:h-[550px] flex items-center justify-center pointer-events-none">
@@ -22,36 +23,38 @@ const Hero3DFallback = () => (
 
 gsap.registerPlugin(ScrollTrigger);
 
-// ── Interactive Canvas Background Component ──
+// ── Interactive Global Canvas Background Component ──
 const LiveCanvasBackground = () => {
   const canvasRef = useRef(null);
 
   useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     let animationFrameId;
 
-    let width = (canvas.width = canvas.parentElement.clientWidth);
-    let height = (canvas.height = canvas.parentElement.clientHeight);
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
 
     const handleResize = () => {
-      if (!canvas || !canvas.parentElement) return;
-      width = canvas.width = canvas.parentElement.clientWidth;
-      height = canvas.height = canvas.parentElement.clientHeight;
+      if (!canvas) return;
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
     };
 
     window.addEventListener('resize', handleResize);
 
-    // Particle nodes setup
-    const particleCount = Math.min(Math.floor((width * height) / 12000), 65);
+    // Particle nodes setup — dense & vibrant for high visibility
+    const particleCount = Math.min(Math.floor((width * height) / 10000), 85);
     const particles = [];
-    const mouse = { x: null, y: null, radius: 150 };
+    const mouse = { x: null, y: null, radius: 200 };
 
     const handleMouseMove = (e) => {
-      const rect = canvas.getBoundingClientRect();
-      mouse.x = e.clientX - rect.left;
-      mouse.y = e.clientY - rect.top;
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
     };
 
     const handleMouseLeave = () => {
@@ -59,18 +62,17 @@ const LiveCanvasBackground = () => {
       mouse.y = null;
     };
 
-    const parentEl = canvas.parentElement;
-    parentEl.addEventListener('mousemove', handleMouseMove);
-    parentEl.addEventListener('mouseleave', handleMouseLeave);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseleave', handleMouseLeave);
 
     for (let i = 0; i < particleCount; i++) {
       particles.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.1,
-        vy: (Math.random() - 0.5) * 0.1,
+        vx: (Math.random() - 0.5) * 0.15,
+        vy: (Math.random() - 0.5) * 0.15,
         radius: Math.random() * 2 + 1,
-        color: Math.random() > 0.4 ? 'rgba(212, 175, 55, ' : 'rgba(59, 130, 246, ',
+        color: Math.random() > 0.5 ? 'rgba(212, 175, 55, ' : 'rgba(245, 184, 0, ',
         baseAlpha: Math.random() * 0.35 + 0.15,
       });
     }
@@ -115,8 +117,8 @@ const LiveCanvasBackground = () => {
           const dy = p.y - p2.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          if (dist < 120) {
-            const alpha = (1 - dist / 120) * 0.2;
+          if (dist < 130) {
+            const alpha = (1 - dist / 130) * 0.2;
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
@@ -134,8 +136,8 @@ const LiveCanvasBackground = () => {
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      parentEl.removeEventListener('mousemove', handleMouseMove);
-      parentEl.removeEventListener('mouseleave', handleMouseLeave);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseleave', handleMouseLeave);
       cancelAnimationFrame(animationFrameId);
     };
   }, []);
@@ -143,7 +145,7 @@ const LiveCanvasBackground = () => {
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 z-0 pointer-events-none w-full h-full"
+      className="fixed inset-0 pointer-events-none z-0 w-full h-full"
     />
   );
 };
@@ -154,7 +156,7 @@ const HOW_IT_WORKS = [
     title: 'Register & Verify Identity',
     desc: 'Create your account and complete KYC verification through government-issued credentials. Officers review and approve identity documents.',
     actor: 'Seller / Buyer',
-    actorStyle: 'bg-gray-100 text-gray-700',
+    actorStyle: 'bg-amber-50 text-amber-800 border-amber-200',
     icon: IdCard,
   },
   {
@@ -162,7 +164,7 @@ const HOW_IT_WORKS = [
     title: 'Register Your Property',
     desc: 'Upload property documents, survey records, and title deed. Government officers verify authenticity against official land records.',
     actor: 'Seller + Officer',
-    actorStyle: 'bg-blue-100 text-blue-800',
+    actorStyle: 'bg-amber-100 text-amber-900 border-amber-300',
     icon: Building2,
   },
   {
@@ -170,7 +172,7 @@ const HOW_IT_WORKS = [
     title: 'List & Discover',
     desc: 'Verified properties appear on the public marketplace. Buyers search by location, type, and price range with full blockchain audit trail.',
     actor: 'Buyer',
-    actorStyle: 'bg-green-100 text-green-800',
+    actorStyle: 'bg-yellow-50 text-yellow-800 border-yellow-200',
     icon: Search,
   },
   {
@@ -178,7 +180,7 @@ const HOW_IT_WORKS = [
     title: 'Request & Negotiate Transfer',
     desc: 'Buyer submits a formal purchase request. Seller reviews and accepts. Both parties sign digital agreements stored on-chain.',
     actor: 'Buyer + Seller',
-    actorStyle: 'bg-amber-100 text-amber-800',
+    actorStyle: 'bg-amber-100 text-amber-800 border-amber-200',
     icon: FileSignature,
   },
   {
@@ -186,7 +188,7 @@ const HOW_IT_WORKS = [
     title: 'Blockchain Ownership Transfer',
     desc: 'Government officer performs final compliance check. Smart contract executes the transfer — ownership record updated immutably on the blockchain.',
     actor: 'Officer + Blockchain',
-    actorStyle: 'bg-purple-100 text-purple-800',
+    actorStyle: 'bg-orange-50 text-orange-800 border-orange-200',
     icon: Layers,
   },
 ];
@@ -205,10 +207,11 @@ const ROLE_CARDS = [
     desc: 'Search verified properties, view full blockchain ownership history, and complete secure purchases with wallet signature.',
     cta: 'Explore as Buyer',
     link: '/register',
-    iconBg: 'bg-green-50 text-green-700 border-green-200',
-    btnColor: 'bg-green-700 hover:bg-green-800',
-    shadow: 'hover:shadow-[0_8px_30px_rgb(21,128,61,0.15)]',
-    borderHover: 'hover:border-green-400'
+    iconBg: 'bg-amber-50 text-amber-700 border-amber-200',
+    btnColor: 'bg-[#B8860B] hover:bg-[#9A7209]',
+    accentColor: '#F5B800',
+    shadow: 'hover:shadow-[0_8px_30px_rgba(212,175,55,0.18)]',
+    borderHover: 'hover:border-amber-400'
   },
   {
     role: 'Seller',
@@ -216,10 +219,11 @@ const ROLE_CARDS = [
     desc: 'Register your property, upload documents for government verification, list on the marketplace, and manage transfer requests.',
     cta: 'Register as Seller',
     link: '/register',
-    iconBg: 'bg-blue-50 text-blue-700 border-blue-200',
-    btnColor: 'bg-blue-800 hover:bg-blue-900',
-    shadow: 'hover:shadow-[0_8px_30px_rgb(30,64,175,0.15)]',
-    borderHover: 'hover:border-blue-400'
+    iconBg: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+    btnColor: 'bg-[#8B6914] hover:bg-[#6D5110]',
+    accentColor: '#D4AF37',
+    shadow: 'hover:shadow-[0_8px_30px_rgba(212,175,55,0.15)]',
+    borderHover: 'hover:border-yellow-400'
   },
   {
     role: 'Government Officer',
@@ -227,10 +231,11 @@ const ROLE_CARDS = [
     desc: 'Verify user identities, review property documents, approve transfers — digitally. All actions recorded on immutable ledger.',
     cta: 'Officer Login',
     link: '/login',
-    iconBg: 'bg-amber-50 text-amber-700 border-amber-200',
-    btnColor: 'bg-amber-700 hover:bg-amber-800',
-    shadow: 'hover:shadow-[0_8px_30px_rgb(180,83,9,0.15)]',
-    borderHover: 'hover:border-amber-400'
+    iconBg: 'bg-orange-50 text-orange-700 border-orange-200',
+    btnColor: 'bg-[#C47A00] hover:bg-[#A36500]',
+    accentColor: '#E4A000',
+    shadow: 'hover:shadow-[0_8px_30px_rgba(196,122,0,0.18)]',
+    borderHover: 'hover:border-orange-400'
   },
 ];
 
@@ -302,6 +307,22 @@ const Counter = ({ value, suffix }) => {
   return <span ref={nodeRef} className="font-serif text-3xl font-bold text-white">0{suffix}</span>;
 };
 
+// Intersection-Observer wrapper for lazy loading the 3D Highway
+const LazyHighway = ({ containerRef }) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "600px 0px" });
+
+  return (
+    <div ref={ref} className="absolute inset-0 pointer-events-none">
+      {isInView && (
+        <Suspense fallback={null}>
+          <LegoSpaceDartHighway containerRef={containerRef} />
+        </Suspense>
+      )}
+    </div>
+  );
+};
+
 export default function Landing() {
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
@@ -362,85 +383,104 @@ export default function Landing() {
   }, []);
 
   useEffect(() => {
-    // Lenis Smooth Scroll Setup
+    // ── Lenis smooth scroll — driven by GSAP ticker for perfect sync ──
     const lenis = new Lenis({
-      duration: 1.2,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      orientation: 'vertical',
+      duration        : 1.4,
+      easing          : (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation     : 'vertical',
       gestureOrientation: 'vertical',
-      smoothWheel: true,
-      wheelMultiplier: 1,
-      touchMultiplier: 2,
-      infinite: false,
+      smoothWheel     : true,
+      wheelMultiplier : 0.9,
+      touchMultiplier : 1.8,
+      infinite        : false,
     });
 
-    function raf(time) {
-      lenis.raf(time);
-      requestAnimationFrame(raf);
-    }
-    requestAnimationFrame(raf);
+    // KEY FIX: pipe Lenis through GSAP's ticker so ScrollTrigger stays in sync
+    lenis.on('scroll', ScrollTrigger.update);
+    gsap.ticker.add((time) => { lenis.raf(time * 1000); });
+    gsap.ticker.lagSmoothing(0);
 
-    // GSAP Setup
+    // ── GSAP scroll animations ──
     const ctx = gsap.context(() => {
-      // Stats Band staggered reveal
+
+      // Stat cards — staggered bounce-in
       if (statsRef.current) {
-        gsap.fromTo('.stat-card', 
-          { y: 50, opacity: 0 },
-          { 
-            y: 0, 
-            opacity: 1, 
-            stagger: 0.1, 
-            duration: 0.8, 
-            ease: 'back.out(1.7)',
-            scrollTrigger: {
-              trigger: statsRef.current,
-              start: 'top 85%',
-              once: true
-            }
+        gsap.fromTo('.stat-card',
+          { y: 60, opacity: 0, scale: 0.92 },
+          {
+            y: 0, opacity: 1, scale: 1,
+            stagger: 0.1, duration: 0.9, ease: 'back.out(1.7)',
+            scrollTrigger: { trigger: statsRef.current, start: 'top 88%', once: true },
           }
         );
       }
 
-      // Trust Indicators parallax and micro-animation
+      // Trust card — slide up from below
       if (trustRef.current) {
-        gsap.fromTo('.trust-item',
-          { y: 40, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            stagger: 0.15,
-            duration: 1,
-            ease: 'power2.out',
-            scrollTrigger: {
-              trigger: trustRef.current,
-              start: 'top 80%',
-              once: true
-            }
-          }
+        gsap.fromTo(trustRef.current,
+          { y: 50, opacity: 0 },
+          { y: 0, opacity: 1, duration: 1.0, ease: 'power3.out',
+            scrollTrigger: { trigger: trustRef.current, start: 'top 90%', once: true } }
         );
-
-        // Micro-animation for icons
+        gsap.fromTo('.trust-item',
+          { y: 30, opacity: 0 },
+          { y: 0, opacity: 1, stagger: 0.15, duration: 0.9, ease: 'power2.out',
+            scrollTrigger: { trigger: trustRef.current, start: 'top 85%', once: true } }
+        );
         gsap.utils.toArray('.trust-icon').forEach(icon => {
           ScrollTrigger.create({
-            trigger: icon,
-            start: 'top 85%',
-            once: true,
-            onEnter: () => {
-              gsap.fromTo(icon, 
-                { scale: 0, rotation: -45 }, 
-                { scale: 1, rotation: 0, duration: 0.8, ease: 'elastic.out(1, 0.5)', delay: 0.2 }
-              );
-            }
+            trigger: icon, start: 'top 88%', once: true,
+            onEnter: () => gsap.fromTo(icon,
+              { scale: 0, rotation: -45 },
+              { scale: 1, rotation: 0, duration: 0.9, ease: 'elastic.out(1, 0.5)', delay: 0.2 }
+            ),
           });
         });
       }
+
+      // "How It Works" section heading — fade + slide
+      if (timelineRef.current) {
+        gsap.fromTo('.timeline-heading',
+          { y: 40, opacity: 0 },
+          { y: 0, opacity: 1, duration: 1.1, ease: 'power3.out',
+            scrollTrigger: { trigger: timelineRef.current, start: 'top 80%', once: true } }
+        );
+      }
+
+      // Choose Your Role section — staggered card reveal
+      gsap.utils.toArray('.role-card').forEach((card, i) => {
+        gsap.fromTo(card,
+          { y: 70, opacity: 0, scale: 0.95 },
+          { y: 0, opacity: 1, scale: 1, duration: 0.85, ease: 'back.out(1.4)',
+            delay: i * 0.12,
+            scrollTrigger: { trigger: card, start: 'top 88%', once: true } }
+        );
+      });
+
+      // CTA Banner — scale + fade in
+      gsap.fromTo('.cta-banner',
+        { scale: 0.94, opacity: 0, y: 30 },
+        { scale: 1, opacity: 1, y: 0, duration: 1.1, ease: 'power3.out',
+          scrollTrigger: { trigger: '.cta-banner', start: 'top 85%', once: true } }
+      );
+
+      // Footer — fade up
+      gsap.fromTo('footer',
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.9, ease: 'power2.out',
+          scrollTrigger: { trigger: 'footer', start: 'top 95%', once: true } }
+      );
+
     });
 
     return () => {
       lenis.destroy();
+      gsap.ticker.remove((time) => { lenis.raf(time * 1000); });
       ctx.revert();
+      ScrollTrigger.getAll().forEach(t => t.kill());
     };
   }, [dbStats.loading]);
+
 
   // Framer Motion variants
   const heroVariants = {
@@ -464,8 +504,14 @@ export default function Landing() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 overflow-x-hidden selection:bg-amber-200 selection:text-amber-900">
+    <div className="min-h-screen bg-[#0A1628] text-white overflow-x-hidden selection:bg-amber-400 selection:text-amber-950 relative">
       
+      {/* Global Live Interactive Canvas Background */}
+      <LiveCanvasBackground />
+
+      {/* Global Gold Dot-Grid Baseplate Pattern across the whole site */}
+      <div className="fixed inset-0 pointer-events-none z-0" style={{ backgroundImage: 'radial-gradient(circle, rgba(212,175,55,0.06) 1.5px, transparent 1.5px)', backgroundSize: '28px 28px' }} />
+
       {/* Global Scroll Progress */}
       <motion.div
         className="fixed top-0 left-0 right-0 h-1 z-50 origin-left"
@@ -473,13 +519,16 @@ export default function Landing() {
       />
 
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden pt-20 sm:pt-24 lg:pt-36 pb-16 sm:pb-20 bg-[#0A1628]">
+      <section className="relative overflow-hidden pt-20 sm:pt-24 lg:pt-36 pb-28 sm:pb-36 bg-transparent">
         
-        {/* Live Interactive Canvas Background */}
-        <LiveCanvasBackground />
+        {/* Off-center gold ambient glow — top-right warm bloom */}
+        <div className="absolute pointer-events-none z-0" style={{ top: '-10%', right: '-5%', width: '55%', height: '60%', background: 'radial-gradient(ellipse at center, rgba(245,184,0,0.09) 0%, transparent 70%)' }} />
 
-        {/* Ambient Gradient Glow overlay */}
-        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(212,175,55,0.15),rgba(255,255,255,0))]" />
+        {/* Dimmer secondary glow — bottom-left cool depth */}
+        <div className="absolute pointer-events-none z-0" style={{ bottom: '0%', left: '-8%', width: '45%', height: '50%', background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.05) 0%, transparent 65%)' }} />
+
+        {/* Ambient Gradient Glow overlay — top radial */}
+        <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(212,175,55,0.12),rgba(255,255,255,0))]" />
 
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
@@ -569,17 +618,19 @@ export default function Landing() {
       </section>
 
       {/* ── Core Features / Trust Indicators ── */}
-      <section ref={trustRef} className="relative z-20 -mt-6 sm:-mt-8 mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="bg-white rounded-sm shadow-[4px_4px_0px_#0A1628] border-2 border-gray-200 p-6 sm:p-8 lg:p-12">
+      <section ref={trustRef} className="relative z-20 -mt-6 sm:-mt-10 mx-auto max-w-6xl px-4 sm:px-6">
+        {/* Floating card — dark navy LEGO card matching hero */}
+        <div className="bg-[#0D1B2A] rounded-sm border-2 border-[#D4AF37]/40 p-6 sm:p-8 lg:p-12 shadow-[6px_6px_0px_#060D17]"
+          style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.5), 6px 6px 0px #060D17' }}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 md:grid-cols-4">
             {TRUST_INDICATORS.map((item, i) => (
               <div key={i} className="trust-item flex flex-col items-center text-center gap-3 sm:gap-4">
-                <div className="trust-icon flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-sm bg-amber-50 border border-amber-200 text-amber-700 shadow-[2px_2px_0px_#0A1628]">
+                <div className="trust-icon flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-sm bg-amber-400/10 border border-amber-400/30 text-amber-400 shadow-[2px_2px_0px_rgba(212,175,55,0.3)]">
                   <item.icon className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={1.75} />
                 </div>
                 <div>
-                  <p className="font-bold text-gray-900 text-sm sm:text-base mb-1">{item.label}</p>
-                  <p className="text-xs sm:text-sm text-gray-600 leading-relaxed font-medium">{item.desc}</p>
+                  <p className="font-bold text-white text-sm sm:text-base mb-1">{item.label}</p>
+                  <p className="text-xs sm:text-sm text-white/70 leading-relaxed font-medium">{item.desc}</p>
                 </div>
               </div>
             ))}
@@ -587,42 +638,42 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── How It Works Timeline ── */}
-      <section className="py-20 sm:py-32 px-4 sm:px-6 bg-gray-50 relative overflow-hidden" ref={timelineRef}>
-        <div className="mx-auto max-w-4xl relative">
-          <div className="text-center mb-14 sm:mb-20">
-            <motion.div 
+      {/* ── How It Works Timeline ── Dark Navy Section ── */}
+      <section className="py-20 sm:py-32 px-4 sm:px-6 bg-transparent relative overflow-hidden" ref={timelineRef}>
+        <div className="mx-auto max-w-4xl relative z-10">
+          <div className="text-center mb-14 sm:mb-20 timeline-heading">
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
-              className="inline-flex items-center gap-2 rounded-sm bg-amber-50 border border-amber-300 px-4 py-1.5 mb-4 sm:mb-6 shadow-[2px_2px_0px_#0A1628]"
+              className="inline-flex items-center gap-2 rounded-sm bg-amber-400/10 border border-amber-400/30 px-4 py-1.5 mb-4 sm:mb-6 shadow-[2px_2px_0px_rgba(212,175,55,0.3)]"
             >
-              <FileText className="h-4 w-4 text-amber-700" />
-              <span className="font-pixel text-xs sm:text-sm font-bold text-amber-900 uppercase tracking-widest">The Complete Process</span>
+              <FileText className="h-4 w-4 text-amber-400" />
+              <span className="font-pixel text-xs sm:text-sm font-bold text-amber-300 uppercase tracking-widest">The Complete Process</span>
             </motion.div>
-            <motion.h2 
+            <motion.h2
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ delay: 0.1 }}
-              className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-5"
+              className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4 sm:mb-5"
             >
               How LandLedger Works
             </motion.h2>
-            <motion.p 
+            <motion.p
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ delay: 0.2 }}
-              className="text-gray-600 max-w-xl mx-auto text-base sm:text-lg"
+              className="text-white/70 max-w-xl mx-auto text-base sm:text-lg font-medium"
             >
               From identity verification to blockchain-recorded ownership — a government-grade process, digitized.
             </motion.p>
           </div>
 
-          {/* Timeline Container */}
+          {/* Timeline Highway & 3D Space Dart Track */}
           <div className="relative pl-6 sm:pl-8 md:pl-0">
-            <TimelineLine containerRef={timelineRef} />
+            <LazyHighway containerRef={timelineRef} />
 
             <div className="space-y-8 sm:space-y-12 md:space-y-24">
               {HOW_IT_WORKS.map((step, i) => (
@@ -634,14 +685,14 @@ export default function Landing() {
       </section>
 
       {/* ── Choose Your Role ── */}
-      <section className="py-20 sm:py-32 px-4 sm:px-6 bg-white border-t border-gray-100">
-        <div className="mx-auto max-w-6xl">
+      <section className="py-20 sm:py-32 px-4 sm:px-6 bg-transparent border-t border-[#D4AF37]/20 relative overflow-hidden">
+        <div className="mx-auto max-w-6xl relative z-10">
           <div className="text-center mb-12 sm:mb-16">
             <motion.h2 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-3 sm:mb-4"
+              className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-3 sm:mb-4"
             >
               Choose Your Role
             </motion.h2>
@@ -650,7 +701,7 @@ export default function Landing() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-gray-500 text-base sm:text-lg"
+              className="text-white/70 text-base sm:text-lg font-medium"
             >
               LandLedger serves every participant in the property lifecycle.
             </motion.p>
@@ -661,25 +712,23 @@ export default function Landing() {
               return (
                 <motion.div
                   key={card.role}
-                  initial={{ opacity: 0, y: 40 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  transition={{ duration: 0.6, delay: i * 0.15, ease: 'easeOut' }}
-                  className={`relative group bg-white rounded-sm p-6 sm:p-8 border-2 border-gray-200 shadow-[4px_4px_0px_#0A1628] hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[6px_6px_0px_#0A1628] transition-all duration-200`}
+                  className={`role-card relative group bg-[#0D1B2A] rounded-sm p-6 sm:p-8 border-2 border-[#D4AF37]/40 shadow-[4px_4px_0px_#060D17] hover:border-[#D4AF37]/70 hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[6px_6px_0px_rgba(212,175,55,0.3)] transition-all duration-200`}
                 >
-                  <div className={`absolute top-0 left-0 w-full h-1 opacity-100 bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent`} style={{ '--accent': card.iconBg.includes('green') ? '#4A7C3F' : card.iconBg.includes('blue') ? '#1E3A5F' : '#D4AF37' }} />
+                  {/* Gold-family top accent bar */}
+                  <div className="absolute top-0 left-0 w-full h-1" style={{ background: `linear-gradient(to right, transparent, ${card.accentColor}, transparent)` }} />
                   
                   {/* Clean Icon Container */}
-                  <div className={`w-14 h-14 sm:w-16 sm:h-16 mb-5 sm:mb-6 flex items-center justify-center rounded-sm border ${card.iconBg} shadow-[2px_2px_0px_#0A1628]`}>
-                    <RoleIcon className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={1.75} />
+                  <div className={`w-14 h-14 sm:w-16 sm:h-16 mb-5 sm:mb-6 flex items-center justify-center rounded-sm border-2 border-amber-400/40 bg-amber-400/10 text-amber-400 shadow-[2px_2px_0px_rgba(212,175,55,0.3)]`}>
+                    <RoleIcon className="h-7 w-7 sm:h-8 sm:w-8 text-amber-400" strokeWidth={1.75} />
                   </div>
 
-                  <h3 className="font-serif text-xl sm:text-2xl font-bold text-gray-900 mb-2 sm:mb-3">{card.role}</h3>
-                  <p className="text-gray-500 text-sm sm:text-base leading-relaxed mb-6 sm:mb-8">{card.desc}</p>
+                  <h3 className="font-serif text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3">{card.role}</h3>
+                  <p className="text-white/70 text-sm sm:text-base leading-relaxed mb-6 sm:mb-8 font-medium">{card.desc}</p>
                   
                   <Link
                     to={card.link}
-                    className={`mt-auto flex items-center justify-center gap-2 w-full rounded-sm py-3.5 font-pixel text-sm font-bold text-white uppercase tracking-wider transition-all duration-150 shadow-[3px_3px_0px_#0A1628] hover:translate-x-[1.5px] hover:translate-y-[1.5px] hover:shadow-[1.5px_1.5px_0px_#0A1628] ${card.btnColor}`}
+                    className="mt-auto flex items-center justify-center gap-2 w-full rounded-sm py-3.5 font-pixel text-sm font-bold text-[#0A1628] uppercase tracking-wider transition-all duration-150 shadow-[3px_3px_0px_#060D17] hover:translate-x-[1.5px] hover:translate-y-[1.5px] hover:shadow-[1.5px_1.5px_0px_#060D17] border border-[#D4AF37]"
+                    style={{ background: 'linear-gradient(135deg, #D4AF37, #FDE047)' }}
                   >
                     {card.cta} <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </Link>
@@ -692,7 +741,11 @@ export default function Landing() {
 
       {/* ── CTA Banner ── */}
       <section className="py-16 sm:py-24 px-4 sm:px-6 relative overflow-hidden bg-[#060D17]">
-        <div className="relative mx-auto max-w-4xl text-center z-10 rounded-sm bg-[#0D1B2A] border border-[#D4AF37]/30 p-8 sm:p-12 shadow-[6px_6px_0px_#060D17]">
+        {/* Subtle gold ambient bloom — top center */}
+        <div className="absolute inset-0 pointer-events-none z-0" style={{ background: 'radial-gradient(ellipse 70% 50% at 50% 0%, rgba(212,175,55,0.08) 0%, transparent 70%)' }} />
+        {/* Faint dot grid matching hero */}
+        <div className="absolute inset-0 pointer-events-none z-0" style={{ backgroundImage: 'radial-gradient(circle, rgba(212,175,55,0.05) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+        <div className="cta-banner relative mx-auto max-w-4xl text-center z-10 rounded-sm bg-[#0D1B2A] border border-[#D4AF37]/30 p-8 sm:p-12 shadow-[6px_6px_0px_#060D17]">
           <motion.div 
             initial={{ scale: 0.8, opacity: 0 }}
             whileInView={{ scale: 1, opacity: 1 }}
@@ -738,19 +791,19 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-8 sm:py-10 px-4 sm:px-6">
-        <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center text-center sm:text-left justify-between gap-6 text-xs sm:text-sm text-gray-500 font-medium">
+      <footer className="bg-[#060D17] border-t border-[#D4AF37]/20 py-8 sm:py-10 px-4 sm:px-6 relative z-10">
+        <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center text-center sm:text-left justify-between gap-6 text-xs sm:text-sm text-white/70 font-medium">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0A1628] shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-[#0D1B2A] border border-[#D4AF37]/40 shadow-[2px_2px_0px_#060D17]">
               <ShieldCheck className="h-4 w-4 text-amber-400" />
             </div>
-            <span className="font-bold text-gray-900 text-lg tracking-tight">LandLedger</span>
+            <span className="font-pixel text-lg font-bold text-white tracking-wider">LandLedger</span>
           </div>
-          <p>© 2026 LandLedger. Government-grade Blockchain Land Registry.</p>
-          <div className="flex flex-wrap justify-center gap-4 sm:gap-8">
-            <Link to="/privacy" className="hover:text-[#0A1628] transition-colors">Privacy Policy</Link>
-            <Link to="/terms" className="hover:text-[#0A1628] transition-colors">Terms of Service</Link>
-            <Link to="/support" className="hover:text-[#0A1628] transition-colors">Contact Support</Link>
+          <p className="font-pixel text-xs text-white/60 uppercase tracking-wide">© 2026 LandLedger. Government-grade Blockchain Land Registry.</p>
+          <div className="flex flex-wrap justify-center gap-4 sm:gap-8 font-pixel text-xs uppercase tracking-wider">
+            <Link to="/privacy" className="hover:text-amber-400 transition-colors">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-amber-400 transition-colors">Terms of Service</Link>
+            <Link to="/support" className="hover:text-amber-400 transition-colors">Contact Support</Link>
           </div>
         </div>
       </footer>
@@ -785,8 +838,8 @@ const TimelineCard = ({ step, index }) => {
   const isEven = index % 2 === 0;
   const StepIcon = step.icon;
 
-  // Voxel material accent bar colors for each step
-  const stepColors = ['#4A7C3F', '#D4AF37', '#8A8A8A', '#C9A876', '#3A6499']; // Grass, Gold, Stone, Sand, Navy
+  // Gold-family accent bar colors — unified design system
+  const stepColors = ['#F5B800', '#D4AF37', '#C47A00', '#E4C84E', '#B8860B']; // Gold shades only
   const stepColor = stepColors[index % stepColors.length];
 
   return (
@@ -809,14 +862,14 @@ const TimelineCard = ({ step, index }) => {
         whileInView={{ scale: 1, rotate: 0 }}
         viewport={{ once: true, margin: "-12%" }}
         transition={{ type: 'spring', stiffness: 400, damping: 15, delay: (index % 2) * 0.08 + 0.12 }}
-        className="absolute left-[-28px] md:left-1/2 top-6 md:top-1/2 md:-translate-y-1/2 w-6 h-6 rounded-sm bg-amber-400 border-2 border-[#0A1628] md:-translate-x-3 z-20 shadow-[3px_3px_0px_#0A1628] flex items-center justify-center" 
+        className="absolute left-[-28px] md:left-1/2 top-6 md:top-1/2 md:-translate-y-1/2 w-6 h-6 rounded-sm bg-amber-400 border-2 border-[#475569] md:-translate-x-3 z-10 shadow-[3px_3px_0px_#475569] flex items-center justify-center" 
       >
         <div className="w-2 h-2 rounded-full bg-[#0A1628]" />
       </motion.div>
 
-      {/* Card Content - LEGO Brick Module */}
-      <div className={`w-full md:w-1/2 ${isEven ? 'md:pr-16' : 'md:pl-16'}`}>
-        <div className="relative group bg-white rounded-sm p-6 sm:p-8 border-2 border-[#0A1628] shadow-[5px_5px_0px_#0A1628] hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[7px_7px_0px_#0A1628] transition-all duration-200 overflow-hidden">
+      {/* Card Content - LEGO Brick Module — Dark Navy Theme */}
+      <div className={`w-full md:w-5/12 ${isEven ? 'md:pr-8 lg:pr-12' : 'md:pl-8 lg:pl-12'}`}>
+        <div className="relative group bg-[#0D1B2A] rounded-sm p-6 sm:p-8 border-2 border-[#D4AF37]/40 shadow-[4px_4px_0px_#060D17] hover:border-[#D4AF37]/70 hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[6px_6px_0px_rgba(212,175,55,0.3)] transition-all duration-200 overflow-hidden">
           {/* Top Terrain Color Bar */}
           <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: stepColor }} />
 
@@ -824,31 +877,31 @@ const TimelineCard = ({ step, index }) => {
           <div className="flex items-center justify-between gap-2 mb-4 pt-1">
             <div className="flex gap-1.5">
               {[1, 2, 3].map(i => (
-                <div key={i} className="w-2.5 h-2.5 rounded-full bg-amber-400 border border-[#0A1628]/40 shadow-inner" />
+                <div key={i} className="w-2.5 h-2.5 rounded-full bg-amber-400 border border-amber-600/60 shadow-[0_0_4px_rgba(212,175,55,0.5)]" />
               ))}
             </div>
-            <span className={`font-pixel text-xs font-bold px-2.5 py-0.5 rounded-sm border border-[#0A1628]/30 shadow-[1.5px_1.5px_0px_#0A1628] uppercase tracking-wider ${step.actorStyle}`}>
+            <span className={`font-pixel text-xs font-bold px-2.5 py-0.5 rounded-sm border border-amber-400/30 shadow-[1.5px_1.5px_0px_#060D17] uppercase tracking-wider ${step.actorStyle}`}>
               {step.actor}
             </span>
           </div>
 
           <div className="flex items-start justify-between gap-4 mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-sm bg-amber-50 border-2 border-[#0A1628] text-amber-700 shadow-[2px_2px_0px_#0A1628] flex items-center justify-center shrink-0">
+              <div className="w-11 h-11 rounded-sm bg-amber-400/10 border-2 border-amber-400/40 text-amber-400 shadow-[2px_2px_0px_rgba(212,175,55,0.3)] flex items-center justify-center shrink-0">
                 <StepIcon className="h-5 w-5" strokeWidth={2} />
               </div>
-              <h3 className="font-pixel text-lg sm:text-xl font-bold text-[#0A1628] uppercase tracking-wide leading-tight">
+              <h3 className="font-pixel text-lg sm:text-xl font-bold text-white uppercase tracking-wide leading-tight">
                 {step.title}
               </h3>
             </div>
             
             {/* Retro Score Step Number */}
-            <span className="font-pixel text-4xl sm:text-5xl font-black text-amber-400 group-hover:text-amber-500 transition-colors duration-200 shrink-0 pointer-events-none" style={{ textShadow: '2px 2px 0px #0A1628' }}>
+            <span className="font-pixel text-4xl sm:text-5xl font-black text-amber-400 group-hover:text-amber-300 transition-colors duration-200 shrink-0 pointer-events-none" style={{ textShadow: '2px 2px 0px #060D17' }}>
               {step.step}
             </span>
           </div>
 
-          <p className="font-pixel text-xs sm:text-sm text-gray-700 leading-relaxed tracking-wide">
+          <p className="font-pixel text-xs sm:text-sm text-white/70 leading-relaxed tracking-wide font-medium">
             {step.desc}
           </p>
         </div>

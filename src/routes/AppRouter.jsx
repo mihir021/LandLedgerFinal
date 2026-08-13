@@ -4,6 +4,7 @@
  * Defines public, protected, and catch-all routes.
  */
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 
 // Layouts
 import MainLayout from '../layouts/MainLayout';
@@ -42,6 +43,7 @@ import AdminTransfers from '../pages/AdminTransfers';
 
 import Profile from '../pages/Profile';
 import AdminSettings from '../pages/AdminSettings';
+const AdminAnalytics = lazy(() => import('../pages/AdminAnalytics'));
 
 // Route Protection
 import ProtectedRoute from './ProtectedRoute';
@@ -158,12 +160,12 @@ const router = createBrowserRouter([
         element: <ProtectedRoute allowedRoles={['admin', 'officer']}><AdminTransfers /></ProtectedRoute>,
       },
       {
-        path: 'admin/officers',
-        element: <ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>,
-      },
-      {
         path: 'admin/settings',
         element: <ProtectedRoute allowedRoles={['admin']}><AdminSettings /></ProtectedRoute>,
+      },
+      {
+        path: 'admin/analytics',
+        element: <ProtectedRoute allowedRoles={['admin']}><Suspense fallback={null}><AdminAnalytics /></Suspense></ProtectedRoute>,
       },
     ],
   },

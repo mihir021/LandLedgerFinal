@@ -139,18 +139,26 @@ function NavItem({ item, isHovered, currentPath }) {
         end={item.end}
         title={!isHovered ? item.label : ''}
         className={({ isActive }) =>
-          `flex items-center gap-3 rounded-lg p-2 text-sm font-medium transition-colors border-l-4 ${
+          `flex items-center gap-2.5 rounded-lg p-2 text-sm font-medium transition-colors border-l-4 ${
             isActive
-              ? 'bg-blue-50 text-blue-900 border-blue-600'
+              ? 'bg-amber-500/10 text-navy-950 border-[#F5B800] font-bold'
               : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-transparent'
           } ${!isHovered ? 'justify-center border-l-0 px-0' : ''}`
         }
       >
         {({ isActive }) => (
           <>
-            {Icon && <Icon className={`h-5 w-5 shrink-0 ${!isHovered ? 'mx-auto' : ''} ${isActive ? 'text-blue-700' : ''}`} />}
+            <div className="relative flex items-center shrink-0">
+              {Icon && <Icon className={`h-5 w-5 shrink-0 ${!isHovered ? 'mx-auto' : ''} ${isActive ? 'text-[#2E333D]' : ''}`} />}
+              {isActive && (
+                <span 
+                  className="absolute -top-1 -right-1.5 h-2.5 w-2.5 rounded-full bg-[#F5B800] border-1.5 border-[#2E333D] shadow-[1px_1px_0px_#2E333D]" 
+                  title="Active LEGO Stud"
+                />
+              )}
+            </div>
             {isHovered && (
-              <span className="whitespace-nowrap animate-fade-in">
+              <span className="whitespace-nowrap animate-fade-in flex items-center gap-1.5">
                 {item.label}
               </span>
             )}

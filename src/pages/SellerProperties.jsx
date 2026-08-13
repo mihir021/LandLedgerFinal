@@ -101,13 +101,13 @@ export default function SellerProperties() {
       {/* Search Bar */}
       {!loading && properties.length > 0 && (
         <div className="relative max-w-md animate-fade-in">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10 pointer-events-none" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search properties by ID, address, type..."
-            className="ll-input pl-9"
+            className="ll-input !pl-10"
           />
         </div>
       )}
@@ -122,7 +122,7 @@ export default function SellerProperties() {
           <Link to="/register-property" className="btn-primary">Register Property</Link>
         </div>
       ) : (
-        <div className="ll-card overflow-hidden animate-fade-in-up">
+        <div className="rounded-xl border-2 border-slate-300 shadow-[4px_4px_0px_#CBD5E1] bg-white overflow-hidden animate-fade-in-up">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">

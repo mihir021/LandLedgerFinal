@@ -11,10 +11,10 @@ import BrickButton from '../components/BrickButton';
 import { LegoVisualLeft, LegoVisualRight } from '../components/LegoAuthDecorations';
 
 const DEMO_CREDENTIALS = [
-  { role: 'Admin',           email: 'admin@landledger.com',   password: 'Admin@123', color: 'border-l-amber-500 bg-amber-50/60' },
-  { role: 'Officer',         email: 'officer@landledger.com', password: 'Officer@123', color: 'border-l-emerald-600 bg-emerald-50/60' },
-  { role: 'Seller & Buyer',  email: 'seller@landledger.com',  password: 'Seller@123', color: 'border-l-indigo-600 bg-indigo-50/60' },
-  { role: 'Buyer & Seller',  email: 'buyer@landledger.com',   password: 'Buyer@123', color: 'border-l-amber-700 bg-[#FDF8EE]' },
+  { role: 'Admin',   email: 'admin@landledger.com',   password: 'Admin@123', color: 'border-l-amber-500 bg-amber-50/60' },
+  { role: 'Officer', email: 'officer@landledger.com', password: 'Officer@123', color: 'border-l-emerald-600 bg-emerald-50/60' },
+  { role: 'Seller',  email: 'seller@landledger.com',  password: 'Seller@123', color: 'border-l-indigo-600 bg-indigo-50/60' },
+  { role: 'Buyer',   email: 'buyer@landledger.com',   password: 'Buyer@123', color: 'border-l-amber-700 bg-[#FDF8EE]' },
 ];
 
 export default function Login() {
@@ -24,6 +24,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [clickedRole, setClickedRole] = useState(null);
+  const [selectedModel, setSelectedModel] = useState('guy');
 
   const { login, isAuthenticated, user } = useAuth();
   const toast = useToast();
@@ -58,39 +59,52 @@ export default function Login() {
     setEmail(cred.email);
     setPassword(cred.password);
     setError('');
+    
+    // Switch the 3D model based on role
+    if (cred.role === 'Buyer' || cred.role === 'Seller') {
+      setSelectedModel('guy');
+    } else {
+      setSelectedModel('spiderman');
+    }
+    
     setClickedRole(cred.role);
     setTimeout(() => setClickedRole(null), 300);
   };
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12 bg-gray-50/60 relative overflow-hidden">
-      {/* Floating 3D LEGO Animations on Left & Right Sides */}
-      <LegoVisualLeft />
-      <LegoVisualRight />
-
-      <div className="w-full max-w-md relative z-10">
-
-        {/* Floating Brick Icon Badge & Header */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="relative group animate-idle-bob">
-              <div className="flex h-14 w-14 items-center justify-center rounded-sm bg-[#0A1628] border-2 border-amber-500/80 shadow-[4px_4px_0px_#0A1628]">
-                <Home className="h-7 w-7 text-amber-400" />
-              </div>
+      
+      {/* Main Split Container */}
+      <div className="w-full max-w-5xl mx-auto relative z-10">
+        <BrickPanel showStuds={false} variant="secondary" className="p-0 overflow-hidden">
+          <div className="flex flex-col lg:flex-row min-h-[600px]">
+            
+            {/* Left 50% - Visual Model Panel */}
+            <div className="w-full lg:w-1/2 bg-[#FDF8EE] flex flex-col items-center justify-center p-8 lg:p-12 border-b-2 lg:border-b-0 lg:border-r-2 border-[#475569]">
+              <LegoVisualLeft activeModel={selectedModel} />
             </div>
-          </div>
-          <h1 className="font-pixel text-3xl sm:text-4xl font-extrabold text-[#0A1628] uppercase tracking-wide">
-            Sign In
-          </h1>
-          <p className="text-gray-600 mt-1.5 text-xs sm:text-sm font-sans">
-            Access your LandLedger account
-          </p>
-        </div>
 
-        {/* Primary Form Brick Panel */}
-        <BrickPanel showStuds={false} variant="primary" delay={0}>
+            {/* Right 50% - Login Form Panel */}
+            <div className="w-full lg:w-1/2 bg-white p-8 sm:p-12 flex flex-col justify-center">
+              
+              {/* Floating Brick Icon Badge & Header */}
+              <div className="text-center mb-8">
+                <div className="flex justify-center mb-4">
+                  <div className="relative group animate-idle-bob">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-sm bg-[#0A1628] border-2 border-amber-500/80 shadow-[4px_4px_0px_#475569]">
+                      <Home className="h-7 w-7 text-amber-400" />
+                    </div>
+                  </div>
+                </div>
+                <h1 className="font-pixel text-3xl sm:text-4xl font-extrabold text-[#0A1628] uppercase tracking-wide">
+                  Sign In
+                </h1>
+                <p className="text-gray-600 mt-1.5 text-xs sm:text-sm font-sans">
+                  Access your LandLedger account
+                </p>
+              </div>
           {error && (
-            <div className="flex items-center gap-2 rounded-sm bg-red-50 border-2 border-red-300 px-3.5 py-2.5 mb-5 text-xs sm:text-sm text-red-700 shadow-[2px_2px_0px_#0A1628]">
+            <div className="flex items-center gap-2 rounded-sm bg-red-50 border-2 border-red-300 px-3.5 py-2.5 mb-5 text-xs sm:text-sm text-red-700 shadow-[2px_2px_0px_#475569]">
               <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
               <span className="font-sans font-medium">{error}</span>
             </div>
@@ -154,17 +168,15 @@ export default function Login() {
             </div>
           </form>
 
-          <p className="text-center text-xs sm:text-sm text-gray-600 font-sans mt-5">
-            Don't have an account?{' '}
-            <Link to="/register" className="font-pixel text-amber-700 font-bold uppercase tracking-wider hover:underline ml-1">
-              Register here
-            </Link>
-          </p>
-        </BrickPanel>
+              <p className="text-center text-xs sm:text-sm text-gray-600 font-sans mt-5">
+                Don't have an account?{' '}
+                <Link to="/register" className="font-pixel text-amber-700 font-bold uppercase tracking-wider hover:underline ml-1">
+                  Register here
+                </Link>
+              </p>
 
-        {/* Demo Credentials Brick Panel */}
-        <div className="mt-6">
-          <BrickPanel showStuds={false} variant="secondary" delay={0.1} className="p-4 sm:p-5">
+              {/* Demo Credentials Container (No extra BrickPanel wrapper needed here since it's already in one) */}
+              <div className="mt-8 rounded-sm bg-gray-50 border-2 border-[#475569]/15 p-4 sm:p-5">
             <div className="flex items-center gap-2 mb-3">
               <ShieldCheck className="h-4 w-4 text-amber-600 shrink-0" />
               <span className="font-pixel text-xs font-bold text-[#0A1628] uppercase tracking-wider">
@@ -178,7 +190,7 @@ export default function Login() {
                   key={cred.role}
                   type="button"
                   onClick={() => fillDemo(cred)}
-                  className={`relative text-left rounded-sm border-2 border-[#0A1628] border-l-4 ${cred.color} p-2.5 shadow-[2.5px_2.5px_0px_#0A1628] hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-[3.5px_3.5px_0px_#0A1628] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-150 ${
+                  className={`relative text-left rounded-sm border-2 border-[#475569] border-l-4 ${cred.color} p-2.5 shadow-[2.5px_2.5px_0px_#475569] hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-[3.5px_3.5px_0px_#475569] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-150 ${
                     clickedRole === cred.role ? 'animate-click-pop' : ''
                   }`}
                 >
@@ -186,7 +198,7 @@ export default function Login() {
                     <span className="font-pixel text-xs font-bold text-[#0A1628] uppercase tracking-wider">
                       {cred.role}
                     </span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 border border-[#0A1628]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 border border-[#475569]" />
                   </div>
                   <p className="text-[11px] text-gray-600 truncate font-mono mt-0.5">
                     {cred.email}
@@ -198,9 +210,10 @@ export default function Login() {
             <p className="text-[11px] text-gray-500 font-sans mt-3 text-center">
               Click any role to fill credentials automatically
             </p>
-          </BrickPanel>
-        </div>
-
+              </div>
+            </div>
+          </div>
+        </BrickPanel>
       </div>
     </div>
   );

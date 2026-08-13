@@ -18,8 +18,8 @@ export default function BrickPanel({
   ...props
 }) {
   const variantStyles = {
-    primary: 'border-2 border-[#0A1628] bg-white shadow-[6px_6px_0px_rgba(212,175,55,0.4)]',
-    secondary: 'border-2 border-[#0A1628] bg-white shadow-[4px_4px_0px_#0A1628]',
+    primary: 'border-2 border-[#475569] bg-white shadow-[6px_6px_0px_rgba(212,175,55,0.4)]',
+    secondary: 'border-2 border-[#475569] bg-white shadow-[4px_4px_0px_#475569]',
     accent: 'border-2 border-[#D4AF37] bg-[#0D1B2A] text-white shadow-[6px_6px_0px_#060D17]',
   };
 
@@ -34,7 +34,7 @@ export default function BrickPanel({
           {Array.from({ length: studCount }).map((_, i) => (
             <div
               key={i}
-              className="w-3.5 h-3.5 rounded-full bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 border border-[#0A1628]/60 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_2px_3px_rgba(0,0,0,0.3)]"
+              className="w-3.5 h-3.5 rounded-full bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 border border-[#475569]/60 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_2px_3px_rgba(0,0,0,0.3)]"
             />
           ))}
         </div>

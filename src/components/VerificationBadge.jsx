@@ -51,7 +51,7 @@ export default function VerificationBadge({ status = 'pending', size = 'md', sho
         <Icon className={`${isLg ? 'h-4 w-4' : 'h-3 w-3'} ${cfg.icon}`} strokeWidth={2} />
       </div>
       {showLabel && (
-        <span className={`text-xs font-semibold ${cfg.text} whitespace-nowrap`}>
+        <span className={`text-[10px] sm:text-xs font-bold font-pixel uppercase tracking-widest ${cfg.text} whitespace-nowrap`}>
           {cfg.label}
         </span>
       )}

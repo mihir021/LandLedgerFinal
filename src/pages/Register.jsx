@@ -17,8 +17,8 @@ const ROLE_OPTIONS = [
     label: 'Buyer & Seller',
     desc: 'Buy and sell properties with one account',
     color: 'border-l-blue-600 bg-blue-50/50',
-    activeStyle: 'border-2 border-[#0A1628] bg-blue-100/70 shadow-[4px_4px_0px_#0A1628]',
-    inactiveStyle: 'border-2 border-gray-300 bg-white shadow-[2px_2px_0px_#0A1628] opacity-75 hover:opacity-100',
+    activeStyle: 'border-2 border-[#475569] bg-blue-100/70 shadow-[4px_4px_0px_#475569]',
+    inactiveStyle: 'border-2 border-gray-300 bg-white shadow-[2px_2px_0px_#475569] opacity-75 hover:opacity-100',
   },
   {
     role: 'buyer',
@@ -26,8 +26,8 @@ const ROLE_OPTIONS = [
     label: 'Buyer',
     desc: 'Search and purchase verified properties',
     color: 'border-l-emerald-600 bg-emerald-50/50',
-    activeStyle: 'border-2 border-[#0A1628] bg-emerald-100/70 shadow-[4px_4px_0px_#0A1628]',
-    inactiveStyle: 'border-2 border-gray-300 bg-white shadow-[2px_2px_0px_#0A1628] opacity-75 hover:opacity-100',
+    activeStyle: 'border-2 border-[#475569] bg-emerald-100/70 shadow-[4px_4px_0px_#475569]',
+    inactiveStyle: 'border-2 border-gray-300 bg-white shadow-[2px_2px_0px_#475569] opacity-75 hover:opacity-100',
   },
   {
     role: 'seller',
@@ -35,8 +35,8 @@ const ROLE_OPTIONS = [
     label: 'Seller',
     desc: 'Register and list properties for sale',
     color: 'border-l-indigo-600 bg-indigo-50/50',
-    activeStyle: 'border-2 border-[#0A1628] bg-indigo-100/70 shadow-[4px_4px_0px_#0A1628]',
-    inactiveStyle: 'border-2 border-gray-300 bg-white shadow-[2px_2px_0px_#0A1628] opacity-75 hover:opacity-100',
+    activeStyle: 'border-2 border-[#475569] bg-indigo-100/70 shadow-[4px_4px_0px_#475569]',
+    inactiveStyle: 'border-2 border-gray-300 bg-white shadow-[2px_2px_0px_#475569] opacity-75 hover:opacity-100',
   },
 ];
 
@@ -80,33 +80,38 @@ export default function Register() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12 bg-gray-50/60 relative overflow-hidden">
-      {/* Floating 3D LEGO Animations on Left & Right Sides */}
-      <LegoVisualLeft />
-      <LegoVisualRight />
-
-      <div className="w-full max-w-lg relative z-10">
-
-        {/* Floating Brick Icon Badge & Header */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="relative group animate-idle-bob">
-              <div className="flex h-14 w-14 items-center justify-center rounded-sm bg-[#0A1628] border-2 border-amber-500/80 shadow-[4px_4px_0px_#0A1628]">
-                <UserPlus className="h-7 w-7 text-amber-400" />
-              </div>
+      
+      {/* Main Split Container */}
+      <div className="w-full max-w-6xl mx-auto relative z-10">
+        <BrickPanel showStuds={false} variant="secondary" className="p-0 overflow-hidden">
+          <div className="flex flex-col lg:flex-row min-h-[700px]">
+            
+            {/* Left 50% - Visual Model Panel */}
+            <div className="w-full lg:w-1/2 bg-[#FDF8EE] flex flex-col items-center justify-center p-8 lg:p-12 border-b-2 lg:border-b-0 lg:border-r-2 border-[#475569]">
+              <LegoVisualLeft activeModel="guy" />
             </div>
-          </div>
-          <h1 className="font-pixel text-3xl sm:text-4xl font-extrabold text-[#0A1628] uppercase tracking-wide">
-            Create Account
-          </h1>
-          <p className="text-gray-600 mt-1.5 text-xs sm:text-sm font-sans">
-            Join LandLedger — Government-grade Land Registry
-          </p>
-        </div>
 
-        {/* Form Brick Panel */}
-        <BrickPanel showStuds={false} variant="primary">
+            {/* Right 50% - Register Form Panel */}
+            <div className="w-full lg:w-1/2 bg-white p-8 sm:p-12 flex flex-col justify-center">
+              
+              {/* Floating Brick Icon Badge & Header */}
+              <div className="text-center mb-8">
+                <div className="flex justify-center mb-4">
+                  <div className="relative group animate-idle-bob">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-sm bg-[#0A1628] border-2 border-amber-500/80 shadow-[4px_4px_0px_#475569]">
+                      <UserPlus className="h-7 w-7 text-amber-400" />
+                    </div>
+                  </div>
+                </div>
+                <h1 className="font-pixel text-3xl sm:text-4xl font-extrabold text-[#0A1628] uppercase tracking-wide">
+                  Create Account
+                </h1>
+                <p className="text-gray-600 mt-1.5 text-xs sm:text-sm font-sans">
+                  Join LandLedger — Government-grade Land Registry
+                </p>
+              </div>
 
-          {/* Role Selector Brick Buttons */}
+              {/* Role Selector Brick Buttons */}
           <div className="mb-6">
             <label className="block font-pixel text-xs sm:text-sm font-bold text-[#0A1628] uppercase tracking-wider mb-2.5">
               I want to register as
@@ -126,7 +131,7 @@ export default function Register() {
                   >
                     <div className="flex items-center justify-between mb-1.5">
                       <Icon className={`h-5 w-5 ${isActive ? 'text-[#0A1628]' : 'text-gray-500'}`} />
-                      <span className="w-2 h-2 rounded-full bg-amber-400 border border-[#0A1628]" />
+                      <span className="w-2 h-2 rounded-full bg-amber-400 border border-[#475569]" />
                     </div>
                     <span className="block font-pixel text-xs sm:text-sm font-bold text-[#0A1628] uppercase tracking-wider">
                       {opt.label}
@@ -140,10 +145,10 @@ export default function Register() {
             </div>
           </div>
 
-          <hr className="border-t-2 border-[#0A1628]/15 mb-5" />
+          <hr className="border-t-2 border-[#475569]/15 mb-5" />
 
           {error && (
-            <div className="flex items-center gap-2 rounded-sm bg-red-50 border-2 border-red-300 px-3.5 py-2.5 mb-4 text-xs sm:text-sm text-red-700 shadow-[2px_2px_0px_#0A1628]">
+            <div className="flex items-center gap-2 rounded-sm bg-red-50 border-2 border-red-300 px-3.5 py-2.5 mb-4 text-xs sm:text-sm text-red-700 shadow-[2px_2px_0px_#475569]">
               <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
               <span className="font-sans font-medium">{error}</span>
             </div>
@@ -248,14 +253,15 @@ export default function Register() {
             </div>
           </form>
 
-          <p className="text-center text-xs sm:text-sm text-gray-600 font-sans mt-5">
-            Already have an account?{' '}
-            <Link to="/login" className="font-pixel text-amber-700 font-bold uppercase tracking-wider hover:underline ml-1">
-              Sign in
-            </Link>
-          </p>
+            <p className="text-center text-xs sm:text-sm text-gray-600 font-sans mt-5">
+              Already have an account?{' '}
+              <Link to="/login" className="font-pixel text-amber-700 font-bold uppercase tracking-wider hover:underline ml-1">
+                Sign in
+              </Link>
+            </p>
+            </div>
+          </div>
         </BrickPanel>
-
       </div>
     </div>
   );

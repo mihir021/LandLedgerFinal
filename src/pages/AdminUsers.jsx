@@ -90,8 +90,8 @@ export default function AdminUsers() {
       {/* Filters */}
       <div className="ll-card p-4 flex flex-wrap gap-3 animate-fade-in-up">
         <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or email..." className="ll-input pl-9" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10 pointer-events-none" />
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or email..." className="ll-input !pl-10" />
         </div>
         <div className="flex rounded-lg border border-gray-200 overflow-hidden">
           {['all', 'pending', 'verified', 'rejected', 'suspended'].map(f => (
